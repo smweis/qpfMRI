@@ -192,7 +192,7 @@ thePacketOrig = thePacket;
 questDataUntrained = questData;
 
 % Randomly (?) initialize
-fitMaxBOLD = 3;
+fitMaxBOLD = max(thePacket.response.values);
 
 %% Run simulated trials
 for tt = 1:nTrials
@@ -293,7 +293,7 @@ for tt = 1:nTrials
         currentFuncHandle = semilogx(freqDomain,watsonTemporalModel(freqDomain,watsonParams),'-r');
         currentFuncHandle2 = semilogx(freqDomain,watsonTemporalModel(freqDomain,psiParamsQuest),'-b');
         legend('Single trials','fmincon fit','Quest+ fit');
-        ylim([-10 10]);
+        ylim[-10 10];
         drawnow
     end
     

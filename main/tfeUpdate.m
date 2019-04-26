@@ -1,4 +1,4 @@
-function [outcomes, modelResponseStruct, thePacket] = tfeUpdate(thePacket, qpParams, stimulusVec, baselineStimulus, varargin)
+function [outcomes, modelResponseStruct, thePacket, yVals] = tfeUpdate(thePacket, qpParams, stimulusVec, baselineStimulus, varargin)
 % Returns the QP outcomes given a packet and a stimulus vector.
 %
 % Syntax:
