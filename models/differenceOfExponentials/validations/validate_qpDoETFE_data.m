@@ -73,9 +73,9 @@ headroom = 0.1;
 myQpParams.qpPF = @(f,p) qpDoETemporalModel(f,p,myQpParams.nOutcomes,headroom);
 
 % Define the parameter ranges
-Sr = 0.81:0.1:1.21;
-k1 = 0.1:0.1:1;
-k2 = 0.01:0.01:0.2;
+Sr = 0.81:0.05:1.21;
+k1 = 0.1:0.05:1;
+k2 = 0.005:0.005:0.2;
 beta = 0.8:0.2:1.2; % multiplier that maps 0-1 to BOLD % bins
 sigma = 1:0.325:2;	% width of the BOLD fMRI noise against the 0-1 y vals
 myQpParams.psiParamsDomainList = {Sr, k1, k2, beta, sigma};
@@ -196,7 +196,7 @@ for rr = 1:nRuns
         
         % Set up the TTF figure
         subplot(3,1,2)
-        freqDomain = logspace(0,log10(100),100);
+        freqDomain = logspace(log10(0.01),log10(100),100);
         ylim([-0.5 1.5]);
         xlabel('log stimulus Frequency [Hz]');
         ylabel('Relative response amplitude');
@@ -285,7 +285,7 @@ for rr = 1:nRuns
             yVals = (outcomes - nLower - 1)./nMid;
             yVals = yVals + mean(yVals(stimulusVec==baselineStimulus));
             stimulusVecPlot = stimulusVec;
-            stimulusVecPlot(stimulusVecPlot==0)=1;
+            stimulusVecPlot(stimulusVecPlot==0)=0.01;
             delete(currentOutcomesHandle);
             currentOutcomesHandle = scatter(stimulusVecPlot(1:tt),yVals,'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',.2);
             psiParamsIndex = qpListMaxArg(questData.posterior);
@@ -329,7 +329,7 @@ end
 % on the gridded parameter domain.
 psiParamsIndex = qpListMaxArg(questData.posterior);
 psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
-fprintf('Max posterior QUEST+ parameters:   %0.1f, %0.1f, %0.1f, %0.1f, %0.2f, %0.1f\n', ...
+fprintf('Max posterior QUEST+ parameters:   %0.2f, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f\n', ...
     psiParamsQuest(1),psiParamsQuest(2),psiParamsQuest(3),psiParamsQuest(4),psiParamsQuest(5),fitMaxBOLD);
 
 %% Find maximum likelihood fit. Use psiParams from QUEST+ as the starting
@@ -337,7 +337,7 @@ fprintf('Max posterior QUEST+ parameters:   %0.1f, %0.1f, %0.1f, %0.1f, %0.2f, %
 % provided to QUEST+.
 psiParamsFit = qpFit(questData.trialData,questData.qpPF,psiParamsQuest,questData.nOutcomes,...
     'lowerBounds', lowerBounds,'upperBounds',upperBounds);
-fprintf('Maximum likelihood fit parameters: %0.1f, %0.1f, %0.1f, %0.1f, %0.2f\n', ...
+fprintf('Maximum likelihood fit parameters: %0.2f, %0.2f, %0.2f, %0.2f, %0.2f\n', ...
     psiParamsFit(1),psiParamsFit(2),psiParamsFit(3),psiParamsFit(4),psiParamsFit(5));
 
 
@@ -350,4 +350,4 @@ freqDomain = logspace(log10(0.01),log10(100),100);
 hold on
 semilogx(freqDomain,doeTemporalModel(freqDomain,[psiParamsQuest(1:3) fitMaxBOLD]),'-k');
 semilogx(freqDomain,doeTemporalModel(freqDomain,[psiParamsFit(1:3) fitMaxBOLD]),'-m');
-legend({'data','unconstrained fit','Q+ max posterior','Max likelihood'})
+legend({'unconstrained fit','data','Q+ max posterior','Max likelihood'})
