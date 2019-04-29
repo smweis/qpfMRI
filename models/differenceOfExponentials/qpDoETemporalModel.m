@@ -125,6 +125,7 @@ yVals = doeTemporalModel(frequenciesToModel, [Sr k1 k2 beta]);
 % Map the responses to categories
 binAssignment = 1+round(yVals.*nMid)+nLower;
 binAssignment(binAssignment > nOutcomes)=nOutcomes;
+binAssignment(binAssignment < 1)=1;
 
 % Create a Gaussian kernel to reflect noise in the y-axis measurement
 if params(end)==0

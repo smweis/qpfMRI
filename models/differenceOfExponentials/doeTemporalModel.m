@@ -35,7 +35,6 @@ function y = doeTemporalModel(frequenciesToModel, params)
 %}
 
 
-
 % Define a frequency domain in Hz over which the model is defined. The
 % maximum and minimum value of the y response should be contained within
 % this range for any plausible set of parameters. We hard code a log-spaced
@@ -52,6 +51,11 @@ Sr = params(1);
 k1 = params(2);
 k2 = params(3);
 beta = params(4);
+
+% Sanity check the params. If k1=k2, and Sr=1, then no output is possible
+if and(k1==k2,Sr==1)
+    error('The model is undefined when k1=k2, and Sr=1');
+end
 
 % Find the specific S values that produce the desired beta amplitude
 F = @(w,S1,S2) (S1.*exp(-k1.*w)) - (S2.*exp(-k2.*w));
