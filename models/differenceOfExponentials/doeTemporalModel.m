@@ -33,7 +33,29 @@ function y = doeTemporalModel(frequenciesToModel, params)
     hold on
     ylim([1 100]);
 %}
-
+%{
+    % Fit the DoE model to some empirical data
+    stimulusFreqHz = [0.5 1 2 4 8 16 32 64];
+    pctBOLDresponse = [-0.1050   -0.0380    0.0470    0.1700    0.3970    0.6510    0.4700   -0.0020];
+    % Adjust the BOLD response to make it relative to the minimum response
+    minBOLD = min(pctBOLDresponse);
+    if minBOLD < 0
+        realtiveBOLDresponse = pctBOLDresponse - minBOLD;
+    else
+        realtiveBOLDresponse = pctBOLDresponse;
+        minBOLD = 0;
+    end
+    % Perform non-linear fitting to find the model parameters
+    myObj = @(p) sqrt(sum((realtiveBOLDresponse-doeTemporalModel(stimulusFreqHz,p)).^2));
+    x0 = [1 0.1 0.2 1];
+    params = fmincon(myObj,x0);
+    % Plot the results
+    stimulusFreqHzFine = logspace(log10(0.5),log10(64),100);
+    semilogx(stimulusFreqHzFine,doeTemporalModel(stimulusFreqHzFine,params)+minBOLD,'-k');
+    hold on
+    semilogx(stimulusFreqHz, pctBOLDresponse, '*r');
+    hold off
+%}
 
 % Define a frequency domain in Hz over which the model is defined. The
 % maximum and minimum value of the y response should be contained within
