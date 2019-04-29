@@ -1,4 +1,4 @@
-%% QP + Watson TTF + TFE
+%% QP + DoE TTF + TFE
 
 
 
@@ -26,7 +26,7 @@ end
 %  A low-pass TTF in noisy fMRI data: [10 1 0.83 1]
 %  A band-pass TTF in noisy fMRI data: [1.47 1.75 0.83 1]
 %simulatedPsiParams = [4 1 1 1 0];
-simulatedPsiParams = [];
+simulatedPsiParams = [1 0.15 0.2 1 0];
 
 % Some information about the trials?
 nTrials = 50; % how many trials
@@ -35,13 +35,13 @@ stimulusStructDeltaT = 100; % the resolution of the stimulus struct in msecs
 
 % Define the simulated size of the BOLD response and the size that will be
 % assumed at the start of the modeling.
-simulateMaxBOLD = .2;
-fitMaxBOLD = .2;
+simulateMaxBOLD = 2;
+fitMaxBOLD = 2;
 
 % Which stimulus (in freq Hz) is the "baseline" stimulus? This stimulus
 % should be selected with the expectation that the neural response to this
 % stimulus will be minimal as compared to all other stimuli.
-baselineStimulus = 0;
+baselineStimulus = 200;
 
 % How talkative is the simulation?
 showPlots = true;
@@ -54,38 +54,38 @@ verbose = true;
 myQpParams = qpParams;
 
 % Add the stimulus domain. ~Log spaced frequencies between 0 and 30 Hz
-myQpParams.stimParamsDomainList = {[0,1.875,2.5,3.75,5,7.5,10,15,20,30]};
+myQpParams.stimParamsDomainList = {[baselineStimulus,1.875,2.5,3.75,5,7.5,10,15,20,30]};
 nStims = length(myQpParams.stimParamsDomainList{1});
 
 % The number of outcome categories.
 myQpParams.nOutcomes = 51;
 
 % The headroom is the proportion of outcomes that are reserved above and
-% below the min and max output of the Watson model to account for noise
+% below the min and max output of the DoE model to account for noise
 headroom = 0.1;
 
-% Create an anonymous function from qpWatsonTemporalModel in which we
+% Create an anonymous function from qpDoETemporalModel in which we
 % specify the number of outcomes for the y-axis response
-myQpParams.qpPF = @(f,p) qpWatsonTemporalModel(f,p,myQpParams.nOutcomes,headroom);
+myQpParams.qpPF = @(f,p) qpDoETemporalModel(f,p,myQpParams.nOutcomes,headroom);
 
 % Define the parameter ranges
-tau = 0.5:0.5:8;	% time constant of the center filter (in msecs)
-kappa = 0.5:0.25:2;	% multiplier of the time-constant for the surround
-zeta = 0:0.25:2;	% multiplier of the amplitude of the surround
-beta = 0.5:0.2:2; % multiplier that maps watson 0-1 to BOLD % bins
+Sr = 0.71:0.1:1.21;
+k1 = 0.1:0.01:0.2;
+k2 = 0.1:0.01:0.2;
+beta = 0.8:0.2:1.2; % multiplier that maps 0-1 to BOLD % bins
 sigma = 0:0.5:2;	% width of the BOLD fMRI noise against the 0-1 y vals
-myQpParams.psiParamsDomainList = {tau, kappa, zeta, beta, sigma};
+myQpParams.psiParamsDomainList = {Sr, k1, k2, beta, sigma};
 
 % Pick some random params to simulate if none provided (but set the beta to
 % one and the neural noise to zero)
 if isempty(simulatedPsiParams)
-    simulatedPsiParams = [randsample(tau,1) randsample(kappa,1) randsample(zeta,1) 1 0];
+    simulatedPsiParams = [randsample(Sr,1) randsample(k1,1) randsample(k2,1) 1 0];
 end
 
 % Derive some lower and upper bounds from the parameter ranges. This is
 % used later in maximum likelihood fitting
-lowerBounds = [tau(1) kappa(1) zeta(1) beta(1) sigma(1)];
-upperBounds = [tau(end) kappa(end) zeta(end) beta(end) sigma(end)];
+lowerBounds = [Sr(1) k1(1) k2(1) beta(1) sigma(1)];
+upperBounds = [Sr(end) k1(end) k2(end) beta(end) sigma(end)];
 
 % Create a simulated observer with binned output
 myQpParams.qpOutcomeF = @(f) qpSimulatedObserver(f,myQpParams.qpPF,simulatedPsiParams);
@@ -107,7 +107,7 @@ if ~reinitializeQuest
 end
 
 % Tack on a continuous output simulated observer to myQpParams
-myQpParams.continuousPF = @(f) watsonTemporalModel(f,simulatedPsiParams);
+myQpParams.continuousPF = @(f) doeTemporalModel(f,simulatedPsiParams);
 
 
 % Create a full length packet
@@ -148,14 +148,14 @@ if showPlots
     % Set up the TTF figure
     subplot(3,1,2)
     freqDomain = logspace(0,log10(100),100);
-    semilogx(freqDomain,watsonTemporalModel(freqDomain,simulatedPsiParams),'-k');
+    semilogx(freqDomain,doeTemporalModel(freqDomain,simulatedPsiParams),'-k');
     ylim([-0.5 1.5]);
     xlabel('log stimulus Frequency [Hz]');
     ylabel('Relative response amplitude');
-    title('Estimate of Watson TTF');
+    title('Estimate of DoE TTF');
     hold on
     currentOutcomesHandle = scatter(nan,nan);
-    currentTTFHandle = plot(freqDomain,watsonTemporalModel(freqDomain,simulatedPsiParams),'-k');
+    currentTTFHandle = plot(freqDomain,doeTemporalModel(freqDomain,simulatedPsiParams),'-k');
     
     % Calculate the lower headroom bin offset. We'll use this later
     nLower = round(headroom*myQpParams.nOutcomes);
@@ -244,7 +244,7 @@ for tt = 1:nTrials
         psiParamsIndex = qpListMaxArg(questData.posterior);
         psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
         delete(currentTTFHandle)
-        currentTTFHandle = semilogx(freqDomain,watsonTemporalModel(freqDomain,psiParamsQuest),'-r');
+        currentTTFHandle = semilogx(freqDomain,doeTemporalModel(freqDomain,psiParamsQuest),'-r');
         
         % Entropy by trial
         subplot(3,1,3)
