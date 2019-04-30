@@ -27,13 +27,15 @@ load(stimDataLoc,'stimParams','detrendTimeseries');
 
 % How many runs?
 nRuns = size(detrendTimeseries,1);
+nRuns = 1
+
+% Initial guess for the max size of the evoked BOLD response
+maxBOLD = 0.6;
 
 % Which stimulus (in freq Hz) is the "baseline" stimulus? This stimulus
 % should be selected with the expectation that the neural response to this
 % stimulus will be minimal as compared to all other stimuli.
 baselineStimulus = 0;
-
-
 
 
 %% Define qpParams
@@ -42,7 +44,6 @@ baselineStimulus = 0;
 trialLengthSecs = 12; % seconds per trial
 stimulusStructDeltaT = 100; % the resolution of the stimulus struct in msecs
 TRmsecs = 800;
-
 
 
 % How talkative is the analysis?
@@ -72,10 +73,10 @@ myQpParams.qpPF = @(f,p) qpDoETemporalModel(f,p,myQpParams.nOutcomes,headroom);
 
 % Define the parameter ranges
 Sr = 0.899:0.025:1.099;
-k1 = 0.005:0.005:0.2;
+k1 = 0.01:0.005:0.03;
 k2 = 0.5:0.05:1;
-beta = 0.4:0.05:0.8; % Maximum BOLD fMRI response
-sigma = 1:0.325:2;	% width of the BOLD fMRI noise against the 0-1 y vals
+beta = 0.5:0.1:2; % Amplitude of the scaled response; should converge to unity
+sigma = 0:0.1:0.5;	% Standard deviation of the scaled (0-1) noise
 myQpParams.psiParamsDomainList = {Sr, k1, k2, beta, sigma};
 
 % Calculate the lower headroom bin offset. We'll use this later
@@ -86,8 +87,7 @@ nMid = myQpParams.nOutcomes - nLower - nUpper;
 
 %% Create a plot of the entire, integrated dataset
 stimulusVecFull = [];
-yValsFull = [];
-yOutcomesFull = [];
+adjustedAmplitudesFull = [];
 for rr = 1:nRuns
     stimulusVec = stimParams(rr).params.stimFreq;
     stimulusVec(stimulusVec == 0) = baselineStimulus;
@@ -103,21 +103,16 @@ for rr = 1:nRuns
     thePacket.response.values = thePacket.response.values - mean(thePacket.response.values);
     thePacket.response.timebase = 0:TRmsecs:length(thePacket.response.values)*TRmsecs - TRmsecs;
     
-    [outcomes, ~, ~, yVals] = ...
-        tfeUpdate(thePacket, myQpParams, stimulusVec, baselineStimulus, ...
-        'maxBOLD',1);
+    [~, ~, ~, adjustedAmplitudes] = ...
+        tfeUpdate(thePacket, myQpParams, stimulusVec, baselineStimulus);
 
-    % Obtain estimated yVals from the outcomes
-    yOutcomes = (outcomes - nLower - 1)./nMid;
-    yOutcomes = yOutcomes + mean(yOutcomes(stimulusVec==baselineStimulus));
-                
-    yOutcomesFull = [yOutcomesFull yOutcomes'];
+    % Save the values
+    adjustedAmplitudesFull = [adjustedAmplitudesFull adjustedAmplitudes'];
     stimulusVecFull = [stimulusVecFull stimulusVec];
-    yValsFull = [yValsFull yVals'];
 end
 
 % Obtain the fmincon best fit of the DoE model to the data
-myObj = @(p) sqrt(sum((yValsFull-doeTemporalModel(stimulusVecFull,p)).^2));
+myObj = @(p) sqrt(sum((adjustedAmplitudesFull-doeTemporalModel(stimulusVecFull,p)).^2));
 x0 = [0.9 0.1 0.1 1];
 unconstrainedFitParams = fminsearch(myObj,x0);
 
@@ -128,16 +123,15 @@ stimulusVecPlot(stimulusVecPlot==0)=0.01;
 freqDomain = logspace(log10(0.01),log10(100),100);
 semilogx(freqDomain,doeTemporalModel(freqDomain,unconstrainedFitParams),'-r');
 hold on
-scatter(stimulusVecPlot,yValsFull,'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',.2);
-scatter(stimulusVecPlot,yOutcomesFull,'x','MarkerFaceColor','k','MarkerEdgeColor','c','MarkerFaceAlpha',.2);
+scatter(stimulusVecPlot,adjustedAmplitudes,'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',.2);
 
 % And the median data values
 freqList = unique(stimulusVecPlot);
 for ii=1:length(freqList)
-    medianVals(ii) = median(yValsFull(stimulusVecPlot==freqList(ii)));
+    medianVals(ii) = median(adjustedAmplitudesFull(stimulusVecPlot==freqList(ii)));
 end
 plot(freqList,medianVals,'*k')
-
+drawnow
 
 
 
@@ -181,7 +175,7 @@ for rr = 1:nRuns
         fprintf('Processing run %d of %d.\n',rr,nRuns);
     end
     
-    % Create a copy of Q+
+    % Save the state of questData at the start of this run
     questDataAtRunStart = questData;
     
     % Obtain the stimulus vec for this run (with zero trials = baseline)
@@ -250,9 +244,9 @@ for rr = 1:nRuns
         % baseline stimulus).
         psiParamsIndex = qpListMaxArg(questData.posterior);
         psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
-        maxBOLD = psiParamsQuest(4);
+        maxBOLD = maxBOLD.*psiParamsQuest(4);
         
-        % Grab a naive copy of questData
+        % Reset questData to its state at the start of the run
         questData = questDataAtRunStart;
         
         % Create a packet
@@ -290,15 +284,14 @@ for rr = 1:nRuns
             % TTF figure
             subplot(3,1,2)
             yVals = (outcomes - nLower - 1)./nMid;
-            yVals = yVals + mean(yVals(stimulusVec==baselineStimulus));
             stimulusVecPlot = stimulusVec;
             stimulusVecPlot(stimulusVecPlot==0)=0.01;
             delete(currentOutcomesHandle);
-            currentOutcomesHandle = scatter(stimulusVecPlot(1:tt),yVals./maxBOLD,'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',.2);
+            currentOutcomesHandle = scatter(stimulusVecPlot(1:tt),yVals,'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',.2);
             psiParamsIndex = qpListMaxArg(questData.posterior);
             psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
             delete(currentTTFHandle)
-            currentTTFHandle = semilogx(freqDomain,doeTemporalModel(freqDomain,psiParamsQuest)./maxBOLD,'-r');
+            currentTTFHandle = semilogx(freqDomain,doeTemporalModel(freqDomain,psiParamsQuest),'-r');
             ylim([-0.5 1.5]);
 
             % Entropy by trial
@@ -354,6 +347,6 @@ fprintf('Maximum likelihood fit parameters: %0.2f, %0.2f, %0.2f, %0.2f, %0.2f\n'
 % Display the data
 figure(unconstrainedFit);
 freqDomain = logspace(log10(0.01),log10(100),100);
-semilogx(freqDomain,doeTemporalModel(freqDomain,psiParamsQuest),'-k');
-semilogx(freqDomain,doeTemporalModel(freqDomain,psiParamsFit),'-m');
+semilogx(freqDomain,doeTemporalModel(freqDomain,[psiParamsQuest(1:3) psiParamsQuest(4)*mean(maxBOLDPerRun)]),'-k');
+semilogx(freqDomain,doeTemporalModel(freqDomain,[psiParamsFit(1:3) psiParamsFit(4)*mean(maxBOLDPerRun)]),'-m');
 legend({'unconstrained fit','data','median vals','Q+ max posterior','Max likelihood'})

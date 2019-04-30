@@ -26,18 +26,23 @@ end
 %  A low-pass TTF in noisy fMRI data: [10 1 0.83 1]
 %  A band-pass TTF in noisy fMRI data: [1.47 1.75 0.83 1]
 %simulatedPsiParams = [4 1 1 1 0];
-simulatedPsiParams = [1 0.15 0.2 1 0];
+simulatedPsiParams = [0.9998 0.0132 0.7755 1 0];
 
 % Some information about the trials?
-nTrials = 50; % how many trials
+nTrials = 30; % how many trials
 trialLengthSecs = 12; % seconds per trial
 stimulusStructDeltaT = 100; % the resolution of the stimulus struct in msecs
 
+% True size of the BOLD response
+maxBOLDSimulated = 0.6;
+
+% Initial guess for the max size of the evoked BOLD response
+maxBOLD = 1.0;
 
 % Which stimulus (in freq Hz) is the "baseline" stimulus? This stimulus
 % should be selected with the expectation that the neural response to this
 % stimulus will be minimal as compared to all other stimuli.
-baselineStimulus = 200;
+baselineStimulus = 0;
 
 % How talkative is the simulation?
 showPlots = true;
@@ -50,7 +55,7 @@ verbose = true;
 myQpParams = qpParams;
 
 % Add the stimulus domain. ~Log spaced frequencies between 0 and 30 Hz
-myQpParams.stimParamsDomainList = {[baselineStimulus,1.875,2.5,3.75,5,7.5,10,15,20,30]};
+myQpParams.stimParamsDomainList = {[baselineStimulus,1.875,3.75,7.5,15,30]};
 nStims = length(myQpParams.stimParamsDomainList{1});
 
 % The number of outcome categories.
@@ -65,11 +70,11 @@ headroom = 0.1;
 myQpParams.qpPF = @(f,p) qpDoETemporalModel(f,p,myQpParams.nOutcomes,headroom);
 
 % Define the parameter ranges
-Sr = 0.71:0.1:1.21;
-k1 = 0.1:0.01:0.2;
-k2 = 0.1:0.01:0.2;
-beta = 0.8:0.1:1.2; % maximum amplitude of the BOLD fMRI response
-sigma = 0:0.25:2;	% width of the BOLD fMRI noise against the 0-1 y vals
+Sr = 0.899:0.025:1.099;
+k1 = 0.01:0.005:0.03;
+k2 = 0.5:0.05:1;
+beta = 0.5:0.1:2; % Amplitude of the scaled response; should converge to unity
+sigma = 0:0.1:0.5;	% Standard deviation of the scaled (0-1) noise
 myQpParams.psiParamsDomainList = {Sr, k1, k2, beta, sigma};
 
 % Pick some random params to simulate if none provided (but set the neural
@@ -139,15 +144,15 @@ if showPlots
     
     % Set up the TTF figure
     subplot(3,1,2)
-    freqDomain = logspace(0,log10(100),100);
-    semilogx(freqDomain,doeTemporalModel(freqDomain,simulatedPsiParams)./simulatedPsiParams(4),'-k');
+    freqDomain = logspace(log10(0.01),log10(100),100);
+    semilogx(freqDomain,doeTemporalModel(freqDomain,simulatedPsiParams),'-k');
     ylim([-0.5 1.5]);
     xlabel('log stimulus Frequency [Hz]');
     ylabel('Relative response amplitude');
     title('Estimate of DoE TTF');
     hold on
     currentOutcomesHandle = scatter(nan,nan);
-    currentTTFHandle = plot(freqDomain,doeTemporalModel(freqDomain,simulatedPsiParams)./simulatedPsiParams(4),'-k');
+    currentTTFHandle = plot(freqDomain,doeTemporalModel(freqDomain,simulatedPsiParams),'-k');
     
     % Calculate the lower headroom bin offset. We'll use this later
     nLower = round(headroom*myQpParams.nOutcomes);
@@ -190,7 +195,7 @@ for tt = 1:nTrials
     % stimulus), which is the beta value of the model
     psiParamsIndex = qpListMaxArg(questData.posterior);
     psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
-    maxBOLD = psiParamsQuest(4);
+        maxBOLD = maxBOLD.*psiParamsQuest(4);
     
     % Create a packet
     thePacket = createPacket('nTrials',tt,...,
@@ -204,6 +209,7 @@ for tt = 1:nTrials
     % Obtain outcomes from tfeUpdate 
     [outcomes, modelResponseStruct, thePacketOut] = ...
         tfeUpdate(thePacket, myQpParams, stimulusVec, baselineStimulus, ...
+        'maxBOLDSimulated',maxBOLDSimulated,...
         'rngSeed',rngSeed,...,
         'maxBOLD',maxBOLD);
         
@@ -229,15 +235,14 @@ for tt = 1:nTrials
         subplot(3,1,2)
         % Current guess at the TTF, along with stims and outcomes
         yVals = (outcomes - nLower - 1)./nMid;
-        yVals = yVals + mean(yVals(stimulusVec==baselineStimulus));
         stimulusVecPlot = stimulusVec;
-        stimulusVecPlot(stimulusVecPlot==0)=1;
+        stimulusVecPlot(stimulusVecPlot==0)=0.01;
         delete(currentOutcomesHandle);
-        currentOutcomesHandle = scatter(stimulusVecPlot(1:tt),yVals./maxBOLD,'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',.2);
+        currentOutcomesHandle = scatter(stimulusVecPlot(1:tt),yVals,'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',.2);
         psiParamsIndex = qpListMaxArg(questData.posterior);
         psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
         delete(currentTTFHandle)
-        currentTTFHandle = semilogx(freqDomain,doeTemporalModel(freqDomain,psiParamsQuest)./maxBOLD,'-r');
+        currentTTFHandle = semilogx(freqDomain,doeTemporalModel(freqDomain,psiParamsQuest),'-r');
         
         % Entropy by trial
         subplot(3,1,3)
