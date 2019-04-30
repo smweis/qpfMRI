@@ -43,9 +43,7 @@ trialLengthSecs = 12; % seconds per trial
 stimulusStructDeltaT = 100; % the resolution of the stimulus struct in msecs
 TRmsecs = 800;
 
-% Define the simulated size of the BOLD response and the size that will be
-% assumed at the start of the modeling.
-fitMaxBOLD = 1.0;
+
 
 % How talkative is the analysis?
 showPlots = true;
@@ -57,7 +55,7 @@ verbose = true;
 % Get the default Q+ params
 myQpParams = qpParams;
 
-% Add the stimulus domain. ~Log spaced frequencies between 0 and 30 Hz
+% Add the stimulus domain.
 myQpParams.stimParamsDomainList = {unique(stimParams(1).params.stimFreq)};
 nStims = length(myQpParams.stimParamsDomainList{1});
 
@@ -73,10 +71,10 @@ headroom = 0.1;
 myQpParams.qpPF = @(f,p) qpDoETemporalModel(f,p,myQpParams.nOutcomes,headroom);
 
 % Define the parameter ranges
-Sr = 0.91:0.05:1.11;
+Sr = 0.899:0.025:1.099;
 k1 = 0.5:0.05:1;
 k2 = 0.005:0.005:0.2;
-beta = 0.8:0.05:1.2; % multiplier that maps 0-1 to BOLD % bins
+beta = 0.4:0.05:0.8; % Maximum BOLD fMRI response
 sigma = 1:0.325:2;	% width of the BOLD fMRI noise against the 0-1 y vals
 myQpParams.psiParamsDomainList = {Sr, k1, k2, beta, sigma};
 
@@ -103,7 +101,7 @@ for rr = 1:nRuns
     
     [~, ~, ~, yVals] = ...
         tfeUpdate(thePacket, myQpParams, stimulusVec, baselineStimulus, ...
-        'fitMaxBOLD',fitMaxBOLD);
+        'maxBOLD',1);
     
     stimulusVecFull = [stimulusVecFull stimulusVec];
     yValsFull = [yValsFull yVals'];
@@ -206,12 +204,12 @@ for rr = 1:nRuns
         % Set up the TTF figure
         subplot(3,1,2)
         freqDomain = logspace(log10(0.01),log10(100),100);
+        currentTTFHandle = semilogx(freqDomain,ones(size(freqDomain)),'-k');
+        hold on
         ylim([-0.5 1.5]);
         xlabel('log stimulus Frequency [Hz]');
         ylabel('Relative response amplitude');
         title('Estimate of DoE TTF');
-        currentTTFHandle = semilogx(freqDomain,ones(size(freqDomain)),'-k');
-        hold on
         currentOutcomesHandle = scatter(nan,nan);
         
         % Calculate the lower headroom bin offset. We'll use this later
@@ -239,19 +237,17 @@ for rr = 1:nRuns
         stimulusVec = stimulusVecFull(1:tt);
         
         % Skip initial trials until we have a baseline trial available
-        foo=1;
+        % Could add a check here to do so.
         
         % Here is where we would ask QP to supply our next stimulus.
         % qpQuery(questData);
         
-        % Update fitMaxBOLD with our best guess at the maximum BOLD
-        % fMRI response that could be evoked by a stimulus (relative to the
-        % baseline stimulus). The beta value of the model is the 4th parameter.
-        % Our hope is that it converges to unity when we have the correct
-        % fitMaxBOLD value
+        % Update maxBOLD with our best guess at the maximum BOLD fMRI
+        % response that could be evoked by a stimulus (relative to the
+        % baseline stimulus).
         psiParamsIndex = qpListMaxArg(questData.posterior);
         psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
-        fitMaxBOLD = fitMaxBOLD.*psiParamsQuest(4);
+        maxBOLD = psiParamsQuest(4);
         
         % Grab a naive copy of questData
         questData = questDataAtRunStart;
@@ -269,7 +265,7 @@ for rr = 1:nRuns
         % Obtain the outcomes with tfeUpdate
         [outcomes, modelResponseStruct, thePacketOut] = ...
             tfeUpdate(thePacket, myQpParams, stimulusVec(1:tt), baselineStimulus, ...
-            'fitMaxBOLD',fitMaxBOLD);
+            'maxBOLD',maxBOLD);
         
         % Update quest data structure. This is the slow step in the simulation.
         for yy = 1:tt
@@ -290,17 +286,16 @@ for rr = 1:nRuns
             
             % TTF figure
             subplot(3,1,2)
-            % Current guess at the TTF, along with stims and outcomes
             yVals = (outcomes - nLower - 1)./nMid;
             yVals = yVals + mean(yVals(stimulusVec==baselineStimulus));
             stimulusVecPlot = stimulusVec;
             stimulusVecPlot(stimulusVecPlot==0)=0.01;
             delete(currentOutcomesHandle);
-            currentOutcomesHandle = scatter(stimulusVecPlot(1:tt),yVals,'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',.2);
+            currentOutcomesHandle = scatter(stimulusVecPlot(1:tt),yVals./maxBOLD,'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',.2);
             psiParamsIndex = qpListMaxArg(questData.posterior);
             psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
             delete(currentTTFHandle)
-            currentTTFHandle = semilogx(freqDomain,doeTemporalModel(freqDomain,psiParamsQuest),'-r');
+            currentTTFHandle = semilogx(freqDomain,doeTemporalModel(freqDomain,psiParamsQuest)./maxBOLD,'-r');
             ylim([-0.5 1.5]);
 
             % Entropy by trial
@@ -318,7 +313,7 @@ for rr = 1:nRuns
         
     end % Loop over trials in this run
     
-    maxBOLDPerRun(rr) = fitMaxBOLD;
+    maxBOLDPerRun(rr) = maxBOLD;
     
 end % Loop over runs
 
@@ -341,8 +336,8 @@ end
 % on the gridded parameter domain.
 psiParamsIndex = qpListMaxArg(questData.posterior);
 psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
-fprintf('Max posterior QUEST+ parameters:   %0.2f, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f\n', ...
-    psiParamsQuest(1),psiParamsQuest(2),psiParamsQuest(3),psiParamsQuest(4),psiParamsQuest(5),fitMaxBOLD);
+fprintf('Max posterior QUEST+ parameters:   %0.2f, %0.2f, %0.2f, %0.2f, %0.2f\n', ...
+    psiParamsQuest(1),psiParamsQuest(2),psiParamsQuest(3),psiParamsQuest(4),psiParamsQuest(5));
 
 %% Find maximum likelihood fit. Use psiParams from QUEST+ as the starting
 % parameter for the search, and impose as parameter bounds the range
@@ -356,6 +351,6 @@ fprintf('Maximum likelihood fit parameters: %0.2f, %0.2f, %0.2f, %0.2f, %0.2f\n'
 % Display the data
 figure(unconstrainedFit);
 freqDomain = logspace(log10(0.01),log10(100),100);
-semilogx(freqDomain,doeTemporalModel(freqDomain,[psiParamsQuest(1:3) mean(maxBOLDPerRun)]),'-k');
-semilogx(freqDomain,doeTemporalModel(freqDomain,[psiParamsFit(1:3) mean(maxBOLDPerRun)]),'-m');
+semilogx(freqDomain,doeTemporalModel(freqDomain,psiParamsQuest),'-k');
+semilogx(freqDomain,doeTemporalModel(freqDomain,psiParamsFit),'-m');
 legend({'unconstrained fit','data','median vals','Q+ max posterior','Max likelihood'})

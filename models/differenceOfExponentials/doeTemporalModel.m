@@ -81,7 +81,7 @@ end
 
 % Find the specific S values that produce the desired beta amplitude
 F = @(w,S1,S2) (S1.*exp(-k1.*w)) - (S2.*exp(-k2.*w));
-myObj = @(S1) beta - max(F(freqDomain,S1,S1./Sr));
+myObj = @(S1) beta - ( max(F(freqDomain,S1,S1./Sr)) - min(F(freqDomain,S1,S1./Sr)) );
 S1 = fzero(myObj,1);
 S2 = S1/Sr;
 
