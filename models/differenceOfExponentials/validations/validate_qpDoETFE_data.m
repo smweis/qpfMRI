@@ -27,7 +27,6 @@ load(stimDataLoc,'stimParams','detrendTimeseries');
 
 % How many runs?
 nRuns = size(detrendTimeseries,1);
-nRuns = 1
 
 % Initial guess for the max size of the evoked BOLD response
 maxBOLD = 0.6;
@@ -123,7 +122,7 @@ stimulusVecPlot(stimulusVecPlot==0)=0.01;
 freqDomain = logspace(log10(0.01),log10(100),100);
 semilogx(freqDomain,doeTemporalModel(freqDomain,unconstrainedFitParams),'-r');
 hold on
-scatter(stimulusVecPlot,adjustedAmplitudes,'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',.2);
+scatter(stimulusVecPlot,adjustedAmplitudesFull,'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',.2);
 
 % And the median data values
 freqList = unique(stimulusVecPlot);
