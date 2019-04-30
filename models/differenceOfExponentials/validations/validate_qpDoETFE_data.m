@@ -72,8 +72,8 @@ myQpParams.qpPF = @(f,p) qpDoETemporalModel(f,p,myQpParams.nOutcomes,headroom);
 
 % Define the parameter ranges
 Sr = 0.899:0.025:1.099;
-k1 = 0.5:0.05:1;
-k2 = 0.005:0.005:0.2;
+k1 = 0.005:0.005:0.2;
+k2 = 0.5:0.05:1;
 beta = 0.4:0.05:0.8; % Maximum BOLD fMRI response
 sigma = 1:0.325:2;	% width of the BOLD fMRI noise against the 0-1 y vals
 myQpParams.psiParamsDomainList = {Sr, k1, k2, beta, sigma};
@@ -109,10 +109,8 @@ end
 
 % Obtain the fmincon best fit of the DoE model to the data
 myObj = @(p) sqrt(sum((yValsFull-doeTemporalModel(stimulusVecFull,p)).^2));
-x0 = [0.8 0.15 0.16 1];
-lb = [0 0 0 0];
-ub = [3 1 1 3];
-unconstrainedFitParams = fmincon(myObj,x0,[],[],[],[],lb,ub);
+x0 = [0.9 0.1 0.1 1];
+unconstrainedFitParams = fminsearch(myObj,x0);
 
 % Display the data
 unconstrainedFit = figure();
