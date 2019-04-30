@@ -78,12 +78,16 @@ beta = 0.4:0.05:0.8; % Maximum BOLD fMRI response
 sigma = 1:0.325:2;	% width of the BOLD fMRI noise against the 0-1 y vals
 myQpParams.psiParamsDomainList = {Sr, k1, k2, beta, sigma};
 
-
+% Calculate the lower headroom bin offset. We'll use this later
+nLower = round(headroom*myQpParams.nOutcomes);
+nUpper = round(headroom*myQpParams.nOutcomes);
+nMid = myQpParams.nOutcomes - nLower - nUpper;
 
 
 %% Create a plot of the entire, integrated dataset
 stimulusVecFull = [];
 yValsFull = [];
+yOutcomesFull = [];
 for rr = 1:nRuns
     stimulusVec = stimParams(rr).params.stimFreq;
     stimulusVec(stimulusVec == 0) = baselineStimulus;
@@ -99,10 +103,15 @@ for rr = 1:nRuns
     thePacket.response.values = thePacket.response.values - mean(thePacket.response.values);
     thePacket.response.timebase = 0:TRmsecs:length(thePacket.response.values)*TRmsecs - TRmsecs;
     
-    [~, ~, ~, yVals] = ...
+    [outcomes, ~, ~, yVals] = ...
         tfeUpdate(thePacket, myQpParams, stimulusVec, baselineStimulus, ...
         'maxBOLD',1);
-    
+
+    % Obtain estimated yVals from the outcomes
+    yOutcomes = (outcomes - nLower - 1)./nMid;
+    yOutcomes = yOutcomes + mean(yOutcomes(stimulusVec==baselineStimulus));
+                
+    yOutcomesFull = [yOutcomesFull yOutcomes'];
     stimulusVecFull = [stimulusVecFull stimulusVec];
     yValsFull = [yValsFull yVals'];
 end
@@ -120,6 +129,7 @@ freqDomain = logspace(log10(0.01),log10(100),100);
 semilogx(freqDomain,doeTemporalModel(freqDomain,unconstrainedFitParams),'-r');
 hold on
 scatter(stimulusVecPlot,yValsFull,'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',.2);
+scatter(stimulusVecPlot,yOutcomesFull,'x','MarkerFaceColor','k','MarkerEdgeColor','c','MarkerFaceAlpha',.2);
 
 % And the median data values
 freqList = unique(stimulusVecPlot);
@@ -209,11 +219,6 @@ for rr = 1:nRuns
         ylabel('Relative response amplitude');
         title('Estimate of DoE TTF');
         currentOutcomesHandle = scatter(nan,nan);
-        
-        % Calculate the lower headroom bin offset. We'll use this later
-        nLower = round(headroom*myQpParams.nOutcomes);
-        nUpper = round(headroom*myQpParams.nOutcomes);
-        nMid = myQpParams.nOutcomes - nLower - nUpper;
         
         % Set up the entropy x trial figure
         subplot(3,1,3)
