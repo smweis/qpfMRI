@@ -239,7 +239,7 @@ if showPlots && nTrials > 2
     delete(currentEntropyHandle)
     entropyAfterTrial=questDataUpdated.entropyAfterTrial;
     plot(1:length(entropyAfterTrial),entropyAfterTrial,'*k');
-    xlim([1 nTrials*nRuns]);
+    xlim([1 nTrials]);
     ylim([0 nanmax(entropyAfterTrial)]);
     xlabel('Trial number');
     ylabel('Entropy');

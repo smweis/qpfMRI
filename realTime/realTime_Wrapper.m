@@ -1,9 +1,8 @@
 
 
 %% Explanation
-% This script is a heavily modified version of runNeurofeedbackTemplate which will simulate
-% how well Q+ and the TFE can estimate the Watson Temporal Model using the
-% same fMRI data collected on Jan. 25 using a random sequence of trials. 
+% This script is a heavily modified version of runNeurofeedbackTemplate which will 
+% grab and process real-time fMRI data at SC3T for use with Q+ and the TFE.
 
 
 % Directory structure. Brackets = You create them. Parentheses = Script creates them.  
@@ -98,35 +97,6 @@ if registerToFirst
     [ap_or_pa,~] = registerToFirstDicom(subject,subjectPath,run,scannerPath,codePath);
 end
 
-%% Initialize Q+
-
-modelType = 'watson';
-modelParameters = struct;
-modelParameters.tau = 0.5:0.5:8;	% time constant of the center filter (in msecs)
-modelParameters.kappa = 0.5:0.25:2;	% multiplier of the time-constant for the surround
-modelParameters.zeta = 0:0.25:2;	% multiplier of the amplitude of the surround
-modelParameters.beta = 0.5:0.2:2; % multiplier that maps watson 0-1 to BOLD % bins
-modelParameters.sigma = 0:0.5:2;	% width of the BOLD fMRI noise against the 0-1 y vals
-
-headroom = .1;
-[myQpParams, questDataAtStart] = realTime_Init(modelType,modelParameters,'headroom',headroom);
-
-% Initialize questDataUpdated
-questDataUpdated = questDataAtStart;
-
-%{
-modelType = 'doe';
-modelParameters = struct;
-modelParameters.Sr = 0.899:0.025:1.099;
-modelParameters.k1 = 0.01:0.005:0.03;
-modelParameters.k2 = 0.5:0.05:1;
-modelParameters.beta = 0.5:0.1:2; % Amplitude of the scaled response; should converge to unity
-modelParameters.sigma = 0:0.1:0.5;	% Standard deviation of the scaled (0-1) noise
-
-headroom = .1;
-[myQpParams, questDataAtStart] = realTime_Init(modelType,modelParameters,'headroom',headroom);
-
-%}
 
 
 
@@ -159,13 +129,12 @@ mainData.roiSignal = {}; % whatever signal is the output (default is mean)
 % (Extract ROI, compute mean signal of the ROI).
 
 
-if ~atScanner
-    stimData = load(fullfile('/Users','nfuser','Documents','rtQuest','TOME_3021_optimal',horzcat('TOME_3021_run',run),horzcat('stimDataRun',run,'.mat')));
-    stimulusVec = stimData.params.stimFreq;
-end
+
 
 i = 0;
 j = 1;
+
+
 while i < 10000000000
     i = i + 1;
 
@@ -173,18 +142,6 @@ while i < 10000000000
      initialDirSize, mainData(j).dicomName] = ...
      checkForNewDicom(scannerPath,roiIndex,initialDirSize,scratchPath);
     
-    % Update everything
-
-
-    
-    questDataUpdated = realTime_Update(mainData.roiSignal,...
-                                   fullfile(subjectPath,strcat('actualStimuli',run,'.txt')),...
-                                   questDataAtStart, questDataUpdated, myQpParams, modelType,...
-                                   'headroom',headroom,...
-                                   'simulationStimVec',stimulusVec);
-                               
-    % Write new stimulus suggestion for use with play_flash                           
-    writeNewStimSuggestion(qpQuery(questDataUpdated),fullfile(subjectPath,'stimLog'));
     
     % Save the main data
     save(fullfile(subjectPath,'processed',strcat('run',run),strcat('mainDatarun',run)),'mainData');
