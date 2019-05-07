@@ -1,4 +1,4 @@
-function [myQpParams, questDataAtStart, plottingStruct] = realTime_acquisitionInit(modelType,modelParameters,stimulusDomain,varargin)
+function [myQpParams, questDataAtStart, plottingStruct] = realTime_acquisitionInit(modelFunction,modelParameters,stimulusDomain,varargin)
 % Initialize Q+ for temporal fitting engine and real-time use. Can also set
 % up figures. 
 %
@@ -90,7 +90,7 @@ stimulusDomain = [0,1.875,3.75,7.5,15,20,30];
 %% Parse input
 p = inputParser;
 
-p.addRequired('modelFunction',@isstr);
+p.addRequired('modelFunction',@(x) isa(x,'function_handle'));
 p.addRequired('modelParameters',@isstruct);
 p.addRequired('stimulusDomain',@isvector);
 

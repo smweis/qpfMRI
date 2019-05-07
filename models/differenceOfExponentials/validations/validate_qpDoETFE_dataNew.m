@@ -26,6 +26,7 @@ baselineStimulus = 0;
 trialLengthSecs = 12; % seconds per trial
 stimulusStructDeltaT = 100; % the resolution of the stimulus struct in msecs
 TRmsecs = 800;
+nOutcomes = 51;
 
 % Infer nTrials
 nTrials = length(detrendTimeseries(1,:))/(trialLengthSecs/TRmsecs*1000);
@@ -55,8 +56,10 @@ headroom = .1;
 
 modelFunction = @(f,p) qpDoETemporalModel(f,p,nOutcomes,headroom);
 
-[myQpParams, questData, plottingStruct] = realTime_acquisitionInit(modelFunction,...
-    modelParameters,stimulusDomain,'showPlots',showPlots,'thePacket',thePacket,'nTrials',nTrials);
+
+% Main acquisition initialization
+[myQpParams, questDataAtStart, plottingStruct] = realTime_acquisitionInit(modelFunction,...
+    modelParameters,stimulusDomain,'showPlots',showPlots,'thePacket',thePacket,'nTrials',nTrials,'nOutcomes',nOutcomes);
 
 
 
@@ -139,7 +142,7 @@ for rr = 1:nRuns
     end
     
     % Save the state of questData at the start of this run
-    questDataAtRunStart = questData;
+    questDataAtRunStart = questDataAtStart;
     
     % Obtain the stimulus vec for this run (with zero trials = baseline)
     stimulusVecFull = stimParams(rr).params.stimFreq;
@@ -153,84 +156,32 @@ for rr = 1:nRuns
         
         tic
         
-        % Obtain the current portion of the full stimulus vec
+        % Obtain the current portion of the full stimulus vec (could be by
+        % reading in the file actualStimuli.txt, or by using already
+        % created vector). 
         stimulusVec = stimulusVecFull(1:tt);
+        
+        % Add the response vector. Could be by reading the mainData file
+        % created by the real-time scan. 
+        timeseries = detrendTimeseries(rr,1:tt*trialLengthSecs/(TRmsecs/1000));
+        
         
         % Skip initial trials until we have a baseline trial available
         % Could add a check here to do so.
         
-        % Here is where we would ask QP to supply our next stimulus.
-        % qpQuery(questData);
         
-        % Update maxBOLD with our best guess at the maximum BOLD fMRI
-        % response that could be evoked by a stimulus (relative to the
-        % baseline stimulus).
-        psiParamsIndex = qpListMaxArg(questData.posterior);
-        psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
-        maxBOLD = maxBOLD.*psiParamsQuest(4);
-        
-        % Reset questData to its state at the start of the run
-        questData = questDataAtRunStart;
-        
-        % Create a packet
-        thePacket = createPacket('nTrials',tt,...,
-            'trialLengthSecs',trialLengthSecs,...,
+        % Main trial update loop
+        [questDataUpdated, ~, nextStim, maxBOLD, plottingStruct] = ...
+            realTime_trialUpdate(timeseries, stimulusVec, questDataAtStart,...
+            myQpParams, modelFunction, plottingStruct,...
+            'showPlots',showPlots,'baselineStimulus',baselineStimulus,...
+            'maxBOLD',maxBOLD,'headroom',headroom,'TRmsecs',TRmsecs,'trialLengthSecs',trialLengthSecs,...
             'stimulusStructDeltaT',stimulusStructDeltaT);
         
-        % Add the mean-centered response vector
-        thePacket.response.values = detrendTimeseries(rr,1:tt*trialLengthSecs/(TRmsecs/1000));
-        thePacket.response.values = thePacket.response.values - mean(thePacket.response.values);
-        thePacket.response.timebase = 0:TRmsecs:length(thePacket.response.values)*TRmsecs - TRmsecs;
         
-        % Obtain the outcomes with tfeUpdate
-        [outcomes, modelResponseStruct, thePacketOut] = ...
-            tfeUpdate(thePacket, myQpParams, stimulusVec(1:tt), baselineStimulus, ...
-            'maxBOLD',maxBOLD);
-        
-        % Update quest data structure. This is the slow step in the simulation.
-        for yy = 1:tt
-            questData = qpUpdate(questData,stimulusVec(yy),outcomes(yy));
-        end
         
         trialCompTime(rr,tt)=toc;
-        
-        % Update the plots
-        if showPlots
-            
-            figure(plottingStruct.figureHandle);
-            
-            % Simulated BOLD fMRI time-series and fit
-            subplot(3,1,1)
-            delete(plottingStruct.currentBOLDHandleData);
-            delete(plottingStruct.currentBOLDHandleFit);
-            plottingStruct.currentBOLDHandleData = plot(thePacketOut.response.timebase,thePacketOut.response.values,'.k');
-            plottingStruct.currentBOLDHandleFit = plot(modelResponseStruct.timebase,modelResponseStruct.values,'-r');
-            
-            % TTF figure
-            subplot(3,1,2)
-            yVals = (outcomes - nLower - 1)./nMid;
-            stimulusVecPlot = stimulusVec;
-            stimulusVecPlot(stimulusVecPlot==0)=0.01;
-            delete(plottingStruct.currentOutcomesHandle);
-            plottingStruct.currentOutcomesHandle = scatter(stimulusVecPlot(1:tt),yVals,'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',.2);
-            psiParamsIndex = qpListMaxArg(questData.posterior);
-            psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
-            delete(plottingStruct.currentTTFHandle);
-            plottingStruct.currentTTFHandle = semilogx(plottingStruct.freqDomain,doeTemporalModel(plottingStruct.freqDomain,psiParamsQuest),'-r');
-            ylim([-0.5 1.5]);
 
-            % Entropy by trial
-            subplot(3,1,3)
-            delete(plottingStruct.currentEntropyHandle);
-            plottingStruct.entropyAfterTrial=questData.entropyAfterTrial;
-            plottingStruct.currentEntropyHandle = plot(1:length(plottingStruct.entropyAfterTrial),plottingStruct.entropyAfterTrial,'*k');
-            xlim([1 nTrials*nRuns]);
-            ylim([0 nanmax(plottingStruct.entropyAfterTrial)]);
-            xlabel('Trial number');
-            ylabel('Entropy');
-            
-            drawnow
-        end % Update plots
         
     end % Loop over trials in this run
     
