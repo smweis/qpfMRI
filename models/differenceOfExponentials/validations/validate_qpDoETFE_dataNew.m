@@ -8,7 +8,7 @@ stimDataLoc = ['processed_fmri_data', filesep, 'optimalResults.mat'];
 % Load the data
 load(stimDataLoc,'stimParams','detrendTimeseries');
 
-% Which run?
+% How many runs?
 nRuns = size(detrendTimeseries,1);
 
 % Initial guess for the max size of the evoked BOLD response
@@ -20,22 +20,19 @@ maxBOLD = 0.6;
 baselineStimulus = 0;
 
 
-%% Define experiment specific 
+%% Define experiment specific information
 
 % Some information about the trials?
 trialLengthSecs = 12; % seconds per trial
 stimulusStructDeltaT = 100; % the resolution of the stimulus struct in msecs
 TRmsecs = 800;
 
-% infer nTrials
+% Infer nTrials
 nTrials = length(detrendTimeseries(1,:))/(trialLengthSecs/TRmsecs*1000);
-
 
 % How talkative is the analysis?
 showPlots = true;
 verbose = true;
-
-
 
 % Create a packet
 thePacket = createPacket('nTrials',nTrials,...,
@@ -45,18 +42,21 @@ thePacket = createPacket('nTrials',nTrials,...,
 
 %% Initialize QP
 
-modelType = 'doe';
 modelParameters = struct;
 modelParameters.Sr = 0.899:0.025:1.099;
 modelParameters.k1 = 0.01:0.005:0.03;
 modelParameters.k2 = 0.5:0.05:1;
 modelParameters.beta = 0.5:0.1:2; % Amplitude of the scaled response; should converge to unity
 modelParameters.sigma = 0:0.1:0.5;	% Standard deviation of the scaled (0-1) noise
+
 stimulusDomain = [0,1.875,3.75,7.5,15,20,30];
+
 headroom = .1;
 
-[myQpParams, questData, plottingStruct] = realTime_acquisitionInit(modelType,...
-    modelParameters,stimulusDomain,'headroom',headroom,'showPlots',showPlots,'thePacket',thePacket,'nTrials',nTrials);
+modelFunction = @(f,p) qpDoETemporalModel(f,p,nOutcomes,headroom);
+
+[myQpParams, questData, plottingStruct] = realTime_acquisitionInit(modelFunction,...
+    modelParameters,stimulusDomain,'showPlots',showPlots,'thePacket',thePacket,'nTrials',nTrials);
 
 
 

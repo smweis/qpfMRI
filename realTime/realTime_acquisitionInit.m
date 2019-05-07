@@ -11,8 +11,8 @@ function [myQpParams, questDataAtStart, plottingStruct] = realTime_acquisitionIn
 %	fMRI data.
 %
 % Inputs:
-%  modelType              - String. The name of the model used in fitting.
-%                           For now either doe or watson.
+%  modelFunction          - Function handle. An anonymous function for the 
+%                           temporal model.
 %  modelParameters        - Struct. Wherein each field (named with that 
 %                           parameter name) is a vector of the possible 
 %                           values Q+ could return for that parameter.
@@ -50,7 +50,6 @@ function [myQpParams, questDataAtStart, plottingStruct] = realTime_acquisitionIn
 % Examples:
 %{
 % Using the DOE model
-modelType = 'doe';
 modelParameters = struct;
 modelParameters.Sr = 0.899:0.025:1.099;
 modelParameters.k1 = 0.01:0.005:0.03;
@@ -58,10 +57,14 @@ modelParameters.k2 = 0.5:0.05:1;
 modelParameters.beta = 0.5:0.1:2; % Amplitude of the scaled response; should converge to unity
 modelParameters.sigma = 0:0.1:0.5;	% Standard deviation of the scaled (0-1) noise
 
+
+modelFunction = @(f,p) qpDoETemporalModel(f,p,nOutcomes,headroom);
+
+
 stimulusDomain = [0,1.875,3.75,7.5,15,20,30];
 
 
-[myQpParams, questDataAtStart, plottingStruct] = realTime_acquisitionInit(modelType,modelParameters,stimulusDomain);
+[myQpParams, questDataAtStart, plottingStruct] = realTime_acquisitionInit(modelFunction,modelParameters,stimulusDomain);
 
 
 % Using the Watson model
@@ -73,9 +76,13 @@ modelParameters.zeta = 0:0.25:2;	% multiplier of the amplitude of the surround
 modelParameters.beta = 0.5:0.2:2; % multiplier that maps watson 0-1 to BOLD % bins
 modelParameters.sigma = 0:0.5:2;	% width of the BOLD fMRI noise against the 0-1 y vals
 
+
+modelFunction = @(f,p) qpWatsonTemporalModel(f,p,nOutcomes,headroom);
+
+
 stimulusDomain = [0,1.875,3.75,7.5,15,20,30];
 
-[myQpParams, questDataAtStart, plottingStruct] = realTime_acquisitionInit(modelType,modelParameters,stimulusDomain);
+[myQpParams, questDataAtStart, plottingStruct] = realTime_acquisitionInit(modelFunction,modelParameters,stimulusDomain);
 
 %}
 
@@ -83,7 +90,7 @@ stimulusDomain = [0,1.875,3.75,7.5,15,20,30];
 %% Parse input
 p = inputParser;
 
-p.addRequired('modelType',@isstr);
+p.addRequired('modelFunction',@isstr);
 p.addRequired('modelParameters',@isstruct);
 p.addRequired('stimulusDomain',@isvector);
 
@@ -96,7 +103,7 @@ p.addParameter('nTrials', 30 ,@isnumeric);
 
 
 % Parse
-p.parse(modelType,modelParameters,stimulusDomain,varargin{:});
+p.parse(modelFunction,modelParameters,stimulusDomain,varargin{:});
 
 
 
@@ -113,16 +120,16 @@ myQpParams.stimParamsDomainList = {stimulusDomain};
 % The number of outcome categories.
 myQpParams.nOutcomes = p.Results.nOutcomes;
 
-
-headroom = p.Results.headroom;
-
 % Create an anonymous function depending on model type in which we
 % specify the number of outcomes for the y-axis response
-if strcmpi(modelType,'doe')
-    myQpParams.qpPF = @(f,p) qpDoETemporalModel(f,p,myQpParams.nOutcomes,headroom);
+
+myQpParams.qpPF = modelFunction;
+
+% Still need some logic to determine parameter names based on function name
+s = functions(modelFunction);
+if contains(s.function,'DoE')
     paramNames = {'Sr','k1','k2','beta','sigma'};
-elseif strcmpi(modelType,'watson')
-    myQpParams.qpPF = @(f,p) qpWatsonTemporalModel(f,p,myQpParams.nOutcomes,headroom);
+elseif contains(s.function,'Watson')
     paramNames = {'tau','kappa','zeta','beta','sigma'};
 else
     error('The model specification you have entered has not been created yet. Please try \n DOE or Watson.');

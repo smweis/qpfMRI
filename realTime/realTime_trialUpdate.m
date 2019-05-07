@@ -1,4 +1,4 @@
-function [questDataUpdated, thePacketOut] = realTime_Update(timeseries, stimDataPath, questDataAtStart, questDataUpdated, myQpParams, modelType, varargin)
+function [questDataUpdated, thePacketOut, maxBOLD] = realTime_trialUpdate(timeseries, stimDataPath, questDataAtStart, questDataUpdated, myQpParams, modelType, varargin)
 % Takes in the updated timeseries, updates the fits, returns the next trial
 % suggestion. Also real-time plots. 
 %
@@ -89,7 +89,6 @@ if isempty(p.Results.simulationStimVec)
     stimulusVec = readActualStimuli(p.Results.stimDataPath);
 else
     stimulusVec = p.Results.simulationStimVec;
-    
 end
 
 maxBOLD = p.Results.maxBOLD;
@@ -263,19 +262,3 @@ psiParamsFit = qpFit(questDataUpdated.trialData,questDataUpdated.qpPF,psiParamsQ
     'lowerBounds', lowerBounds,'upperBounds',upperBounds);
 fprintf('Maximum likelihood fit parameters: %0.2f, %0.2f, %0.2f, %0.2f, %0.2f\n', ...
     psiParamsFit(1),psiParamsFit(2),psiParamsFit(3),psiParamsFit(4),psiParamsFit(5));
-
-
-%{
-%% Update the unconstrained fit plot
-% Display the data
-figure(unconstrainedFit);
-freqDomain = logspace(log10(0.01),log10(100),100);
-if strcmpi(modelType,'doe')
-    semilogx(freqDomain,doeTemporalModel(freqDomain,[psiParamsQuest(1:3) psiParamsQuest(4)*mean(maxBOLDPerRun)]),'-k');
-    semilogx(freqDomain,doeTemporalModel(freqDomain,[psiParamsFit(1:3) psiParamsFit(4)*mean(maxBOLDPerRun)]),'-m');
-elseif strcmpi(modelType,'watson')
-    semilogx(freqDomain,watsonTemporalModel(freqDomain,[psiParamsQuest(1:3) psiParamsQuest(4)*mean(maxBOLDPerRun)]),'-k');
-    semilogx(freqDomain,watsonTemporalModel(freqDomain,[psiParamsFit(1:3) psiParamsFit(4)*mean(maxBOLDPerRun)]),'-m');
-end
-legend({'unconstrained fit','data','median vals','Q+ max posterior','Max likelihood'})
-%}
