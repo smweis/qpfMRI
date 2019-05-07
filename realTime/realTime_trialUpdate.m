@@ -1,9 +1,9 @@
-function [questDataOut, thePacketOut, nextStim, maxBOLDOut, plottingStruct] = realTime_trialUpdate(timeseries, stimDataPath, questDataAtStart, myQpParams, modelFunction, plottingStruct, varargin)
+function [questDataOut, thePacketOut, nextStim, maxBOLDOut, plottingStructOut] = realTime_trialUpdate(timeseries, stimDataPath, questDataAtStart, myQpParams, qpModelFunction, varargin)
 % Takes in the updated timeseries, updates the fits, returns the next trial
 % suggestion. Also real-time plots. 
 %
 % Syntax:
-%  [questDataUpdated, thePacketOut, nextStim, maxBOLD, plottingStruct] = realTime_trialUpdate(timeseries, stimDataPath, questDataAtStart, myQpParams, modelFunction, plottingStruct, varargin)
+%  [questDataUpdated, thePacketOut, nextStim, maxBOLD, plottingStruct] = realTime_trialUpdate(timeseries, stimDataPath, questDataAtStart, myQpParams, modelFunction, varargin)
 %
 % Description:
 %	Takes in Q+ objects and parameters and a timeseries of BOLD FMRI data
@@ -19,17 +19,8 @@ function [questDataOut, thePacketOut, nextStim, maxBOLDOut, plottingStruct] = re
 %                           contain a value for nOutcomes other than the
 %                           default (2) to ensure enough range of values
 %                           for Q+ to work with.
-%   modelFunction          - Function handle. Specify the temporal model used. 
-%   plottingStruct         - Struct. 
-%                           3x1 Figure handle and subplots. 
-%                           subplot 1: timeseriesFigure - Plots the fMRI 
-%                               timeseries data and model fit from TFE.
-%                           subplot 2: modelFigure - Plots the stimulus 
-%                               domain by BOLD response along with the 
-%                               temporal function fit. 
-%                           subplot 3: entropyFigure - Plots the time course
-%                               of the entropy in temporal function model space. 
-%
+%   qpModelFunction          - Function handle. Specify the temporal model used. 
+
 % Optional key/value pairs (used in fitting):
 %  'baselineStimulus'     - Scalar. The proportion of the nOutcomes from 
 %                           myQpParams that will be used as extra on top and
@@ -52,6 +43,18 @@ function [questDataOut, thePacketOut, nextStim, maxBOLDOut, plottingStruct] = re
 %                           Otherwise, a stimulus vec. 
 %   'showPlots'            - Logical. If True, pass out handles to
 %                           initalized figures.
+%   'plottingStruct'       - Struct. 
+%                           3x1 Figure handle and subplots. 
+%                           subplot 1: timeseriesFigure - Plots the fMRI 
+%                               timeseries data and model fit from TFE.
+%                           subplot 2: modelFigure - Plots the stimulus 
+%                               domain by BOLD response along with the 
+%                               temporal function fit. 
+%                           subplot 3: entropyFigure - Plots the time course
+%                               of the entropy in temporal function model space. 
+%  'plotModelFunction'     - Function handle. Continuous version of the
+%                            temporal function.
+%
 
 % 
 % Outputs:
@@ -60,7 +63,7 @@ function [questDataOut, thePacketOut, nextStim, maxBOLDOut, plottingStruct] = re
 %                           completed.
 %   nextStim              - Integer. Next stimulus suggested by quest.
 %   maxBOLD               - Scalar. Estimate for maximum BOLD response.
-%   plottingStruct        - Struct. 
+%   plottingStructOut     - Struct. 
 %                           3x1 Figure handle and subplots. 
 %                           subplot 1: timeseriesFigure - Plots the fMRI 
 %                               timeseries data and model fit from TFE.
@@ -83,8 +86,7 @@ p.addRequired('timeseries',@isvector);
 p.addRequired('stimulusVec', @isvector);
 p.addRequired('questDataAtStart',@isstruct);
 p.addRequired('myQpParams',@isstruct);
-p.addRequired('modelFunction',@(x) isa(x,'function_handle'));
-p.addRequired('plottingStruct',@isstruct);
+p.addRequired('qpModelFunction',@(x) isa(x,'function_handle'));
 
 % Optional params used in fitting
 p.addParameter('baselineStimulus', 0, @isnumeric);
@@ -97,10 +99,12 @@ p.addParameter('trialLengthSecs', 12, @isnumeric);
 p.addParameter('stimulusStructDeltaT', 100, @isnumeric);
 
 % Optional params, other
-p.addParameter('showPlots', 1, @islogical);
+p.addParameter('showPlots', 0, @islogical);
+p.addParameter('plottingStruct',@isstruct);
+p.addParameter('plotModelFunction', @(f,p) doeTemporalModel(f,p), @(x) isa(x,'function_handle'));
 
 % Parse
-p.parse(timeseries, stimDataPath, questDataAtStart, myQpParams, modelFunction, plottingStruct, varargin{:});
+p.parse(timeseries, stimDataPath, questDataAtStart, myQpParams, qpModelFunction, varargin{:});
 
 
 
@@ -179,44 +183,45 @@ nextStim = qpQuery(questDataOut);
 
 toc
 
+plottingStructOut = p.Results.plottingStruct;
+
 % Update the plots
 if p.Results.showPlots && nTrials > 2
 
-    figure(plottingStruct.figureHandle);
+    figure(plottingStructOut.figureHandle);
 
     % Simulated BOLD fMRI time-series and fit
     subplot(3,1,1)
-    delete(plottingStruct.currentBOLDHandleData);
-    delete(plottingStruct.currentBOLDHandleFit);
-    plottingStruct.currentBOLDHandleData = plot(thePacketOut.response.timebase,thePacketOut.response.values,'.k');
-    plottingStruct.currentBOLDHandleFit = plot(modelResponseStruct.timebase,modelResponseStruct.values,'-r');
+    delete(plottingStructOut.currentBOLDHandleData);
+    delete(plottingStructOut.currentBOLDHandleFit);
+    plottingStructOut.currentBOLDHandleData = plot(thePacketOut.response.timebase,thePacketOut.response.values,'.k');
+    plottingStructOut.currentBOLDHandleFit = plot(modelResponseStruct.timebase,modelResponseStruct.values,'-r');
 
     % TTF figure
     subplot(3,1,2)
     yVals = (outcomes - nLower - 1)./nMid;
     stimulusVecPlot = stimulusVec;
     stimulusVecPlot(stimulusVecPlot==0)=0.01;
-    delete(plottingStruct.currentOutcomesHandle);
-    plottingStruct.currentOutcomesHandle = scatter(stimulusVecPlot(1:nTrials),yVals,'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',.2);
+    delete(plottingStructOut.currentOutcomesHandle);
+    plottingStructOut.currentOutcomesHandle = scatter(stimulusVecPlot(1:nTrials),yVals,'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',.2);
     psiParamsIndex = qpListMaxArg(questDataOut.posterior);
     psiParamsQuest = questDataOut.psiParamsDomain(psiParamsIndex,:);
-    delete(plottingStruct.currentTTFHandle);
-    plottingStruct.currentTTFHandle = semilogx(plottingStruct.freqDomain,doeTemporalModel(plottingStruct.freqDomain,psiParamsQuest),'-r');
+    delete(plottingStructOut.currentTTFHandle);
+    plottingStructOut.currentTTFHandle = semilogx(plottingStructOut.freqDomain,p.Results.plotModelFunction(plottingStructOut.freqDomain,psiParamsQuest),'-r');
     ylim([-0.5 1.5]);
 
     % Entropy by trial
     subplot(3,1,3)
-    delete(plottingStruct.currentEntropyHandle);
-    plottingStruct.entropyAfterTrial=questDataOut.entropyAfterTrial;
-    plottingStruct.currentEntropyHandle = plot(1:length(plottingStruct.entropyAfterTrial),plottingStruct.entropyAfterTrial,'*k');
+    delete(plottingStructOut.currentEntropyHandle);
+    plottingStructOut.entropyAfterTrial=questDataOut.entropyAfterTrial;
+    plottingStructOut.currentEntropyHandle = plot(1:length(plottingStructOut.entropyAfterTrial),plottingStructOut.entropyAfterTrial,'*k');
     xlim([1 nTrials]);
-    ylim([0 nanmax(plottingStruct.entropyAfterTrial)]);
+    ylim([0 nanmax(plottingStructOut.entropyAfterTrial)]);
     xlabel('Trial number');
     ylabel('Entropy');
 
     drawnow
 end % Update plots
-
 
 
 %% Find out QUEST+'s estimate of the stimulus parameters, obtained
