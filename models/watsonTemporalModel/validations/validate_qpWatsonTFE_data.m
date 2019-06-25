@@ -41,7 +41,7 @@ TRmsecs = 800;
 % Define the simulated size of the BOLD response and the size that will be
 % assumed at the start of the modeling.
 simulateMaxBOLD = 0.2;
-fitMaxBOLD = 1.0;
+maxBOLD = 1.0;
 
 % How talkative is the analysis?
 showPlots = true;
@@ -182,14 +182,14 @@ for rr = 1:nRuns
         % Here is where we would ask QP to supply our next stimulus.
         % qpQuery(questData);
         
-        % Update fitMaxBOLD with our best guess at the maximum BOLD
+        % Update maxBOLD with our best guess at the maximum BOLD
         % fMRI response that could be evoked by a stimulus (relative to the
         % baseline stimulus). The beta value of the model is the 4th parameter.
         % Our hope is that it converges to unity when we have the correct
-        % fitMaxBOLD value
+        % maxBOLD value
         psiParamsIndex = qpListMaxArg(questData.posterior);
         psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
-        fitMaxBOLD = fitMaxBOLD.*psiParamsQuest(4);
+        maxBOLD = maxBOLD.*psiParamsQuest(4);
         
         % Grab a naive copy of questData
         questData = questDataAtRunStart;
@@ -207,7 +207,7 @@ for rr = 1:nRuns
         % Obtain the outcomes with tfeUpdate
         [outcomes, modelResponseStruct, thePacketOut] = ...
             tfeUpdate(thePacket, myQpParams, stimulusVec(1:tt), baselineStimulus, ...
-            'fitMaxBOLD',fitMaxBOLD);
+            'maxBOLD',maxBOLD);
         
         % Update quest data structure. This is the slow step in the simulation.
         for yy = 1:tt
@@ -277,7 +277,7 @@ end
 psiParamsIndex = qpListMaxArg(questData.posterior);
 psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
 fprintf('Max posterior QUEST+ parameters:   %0.1f, %0.1f, %0.1f, %0.1f, %0.2f, %0.1f\n', ...
-    psiParamsQuest(1),psiParamsQuest(2),psiParamsQuest(3),psiParamsQuest(4),psiParamsQuest(5),fitMaxBOLD);
+    psiParamsQuest(1),psiParamsQuest(2),psiParamsQuest(3),psiParamsQuest(4),psiParamsQuest(5),maxBOLD);
 
 %% Find maximum likelihood fit. Use psiParams from QUEST+ as the starting
 % parameter for the search, and impose as parameter bounds the range
@@ -309,7 +309,7 @@ for rr = 1:nRuns
 
         [~, ~, ~, yVals] = ...
             tfeUpdate(thePacket, myQpParams, stimulusVec, baselineStimulus, ...
-            'fitMaxBOLD',fitMaxBOLD);
+            'maxBOLD',maxBOLD);
         
         stimulusVecFull = [stimulusVecFull stimulusVec];
         yValsFull = [yValsFull yVals'];

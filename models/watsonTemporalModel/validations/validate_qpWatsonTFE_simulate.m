@@ -35,8 +35,8 @@ stimulusStructDeltaT = 100; % the resolution of the stimulus struct in msecs
 
 % Define the simulated size of the BOLD response and the size that will be
 % assumed at the start of the modeling.
-simulateMaxBOLD = .2;
-fitMaxBOLD = .2;
+maxBOLDSimulated = .2;
+maxBOLD = .2;
 
 % Which stimulus (in freq Hz) is the "baseline" stimulus? This stimulus
 % should be selected with the expectation that the neural response to this
@@ -193,14 +193,14 @@ for tt = 1:nTrials
         stimulusVec(tt) = qpQuery(questData);
     end
     
-    % Update fitMaxBOLD with our best guess at the maximum BOLD
+    % Update maxBOLD with our best guess at the maximum BOLD
     % fMRI response that could be evoked by a stimulus (relative to the
     % baseline stimulus). The beta value of the model is the 4th parameter.
     % Our hope is that it converges to unity when we have the correct
-    % fitMaxBOLD value
+    % maxBOLD value
     psiParamsIndex = qpListMaxArg(questData.posterior);
     psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
-    fitMaxBOLD = fitMaxBOLD.*psiParamsQuest(4);
+    maxBOLD = maxBOLD.*psiParamsQuest(4);
     
     % Grab a naive copy of questData
     questData = questDataUntrained;
@@ -214,8 +214,8 @@ for tt = 1:nTrials
     [outcomes, modelResponseStruct, thePacketOut] = ...
         tfeUpdate(thePacket, myQpParams, stimulusVec, baselineStimulus, ...
         'rngSeed',rngSeed,...,
-        'simulateMaxBOLD',simulateMaxBOLD,...,
-        'fitMaxBOLD',fitMaxBOLD);
+        'maxBOLDSimulated',maxBOLDSimulated,...,
+        'maxBOLD',maxBOLD);
         
     % Update quest data structure. This is the slow step in the simulation.
     for yy = 1:tt
@@ -272,9 +272,9 @@ end
 psiParamsIndex = qpListMaxArg(questData.posterior);
 psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
 fprintf('Simulated parameters:              %0.1f, %0.1f, %0.1f, %0.1f, %0.2f, %0.1f \n', ...
-    simulatedPsiParams(1),simulatedPsiParams(2),simulatedPsiParams(3),simulatedPsiParams(4),simulatedPsiParams(5),simulateMaxBOLD);
+    simulatedPsiParams(1),simulatedPsiParams(2),simulatedPsiParams(3),simulatedPsiParams(4),simulatedPsiParams(5),maxBOLDSimulated);
 fprintf('Max posterior QUEST+ parameters:   %0.1f, %0.1f, %0.1f, %0.1f, %0.2f, %0.1f\n', ...
-    psiParamsQuest(1),psiParamsQuest(2),psiParamsQuest(3),psiParamsQuest(4),psiParamsQuest(5),fitMaxBOLD);
+    psiParamsQuest(1),psiParamsQuest(2),psiParamsQuest(3),psiParamsQuest(4),psiParamsQuest(5),maxBOLD);
 
 %% Find maximum likelihood fit. Use psiParams from QUEST+ as the starting
 % parameter for the search, and impose as parameter bounds the range
