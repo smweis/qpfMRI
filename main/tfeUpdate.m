@@ -2,7 +2,7 @@ function [outcomes, modelResponseStruct, thePacket, adjustedAmplitudes] = tfeUpd
 % Returns the QP outcomes given a packet and a stimulus vector.
 %
 % Syntax:
-%  [oucomes, modelResponseStruct, thePacket] = tfeUpdate(thePacket, qpParams, stimulusVec, baselineStimulus)
+%  [outcomes, modelResponseStruct, thePacket, adjustedAmplitudes] = tfeUpdate(thePacket, qpParams, stimulusVec, baselineStimulus)
 %
 % Description:
 %	Takes in the tfeObject created with tfeInit along with thePacket. If
