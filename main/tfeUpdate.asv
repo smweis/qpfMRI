@@ -100,7 +100,7 @@ function [outcomes, modelResponseStruct, thePacket, adjustedAmplitudes] = tfeUpd
     baselineStimulus = 0;
 
     % Perform the simulation
-    [binAssignment, modelResponseStruct, thePacketOut, adjustedAmplitudes] = tfeUpdate(thePacket, myQpParams, stimulusVec, baselineStimulus, 'headroom', headroom);
+    [binAssignment, modelResponseStruct, params, thePacketOut] = tfeUpdate(thePacket, myQpParams, stimulusVec, baselineStimulus, 'headroom', headroom);
 
     % Plot the results
     figure
@@ -115,7 +115,7 @@ function [outcomes, modelResponseStruct, thePacket, adjustedAmplitudes] = tfeUpd
     refline(0,myQpParams.nOutcomes.*headroom);
     refline(0,myQpParams.nOutcomes-myQpParams.nOutcomes.*headroom);
     ylim([1 myQpParams.nOutcomes]);
-
+d
 %}
 
 
