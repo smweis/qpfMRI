@@ -18,6 +18,9 @@ else
     close all;
 end
 
+%% Are we simulating old fashioned constant stimuli?
+simulateConstantStimuli = true; 
+
 
 %% Define the veridical model params
 
@@ -187,7 +190,11 @@ for tt = 1:nTrials
     if tt<=2
         stimulusVec(tt) = baselineStimulus;
     else
-        stimulusVec(tt) = qpQuery(questData);
+        if simulateConstantStimuli
+            stimulusVec(tt) = questData.stimParamsDomain(randi(questData.nStimParamsDomain));
+        else
+            stimulusVec(tt) = qpQuery(questData);
+        end
     end
     
     % Update maxBOLD with our best guess at the maximum BOLD fMRI response
