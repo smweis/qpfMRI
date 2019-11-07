@@ -134,7 +134,7 @@ p.addParameter('maxBOLD', 1.0, @isscalar);
 
 % Optional params used in simulation
 p.addParameter('maxBOLDSimulated', 1.0, @isscalar);
-p.addParameter('rngSeed',rng(1),@isstruct);
+p.addParameter('rngSeed',rng(1,'twister'),@isstruct);
 p.addParameter('noiseSD',0.25, @isscalar);
 p.addParameter('pinkNoise',1, @isnumeric);
 p.addParameter('TRmsecs',800, @isnumeric);
