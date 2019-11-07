@@ -259,7 +259,7 @@ for rr = 1:nRuns
         thePacket.response.timebase = 0:TRmsecs:length(thePacket.response.values)*TRmsecs - TRmsecs;
         
         % Obtain the outcomes with tfeUpdate
-        [outcomes, modelResponseStruct, thePacketOut] = ...
+        [outcomes, modelResponseStruct, thePacketOut, adjustedAmplitudes] = ...
             tfeUpdate(thePacket, myQpParams, stimulusVec(1:tt), baselineStimulus, ...
             'maxBOLD',maxBOLD);
         
@@ -308,6 +308,7 @@ for rr = 1:nRuns
         
     end % Loop over trials in this run
     
+    
     maxBOLDPerRun(rr) = maxBOLD;
     
 end % Loop over runs
@@ -331,7 +332,11 @@ end
 % on the gridded parameter domain.
 psiParamsIndex = qpListMaxArg(questData.posterior);
 psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
-fprintf('Max posterior QUEST+ parameters:   %0.2f, %0.2f, %0.2f, %0.2f, %0.2f\n', ...
+
+% Adjust the first parameter to account for the maxBOLD
+psiParamsQuest(1) = psiParamsQuest(1).*nanmean(maxBOLDPerRun);
+
+fprintf('Max posterior QUEST+ parameters:   %0.4f, %0.4f, %0.4f, %0.4f, %0.4f\n', ...
     psiParamsQuest(1),psiParamsQuest(2),psiParamsQuest(3),psiParamsQuest(4),psiParamsQuest(5));
 
 %% Find maximum likelihood fit. Use psiParams from QUEST+ as the starting
@@ -339,7 +344,7 @@ fprintf('Max posterior QUEST+ parameters:   %0.2f, %0.2f, %0.2f, %0.2f, %0.2f\n'
 % provided to QUEST+.
 psiParamsFit = qpFit(questData.trialData,questData.qpPF,psiParamsQuest,questData.nOutcomes,...
     'lowerBounds', lowerBounds,'upperBounds',upperBounds);
-fprintf('Maximum likelihood fit parameters: %0.2f, %0.2f, %0.2f, %0.2f, %0.2f\n', ...
+fprintf('Maximum likelihood fit parameters: %0.4f, %0.4f, %0.4f, %0.4f, %0.4f\n', ...
     psiParamsFit(1),psiParamsFit(2),psiParamsFit(3),psiParamsFit(4),psiParamsFit(5));
 
 %% Update the unconstrained fit plot
