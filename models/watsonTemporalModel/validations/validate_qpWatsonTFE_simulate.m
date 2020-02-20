@@ -1,3 +1,5 @@
+function []=validate_qpWatsonTFE_simulate(model_params)
+
 %% QP + Watson TTF + TFE
 
 
@@ -14,7 +16,7 @@ if reinitializeQuest
     clearvars('-except','reinitializeQuest');
     close all;
 else
-    clearvars('-except','reinitializeQuest','questDataCopy');
+    clearvars('-except','reinitializeQuest','questDataCopy', 'model_params');
     close all;
 end
 
@@ -26,7 +28,7 @@ end
 %  A low-pass TTF in noisy fMRI data: [10 1 0.83 1]
 %  A band-pass TTF in noisy fMRI data: [1.47 1.75 0.83 1]
 %simulatedPsiParams = [4 1 1 1 0];
-simulatedPsiParams = [];
+simulatedPsiParams = model_params;
 
 % Some information about the trials?
 nTrials = 50; % how many trials

@@ -1,5 +1,6 @@
-%% QP + DoE TTF + TFE
+function []=validate_qpDoETFE_simulate(model_params)
 
+%% QP + DoE TTF + TFE
 
 
 %% Problem you're having at the moment is that the baseline stims are being modeled by
@@ -14,7 +15,7 @@ if reinitializeQuest
     clearvars('-except','reinitializeQuest');
     close all;
 else
-    clearvars('-except','reinitializeQuest','questDataCopy');
+    clearvars('-except','reinitializeQuest','questDataCopy', 'model_params');
     close all;
 end
 
@@ -29,7 +30,8 @@ simulateConstantStimuli = true;
 %  A low-pass TTF in noisy fMRI data: [10 1 0.83 1]
 %  A band-pass TTF in noisy fMRI data: [1.47 1.75 0.83 1]
 %simulatedPsiParams = [4 1 1 1 0];
-simulatedPsiParams = [0.9998 0.0132 0.7755 1 0];
+%simulatedPsiParams = [0.9998 0.0132 0.7755 1 0];
+simulatedPsiParams = model_params;
 
 % Some information about the trials?
 nTrials = 30; % how many trials
@@ -121,12 +123,12 @@ thePacket = createPacket('nTrials',nTrials,...,
  
 
 % Prompt the user to start the simulation
-if verbose
-    toc
-    fprintf('Press space to start.\n');
-    pause
-    fprintf('Fitting...');
-end
+% if verbose
+%     toc
+%     fprintf('Press space to start.\n');
+%     pause
+%     fprintf('Fitting...');
+% end
 
 
 
