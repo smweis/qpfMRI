@@ -1,4 +1,4 @@
-function []=simulate(model_type, model_params)
+function [modelResponseStruct,thePacketOut,questData]=simulate(model_type, model_params)
 % model_type   -          string
 %
 % model_params -          1x5 vector of model parameters:
@@ -10,11 +10,13 @@ function []=simulate(model_type, model_params)
 
 
     if strcmp(model_type, 'doe')
-            validate_qpDoETFE_simulate(model_params);
+        [modelResponseStruct,thePacketOut,questData]=validate_qpDoETFE_simulate(model_params);
     elseif strcmp(model_type, 'wt')
-        validate_qpWatsonTFE_simulate(model_params);
+        [modelResponseStruct,thePacketOut,questData]=validate_qpWatsonTFE_simulate(model_params);
     else
         disp('Invalid model')
     end
 
 end
+
+

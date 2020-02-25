@@ -1,4 +1,4 @@
-function []=validate_qpDoETFE_simulate(model_params)
+function [modelResponseStruct,thePacketOut,questDataOut]=validate_qpDoETFE_simulate(model_params)
 
 %% QP + DoE TTF + TFE
 
@@ -273,6 +273,10 @@ if verbose
     fprintf('\n');
 end
 
+% Remove some of the larger variables for output
+questDataOut = questData;
+questDataOut.precomputedOutcomeProportions = [];
+questDataOut.psiParamsDomain = [];
 
 %% Find out QUEST+'s estimate of the stimulus parameters, obtained
 % on the gridded parameter domain.
