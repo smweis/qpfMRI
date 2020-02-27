@@ -1,4 +1,4 @@
-function [modelResponseStruct,thePacketOut,questDataOut]=validate_qpDoETFE_simulate(model_params)
+function [modelResponseStruct,thePacketOut,questDataOut]=validate_qpDoETFE_simulate(model_params, sim_type)
 
 %% QP + DoE TTF + TFE
 
@@ -15,19 +15,19 @@ if reinitializeQuest
     clearvars('-except','reinitializeQuest');
     close all;
 else
-    clearvars('-except','reinitializeQuest','questDataCopy', 'model_params');
+    clearvars('-except','reinitializeQuest','questDataCopy', 'model_params', 'sim_type');
     close all;
 end
 
 %% Are we simulating old fashioned constant stimuli?
-simulateConstantStimuli = true; 
+simulateConstantStimuli = sim_type; 
 
 
 %% Define the veridical model params
 
 % Leave the simulatedPsiParams empty to try a random set of params.
 % Here are some params to try for specific TTF shapes:
-%  A low-pass TTF in noisy fMRI data: [10 1 0.83 1]
+%  A low-pass TTF in noisy fM[modelResponseStruct,thePacketOut,questData]=simulate(model_type, model_params)RI data: [10 1 0.83 1]
 %  A band-pass TTF in noisy fMRI data: [1.47 1.75 0.83 1]
 %simulatedPsiParams = [4 1 1 1 0];
 %simulatedPsiParams = [0.9998 0.0132 0.7755 1 0];
@@ -193,8 +193,10 @@ for tt = 1:nTrials
         stimulusVec(tt) = baselineStimulus;
     else
         if simulateConstantStimuli
+            % get random stimulus
             stimulusVec(tt) = questData.stimParamsDomain(randi(questData.nStimParamsDomain));
         else
+            % get next stimulus from Q+
             stimulusVec(tt) = qpQuery(questData);
         end
     end
@@ -221,10 +223,10 @@ for tt = 1:nTrials
         'maxBOLDSimulated',maxBOLDSimulated,...
         'rngSeed',rngSeed,...,
         'maxBOLD',maxBOLD);
-        
+   
     % Grab a naive copy of questData
     questData = questDataUntrained;
-    
+
     % Update quest data structure. This is the slow step in the simulation.
     for yy = 1:tt
         questData = qpUpdate(questData,stimulusVec(yy),outcomes(yy));
@@ -272,6 +274,13 @@ end
 if verbose
     fprintf('\n');
 end
+
+% Show stimulus vector scatterplot
+% figure;
+% x = linspace(1,nTrials,nTrials);
+% y = stimulusVec;
+% scatter(x, y, 'filled')
+
 
 % Remove some of the larger variables for output
 questDataOut = questData;

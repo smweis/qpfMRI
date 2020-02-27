@@ -91,6 +91,7 @@ function predictedProportions = qpDoETemporalModel(frequenciesToModel, params, n
 
 % The number of bins into which we will divide the range of y-axis response
 % values. Either passed or set as a default
+
 if nargin >= 3
     nOutcomes = nOutcomesIn;
 else

@@ -1,4 +1,4 @@
-function []=validate_qpWatsonTFE_simulate(model_params)
+function [modelResponseStruct,thePacketOut,questDataOut]=validate_qpWatsonTFE_simulate(model_params)
 
 %% QP + Watson TTF + TFE
 
@@ -122,12 +122,12 @@ thePacket = createPacket('nTrials',nTrials,...,
 
 
 % Prompt the user we to start the simulation
-if verbose
-    toc
-    fprintf('Press space to start.\n');
-    pause
-    fprintf('Fitting...');
-end
+% if verbose
+%     toc
+%     fprintf('Press space to start.\n');
+%     pause
+%     fprintf('Fitting...');
+% end
 
 
 
@@ -267,6 +267,11 @@ end
 if verbose
     fprintf('\n');
 end
+
+% Remove some of the larger variables for output
+questDataOut = questData;
+questDataOut.precomputedOutcomeProportions = [];
+questDataOut.psiParamsDomain = [];
 
 
 %% Find out QUEST+'s estimate of the stimulus parameters, obtained
