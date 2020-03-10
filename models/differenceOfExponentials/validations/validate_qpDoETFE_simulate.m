@@ -1,4 +1,4 @@
-function [modelResponseStruct,thePacketOut,questDataOut]=validate_qpDoETFE_simulate(model_params, sim_type)
+function [modelResponseStruct,thePacketOut,questDataOut]=validate_qpDoETFE_simulate(model_params, control_params, sim_type)
 
 %% QP + DoE TTF + TFE
 
@@ -15,7 +15,7 @@ if reinitializeQuest
     clearvars('-except','reinitializeQuest');
     close all;
 else
-    clearvars('-except','reinitializeQuest','questDataCopy', 'model_params', 'sim_type');
+    clearvars('-except','reinitializeQuest','questDataCopy', 'model_params', 'control_params', 'sim_type');
     close all;
 end
 
@@ -27,7 +27,7 @@ simulateConstantStimuli = sim_type;
 
 % Leave the simulatedPsiParams empty to try a random set of params.
 % Here are some params to try for specific TTF shapes:
-%  A low-pass TTF in noisy fM[modelResponseStruct,thePacketOut,questData]=simulate(model_type, model_params)RI data: [10 1 0.83 1]
+%  A low-pass TTF in noisy fMRI data: [10 1 0.83 1]
 %  A band-pass TTF in noisy fMRI data: [1.47 1.75 0.83 1]
 %simulatedPsiParams = [4 1 1 1 0];
 %simulatedPsiParams = [0.9998 0.0132 0.7755 1 0];
@@ -35,7 +35,7 @@ simulatedPsiParams = model_params;
 
 % Some information about the trials?
 nTrials = 30; % how many trials
-trialLengthSecs = 12; % seconds per trial
+trialLengthSecs = control_params(2); % seconds per trial (12)
 stimulusStructDeltaT = 100; % the resolution of the stimulus struct in msecs
 
 % True size of the BOLD response
@@ -222,7 +222,8 @@ for tt = 1:nTrials
         tfeUpdate(thePacket, myQpParams, stimulusVec, baselineStimulus, ...
         'maxBOLDSimulated',maxBOLDSimulated,...
         'rngSeed',rngSeed,...,
-        'maxBOLD',maxBOLD);
+        'maxBOLD',maxBOLD,...,
+        'TRmsecs', control_params(1));
    
     % Grab a naive copy of questData
     questData = questDataUntrained;
