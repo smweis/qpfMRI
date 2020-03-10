@@ -1,4 +1,4 @@
-function [modelResponseStruct,thePacketOut,questData]=simulate(model_type, model_params, control_params, sim_type)
+function [psiParamsFit]=simulate(model_type, model_params, control_params, sim_type)
 % model_type     -          string
 %
 % model_params   -          1x5 vector of model parameters:
@@ -20,16 +20,12 @@ function [modelResponseStruct,thePacketOut,questData]=simulate(model_type, model
 %
 % Example with plotting: 
 % model_type='doe';model_params=[0.9998 0.0132 0.7755 1 0];control_params=[800 12];sim_type='false';
-% [modelResponseStruct,thePacketOut,questDataFalse]=simulate(model_type, model_params, control_params, sim_type)
+% [psiParamsFit]=doeSimulate(model_params, control_params, sim_type);
 %
 % model_type='doe';model_params=[0.9998 0.0132 0.7755 1 0];control_params=[800 12];sim_type='true';
-% [modelResponseStruct,thePacketOut,questDataTrue]=simulate(model_type, model_params, control_params, sim_type)
+% [psiParamsFit]=doeSimulate(model_params, control_params, sim_type);
 % 
 % 
-% figure; plot(questDataFalse.entropyAfterTrial); hold on; plot(questDataTrue.entropyAfterTrial); legend('random','quest+');
-% figure; plot([questDataFalse.trialData.stim],'.'); hold on; plot([questDataTrue.trialData.stim],'.'); legend('random','quest+');
-% 
-%
 %
 
 % Example arguments: 
@@ -37,7 +33,7 @@ function [modelResponseStruct,thePacketOut,questData]=simulate(model_type, model
 
 
     if strcmp(model_type, 'doe')
-        [modelResponseStruct,thePacketOut,questData]=validate_qpDoETFE_simulate(model_params, control_params, sim_type);
+        [psiParamsFit]=doeSimulate(model_params, control_params, sim_type);
     elseif strcmp(model_type, 'wt')
         [modelResponseStruct,thePacketOut,questData]=validate_qpWatsonTFE_simulate(model_params);
     else
