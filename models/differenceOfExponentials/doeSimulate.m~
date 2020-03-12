@@ -167,8 +167,10 @@ psiParamsFit = qpFit(questData.trialData,questData.qpPF,psiParamsQuest,questData
     'lowerBounds', lowerBounds,'upperBounds',upperBounds);
 
 outfilename = horzcat('doe_',outNum,'.csv');
-%save(outfilename,psiParamsFit);
-csvwrite(outfilename, psiParamsFit);
+[n,m]=size(psiParamsFit);
+w=num2str(mat2cell(w'
+save(outfilename,string(psiParamsFit));
+
 
 fprintf('Maximum likelihood fit parameters: %0.1f, %0.1f, %0.1f, %0.1f, %0.2f \n', ...
     psiParamsFit(1),psiParamsFit(2),psiParamsFit(3),psiParamsFit(4),psiParamsFit(5));
