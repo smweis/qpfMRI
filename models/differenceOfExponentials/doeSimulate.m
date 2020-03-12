@@ -1,11 +1,19 @@
-function [psiParamsFit]=doeSimulate(model_params, control_params, qpPres)
+function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, trialLength, TR, qpPres, outNum)
 
 %% QP + DoE TTF + TFE
+% We'll need to do some sanity checking our input. For now, we can handle
+% things this way: 
+model_params = [str2num(Sr_m) str2num(k1_m) str2num(k2_m) str2num(beta_m) str2num(sigma_m)]; 
 
-
+trialLength = str2num(trialLength);
+TR = str2num(TR);
 
 %% Are we simulating old fashioned constant stimuli?
 simulateConstantStimuli = ~qpPres; 
+
+
+
+
 
 
 %% Model general values
@@ -13,7 +21,7 @@ simulatedPsiParams = model_params;
 
 % Some information about the trials?
 nTrials = 30; % how many trials
-trialLengthSecs = control_params(2); % seconds per trial (12)
+trialLengthSecs = trialLength; % seconds per trial (12)
 stimulusStructDeltaT = 100; % the resolution of the stimulus struct in msecs
 
 % True size of the BOLD response
@@ -51,7 +59,7 @@ myQpParams.qpPF = @(f,p) qpDoETemporalModel(f,p,myQpParams.nOutcomes,headroom);
 % Define the parameter ranges
 Sr = 0.899:0.025:1.099;
 k1 = 0.01:0.005:0.03;
-k2 = 0.5:0.05:1;
+k2 = 0.5:0.05:1; 
 beta = 0.5:0.1:2; % Amplitude of the scaled response; should converge to unity
 sigma = 0:0.1:0.5;	% Standard deviation of the scaled (0-1) noise
 myQpParams.psiParamsDomainList = {Sr, k1, k2, beta, sigma};
@@ -130,7 +138,7 @@ for tt = 1:nTrials
         'maxBOLDSimulated',maxBOLDSimulated,...
         'rngSeed',rngSeed,...,
         'maxBOLD',maxBOLD,...,
-        'TRmsecs', control_params(1));
+        'TRmsecs', TR);
    
     % Grab a naive copy of questData
     questData = questDataUntrained;
@@ -157,6 +165,11 @@ fprintf('Max posterior QUEST+ parameters:   %0.1f, %0.1f, %0.1f, %0.1f, %0.2f \n
 % provided to QUEST+.
 psiParamsFit = qpFit(questData.trialData,questData.qpPF,psiParamsQuest,questData.nOutcomes,...
     'lowerBounds', lowerBounds,'upperBounds',upperBounds);
+
+outfilename = horzcat('doe_',outNum,'.csv');
+save(outfilename,psiParamsFit);
+
+
 fprintf('Maximum likelihood fit parameters: %0.1f, %0.1f, %0.1f, %0.1f, %0.2f \n', ...
     psiParamsFit(1),psiParamsFit(2),psiParamsFit(3),psiParamsFit(4),psiParamsFit(5));
 
