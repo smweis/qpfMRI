@@ -22,7 +22,9 @@ function [psiParamsFit]=simulate(model_type, model_params, control_params, qpPre
 
 
 if strcmp(model_type, 'doe')
-    [psiParamsFit]=doeSimulate(model_params, control_params, qpPres);
+    [psiParamsFit]=doeSimulate(num2str(model_params(1)), num2str(model_params(2)),...
+    num2str(model_params(3)), num2str(model_params(4)), num2str(model_params(5)),...
+    num2str(control_params(1)), num2str(control_params(2)), qpPres, '0');
 elseif strcmp(model_type, 'wt')
     [psiParamsFit]=watsonSimulate(model_params, control_params, qpPres);
 else

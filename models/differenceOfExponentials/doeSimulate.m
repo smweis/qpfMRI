@@ -1,5 +1,4 @@
-function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, trialLength, TR, qpPres, outNum)
-tic;
+function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trialLength, qpPres, outNum)
 %% QP + DoE TTF + TFE
 % We'll need to do some sanity checking our input. For now, we can handle
 % things this way: 
@@ -172,5 +171,5 @@ csvwrite(outfilename, psiParamsFit);
 
 fprintf('Maximum likelihood fit parameters: %0.1f, %0.1f, %0.1f, %0.1f, %0.2f \n', ...
     psiParamsFit(1),psiParamsFit(2),psiParamsFit(3),psiParamsFit(4),psiParamsFit(5));
-toc;
 
+end
