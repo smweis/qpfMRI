@@ -1,5 +1,8 @@
 function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trialLength, qpPres, outNum)
 %% QP + DoE TTF + TFE
+% Example: 
+% [psiParamsFit] = doeSimulate('1','.017','.63','1','.4','800','12','false','false1');
+% 
 % We'll need to do some sanity checking our input. For now, we can handle
 % things this way: 
 model_params = [str2num(Sr_m) str2num(k1_m) str2num(k2_m) str2num(beta_m) str2num(sigma_m)]; 
@@ -11,15 +14,11 @@ TR = str2num(TR);
 simulateConstantStimuli = ~qpPres; 
 
 
-
-
-
-
 %% Model general values
 simulatedPsiParams = model_params;
 
 % Some information about the trials?
-nTrials = 30; % how many trials
+nTrials = 10; % how many trials
 trialLengthSecs = trialLength; % seconds per trial (12)
 stimulusStructDeltaT = 100; % the resolution of the stimulus struct in msecs
 
@@ -60,7 +59,7 @@ Sr = 0.899:0.025:1.099;
 k1 = 0.01:0.005:0.03;
 k2 = 0.5:0.05:1; 
 beta = 0.5:0.1:2; % Amplitude of the scaled response; should converge to unity
-sigma = 0:0.1:0.5;	% Standard deviation of the scaled (0-1) noise
+sigma = 0:0.1:2;	% Standard deviation of the scaled (0-1) noise
 myQpParams.psiParamsDomainList = {Sr, k1, k2, beta, sigma};
 
 % Pick some random params to simulate if none provided (but set the neural
