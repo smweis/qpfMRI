@@ -1,20 +1,67 @@
-function [modelResponseStruct,thePacketOut,questDataOut]=validate_qpDoETFE_simulate(model_params, control_params, sim_type)
-%% Example: 
-% model_params = [1 .017 .63 1 .4]; %(sr, kr1, kr2, beta, sigma)
-% control_params = [800 12]; %TR (secs), trial length (msecs)
-% sim_type = false; %Q+ (if true), random (if false)
-% [modelResponseStruct,thePacketOut,questDataOut]=validate_qpDoETFE_simulate(model_params, control_params, sim_type);
+function [modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simulate(model_params, control_params, sim_type, varargin)
+%% A validation script to evaluate how the DoE model is working
+%
+% Syntax:
+%  [modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simulate(model_params, control_params, sim_type, debug)
+%
+% Description:
+%	Takes in simulated parameters for the model, the control (TR, trial
+%	length), and whether or not Q+ is in control of things, plus a debug
+%	flag. 
+%
+% Inputs:
+%   model_params          - 1x5 vector. sr, kr1, kr2, beta, sigma
+%
+%   control_params        - 1x2 vector. TR (secs), trial length (msecs)
+%
+%   sim_type              - Logical. 1 for Q+, 0 for random.
+%
+% Optional key/value pairs (used in fitting):
+%  'questDataCopy'        - Struct. Q+ data structure.
+%
+% Outputs:
+%   modelResponseStruct   - Struct. The simulated response struct from tfe 
+%                           method fitResponse
+%   thePacketOut          - Struct. The updated packet with response struct
+%                           completed.
+%   questDataCopy         - Struct. Q+ data structure.
+%
+%
+% Examples:
+%{
+
+model_params = [1.05 .017 .63 1.05 .4]; 
+control_params = [800 12]; %TR (secs), trial length (msecs)
+sim_type = false; %Q+ (if true), random (if false)
+[modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simulate(model_params, control_params, sim_type);
+
+
+% To run again and skip reinitializing:
+
+[modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simulate(model_params, control_params, sim_type, 'questDataCopy', questDataCopy);
+%}
+
+
 
 %% Are we debugging?
-reinitializeQuest = 0;
+p = inputParser;
 
-% Clean up
-if reinitializeQuest
-    clearvars('-except','reinitializeQuest');
-    close all;
-else
-    clearvars('-except','reinitializeQuest','questDataCopy', 'model_params', 'control_params', 'sim_type');
-    close all;
+% Required input
+p.addRequired('model_params',@isvector);
+p.addRequired('control_params',@isvector);
+p.addRequired('sim_type',@islogical);
+
+
+% Optional params used in fitting
+p.addParameter('questDataCopy', @isstruct);
+
+% Parse
+p.parse(model_params, control_params, sim_type, varargin{:});
+
+try
+    questDataCopy = p.Results.questDataCopy;
+catch
+    warning('No questData found. Will initialize, which will take some time.');
 end
 
 %% Are we simulating old fashioned constant stimuli?
@@ -101,14 +148,13 @@ if verbose
 end
 
 % Initialize Q+. Save some time if we're debugging
-if ~reinitializeQuest
-    if exist('questDataCopy','var')
-        questData = questDataCopy;
-    else
-        questData = qpInitialize(myQpParams);
-        questDataCopy = questData;
-    end
+if exist('questDataCopy')
+    questData = questDataCopy;
+else
+    questData = qpInitialize(myQpParams);
+    questDataCopy = questData;
 end
+
 
 % Tack on a continuous output simulated observer to myQpParams
 myQpParams.continuousPF = @(f) doeTemporalModel(f,simulatedPsiParams);
@@ -196,6 +242,7 @@ for tt = 1:nTrials
     psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
         maxBOLD = maxBOLD.*psiParamsQuest(4);
     
+
     % Create a packet
     thePacket = createPacket('nTrials',tt,...,
         'trialLengthSecs',trialLengthSecs,...,
@@ -220,7 +267,7 @@ for tt = 1:nTrials
     for yy = 1:tt
         questData = qpUpdate(questData,stimulusVec(yy),outcomes(yy));
     end
-       
+    
     % Update the plots
     if showPlots
         
@@ -264,11 +311,6 @@ if verbose
     fprintf('\n');
 end
 
-% Show stimulus vector scatterplot
-figure;
-x = linspace(1,nTrials,nTrials);
-y = stimulusVec;
-scatter(x, y, 'filled')
 
 
 % Remove some of the larger variables for output
