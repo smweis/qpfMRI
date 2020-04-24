@@ -30,7 +30,7 @@ function [modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simu
 % Examples:
 %{
 
-model_params = [1.05 .017 .63 1.05 .4]; 
+model_params = [1.05 .1 .2 1.05 .4]; 
 control_params = [800 12]; %TR (secs), trial length (msecs)
 sim_type = false; %Q+ (if true), random (if false)
 [modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simulate(model_params, control_params, sim_type);
@@ -38,7 +38,7 @@ sim_type = false; %Q+ (if true), random (if false)
 
 % To run again and skip reinitializing:
 
-[modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simulate(model_params, control_params, sim_type, 'questDataCopy', questDataCopy);
+[modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simulate(model_params, control_params, sim_type,'questDataCopy',questDataCopy);
 %}
 
 
@@ -121,8 +121,8 @@ myQpParams.qpPF = @(f,p) qpDoETemporalModel(f,p,myQpParams.nOutcomes,headroom);
 
 % Define the parameter ranges
 Sr = 0.899:0.025:1.099;
-k1 = 0.01:0.005:0.03;
-k2 = 0.5:0.05:1;
+k1 = 0.01:0.05:0.3;
+k2 = 0.01:0.05:.51;
 beta = 0.5:0.1:2; % Amplitude of the scaled response; should converge to unity
 sigma = 0:0.1:2;	% Standard deviation of the scaled (0-1) noise
 myQpParams.psiParamsDomainList = {Sr, k1, k2, beta, sigma};
@@ -141,18 +141,17 @@ upperBounds = [Sr(end) k1(end) k2(end) beta(end) sigma(end)];
 % Create a simulated observer with binned output
 myQpParams.qpOutcomeF = @(f) qpSimulatedObserver(f,myQpParams.qpPF,simulatedPsiParams);
 
-% Warn the user that we are initializing
-if verbose
-    tic
-    fprintf('Initializing Q+. This may take a minute...\n');
-end
 
 % Initialize Q+. Save some time if we're debugging
-if exist('questDataCopy')
+if isstruct(questDataCopy)
     questData = questDataCopy;
 else
+    % Warn the user that we are initializing
+    tic
+    fprintf('Initializing Q+. This may take a minute...\n');
     questData = qpInitialize(myQpParams);
     questDataCopy = questData;
+    toc
 end
 
 
@@ -238,10 +237,15 @@ for tt = 1:nTrials
     % Update maxBOLD with our best guess at the maximum BOLD fMRI response
     % that could be evoked by a stimulus (relative to the baseline
     % stimulus), which is the beta value of the model
-    psiParamsIndex = qpListMaxArg(questData.posterior);
-    psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
+    try 
+        psiParamsFit = qpFit(questData.trialData,questData.qpPF,psiParamsQuest,questData.nOutcomes,...
+    'lowerBounds', lowerBounds,'upperBounds',upperBounds)
+        maxBOLD = maxBOLD.*psiParamsFit(4);
+    catch
+        psiParamsIndex = qpListMaxArg(questData.posterior)
+        psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
         maxBOLD = maxBOLD.*psiParamsQuest(4);
-    
+    end
 
     % Create a packet
     thePacket = createPacket('nTrials',tt,...,
@@ -331,7 +335,7 @@ fprintf('Max posterior QUEST+ parameters:   %0.3f, %0.3f, %0.3f, %0.3f, %0.3f \n
 % parameter for the search, and impose as parameter bounds the range
 % provided to QUEST+.
 psiParamsFit = qpFit(questData.trialData,questData.qpPF,psiParamsQuest,questData.nOutcomes,...
-    'lowerBounds', lowerBounds,'upperBounds',upperBounds);
-fprintf('Maximum likelihood fit parameters: %0.3f, %0.3f, %0.3f, %0.3f, %0.f \n', ...
+    'lowerBounds', lowerBounds,'upperBounds',upperBounds,'diagnostics','on','display','on');
+fprintf('Maximum likelihood fit parameters: %0.3f, %0.3f, %0.3f, %0.3f, %0.3f \n', ...
     psiParamsFit(1),psiParamsFit(2),psiParamsFit(3),psiParamsFit(4),psiParamsFit(5));
 
