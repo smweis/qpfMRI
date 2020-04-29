@@ -30,13 +30,13 @@ function [modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simu
 % Examples:
 %{
 
-model_params = [1.05 .1 .2 1.05 .4]; 
+model_params = [1.05 .01 .06 1.05 .4]; 
 control_params = [800 12]; %TR (secs), trial length (msecs)
 sim_type = false; %Q+ (if true), random (if false)
 [modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simulate(model_params, control_params, sim_type);
 
 
-% To run again and skip reinitializing:
+% To run again and skip reinitializing (only do so if you have NOT changed the parameter domains):
 
 [modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simulate(model_params, control_params, sim_type,'questDataCopy',questDataCopy);
 %}
@@ -120,11 +120,12 @@ headroom = 0.1;
 myQpParams.qpPF = @(f,p) qpDoETemporalModel(f,p,myQpParams.nOutcomes,headroom);
 
 % Define the parameter ranges
+% NOTE: IF YOU CHANGE THESE, YOU MUST RE-INITIALIZE Q+
 Sr = 0.899:0.025:1.099;
-k1 = 0.11:0.05:0.3;
-k2 = 0.11:0.05:.51;
-beta = 0.5:0.1:2; % Amplitude of the scaled response; should converge to unity
-sigma = 0.3:0.1:1;	% Standard deviation of the scaled (0-1) noise
+k1 = 0.001:0.0005:0.01;
+k2 = 0.001:0.01:.2;
+beta = 0.5:0.2:2; % Amplitude of the scaled response; should converge to unity
+sigma = 0.3:0.2:1;	% Standard deviation of the scaled (0-1) noise
 myQpParams.psiParamsDomainList = {Sr, k1, k2, beta, sigma};
 
 % Pick some random params to simulate if none provided (but set the neural
@@ -188,7 +189,6 @@ if showPlots
     xlabel('log stimulus Frequency [Hz]');
     ylabel('Relative response amplitude');
     title('Estimate of DoE TTF');
-    legend();
     hold on
     currentOutcomesHandle = scatter(nan,nan);
     currentTTFHandle = plot(freqDomain,doeTemporalModel(freqDomain,simulatedPsiParams),'-k');
@@ -295,7 +295,8 @@ for tt = 1:nTrials
         psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
         delete(currentTTFHandle)
         currentTTFHandle = semilogx(freqDomain,doeTemporalModel(freqDomain,psiParamsQuest),'-r');
-        
+        legend('Veridical','Stimulus Outcomes','Best Fit from Q+');
+    
         % Entropy by trial
         subplot(3,1,3)
         delete(currentEntropyHandle)

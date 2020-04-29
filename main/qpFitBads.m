@@ -1,16 +1,13 @@
 function psiParams = qpFitBads(trialData,qpPF,startingParams,nOutcomes,varargin)
-%qpFit  Maximum likelihood fit of a psychometric function to a trial data array
+%qpFitBads  Maximum likelihood fit of a psychometric function to a trial data array
 %
 % Usage:
-%     psiParams = qpFit(trialData,qpPF,startingParams,nOutcomes,varargin)
+%     psiParams = qpFitBads(trialData,qpPF,startingParams,nOutcomes,varargin)
 %
 % Description:
 %     Maximum likelihood fit of psychometric functdion parameters to the
-%     data.  This is performed using numerical optimization, with Matlab's
-%     fmincon.  It does a fit over the continuous parameter space, and is
-%     not limited by the bounds or grid spacing of the parameter grid set
-%     up for QUEST+. See description below for ways to put bounds on the
-%     parameters, and otherwise restrict the parameter search space.
+%     data.  This is performed using numerical optimization, with the Bayesian 
+%     adaptive direct search (BADS) algorithm.
 %
 %     It is highly recommended that you pass with key/value pairs sensible
 %     lower and upper and lower bounds on the parameters.  These can be the
@@ -54,17 +51,12 @@ function psiParams = qpFitBads(trialData,qpPF,startingParams,nOutcomes,varargin)
 % Optional key/value pairs
 %     'lowerBounds'      Lower bounds for parameters (default []).
 %     'upperBounds'      Upper bounds for parameters (default []).
-%     'diagnostics'      Setting for fmincon Diagnostics option (default 'off').
-%                          Set to 'on' for more verbose fmincon output. Useful
-%                          for debugging.
-%     'display'          Setting for fmincon Display option (default 'off')
-%                          Set to 'iter' for more verbose fmincon output.
-%                          Useful for debugging.
 
 % 07/04/17  dhb  Wrote it.
 % 03/14/18  dhb  Pulled out qpFitError so we can call it directly.
 % 08/12/19  dhb  Noticed should use addParameter not addOptional in
 %                inputParser setup, and fixed.
+% 04/29/20  smw  Amended qpFit to use BADS.
 
 %% Parse input
 p = inputParser;
@@ -86,7 +78,7 @@ stimCounts = qpCounts(qpData(trialData),nOutcomes);
 %options = optimset(options,'Diagnostics',p.Results.diagnostics,,'LargeScale','off','Algorithm','active-set');
 
 %% Run fmincon
-psiParams = bads(@(x)qpFitError(x,stimCounts,qpPF),startingParams,p.Results.lowerBounds,p.Results.upperBounds);
+psiParams = bads(@(x)qpFitErrorBads(x,stimCounts,qpPF),startingParams,p.Results.lowerBounds,p.Results.upperBounds);
 
 end
 
