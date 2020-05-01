@@ -153,9 +153,12 @@ for ii = 1:length(frequenciesToModel)
     % Ensure that the sum of probabilities across categories for a given
     % frequency is unity
     predictedProportions(ii,:) = predictedProportions(ii,:)/sum(predictedProportions(ii,:));
-    
+        
 end % loop over frequencies to model
 
+% log likelihood calculations upon these proportions are unhappy
+% with zeros. We set them here instead to realmin
+predictedProportions(predictedProportions==0)=realmin;
 
 end % main function
 
