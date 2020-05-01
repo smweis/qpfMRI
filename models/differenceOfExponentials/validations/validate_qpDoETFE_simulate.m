@@ -253,13 +253,13 @@ for tt = 1:nTrials
     % Update maxBOLD with our best guess at the maximum BOLD fMRI response
     % that could be evoked by a stimulus (relative to the baseline
     % stimulus), which is the beta value of the model
-    try 
+    try % Try fitting with BADS
         psiParamsFit = qpFitBads(questData.trialData,questData.qpPF,psiParamsQuest,questData.nOutcomes,...
     'lowerBounds', lowerBounds,'upperBounds',upperBounds,...
     'plausibleLowerBounds',lowerBounds,'plausibleUpperBounds',upperBounds)
         maxBOLD = maxBOLD.*psiParamsFit(4)
         fprintf('Using the BADS fit to generate maxBOLD.\n');
-    catch
+    catch % If not, fit with the best fitting parameters from Q+ 
         psiParamsIndex = qpListMaxArg(questData.posterior);
         psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:)
         maxBOLD = maxBOLD.*psiParamsQuest(4)
@@ -343,11 +343,6 @@ end
 
 
 
-% Remove some of the larger variables for output
-%questDataOut = questData;
-%questDataOut.precomputedOutcomeProportions = [];
-%questDataOut.psiParamsDomain = [];
-
 %% Find out QUEST+'s estimate of the stimulus parameters, obtained
 % on the gridded parameter domain.
 psiParamsIndex = qpListMaxArg(questData.posterior);
@@ -361,7 +356,8 @@ fprintf('Max posterior QUEST+ parameters:   %0.3f, %0.3f, %0.3f, %0.3f, %0.3f \n
 % parameter for the search, and impose as parameter bounds the range
 % provided to QUEST+.
 psiParamsFit = qpFitBads(questData.trialData,questData.qpPF,psiParamsQuest,questData.nOutcomes,...
-    'lowerBounds', lowerBounds,'upperBounds',upperBounds,'diagnostics','on','display','on');
+    'lowerBounds', lowerBounds,'upperBounds',upperBounds,...
+    'plausibleLowerBounds',lowerBounds,'plausibleUpperBounds',upperBounds);
 fprintf('Maximum likelihood fit parameters: %0.3f, %0.3f, %0.3f, %0.3f, %0.3f \n', ...
     psiParamsFit(1),psiParamsFit(2),psiParamsFit(3),psiParamsFit(4),psiParamsFit(5));
 

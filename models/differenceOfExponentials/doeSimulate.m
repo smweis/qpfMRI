@@ -1,7 +1,34 @@
 function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trialLength, qpPres, outNum)
-%% QP + DoE TTF + TFE
+%% A simulation script to be compiled and run at speed for the DOE temporal model
+%
+% Syntax:
+%  [psiParamsFit]=validate_qpDoETFE_simulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trialLength, qpPres, outNum)
+%
+% Description:
+%	Takes in simulated parameters for the model, the control (TR, trial
+%	length), and whether or not Q+ is in control of things, plus a debug
+%	flag. 
+%
+% Inputs:
+%   Sr_m           - 
+%   k1_m           -
+%   k2_m           -
+%   beta_m         -
+%   sigma_m        -
+%   TR             -
+%   trialLength    -
+%   qpPres         - Logical. 1 for Q+, 0 for random.
+%   outNum         - String. Label for the output CSV file
+% 
+% Outputs:
+%   psiParamsFit   - 1x5 vector. The results of the BADS fit for the best
+%                    fitting model parameters.
+%
 % Example: 
-% [psiParamsFit] = doeSimulate('1','.017','.63','1','.4','800','12','false','false1');
+%{
+[psiParamsFit] = doeSimulate('1.05', '.01', '.06', '1.00', '.4','800','12','false','false1');
+
+%}
 % 
 % We'll need to do some sanity checking our input. For now, we can handle
 % things this way: 
@@ -18,12 +45,12 @@ simulateConstantStimuli = ~qpPres;
 simulatedPsiParams = model_params;
 
 % Some information about the trials?
-nTrials = 10; % how many trials
+nTrials = 30; % how many trials
 trialLengthSecs = trialLength; % seconds per trial (12)
 stimulusStructDeltaT = 100; % the resolution of the stimulus struct in msecs
 
 % True size of the BOLD response
-maxBOLDSimulated = 0.6;
+maxBOLDSimulated = 1.6;
 
 % Initial guess for the max size of the evoked BOLD response
 maxBOLD = 1.0;
@@ -40,7 +67,7 @@ baselineStimulus = 0;
 myQpParams = qpParams;
 
 % Add the stimulus domain. ~Log spaced frequencies between 0 and 30 Hz
-myQpParams.stimParamsDomainList = {[baselineStimulus,1.875,3.75,7.5,15,30]};
+myQpParams.stimParamsDomainList = {[baselineStimulus,1.875,3.75,7.5,15,30,60]};
 nStims = length(myQpParams.stimParamsDomainList{1});
 
 % The number of outcome categories.
@@ -53,13 +80,20 @@ headroom = 0.1;
 % Create an anonymous function from qpDoETemporalModel in which we
 % specify the number of outcomes for the y-axis response
 myQpParams.qpPF = @(f,p) qpDoETemporalModel(f,p,myQpParams.nOutcomes,headroom);
-
-% Define the parameter ranges
 Sr = 0.899:0.025:1.099;
-k1 = 0.01:0.005:0.03;
-k2 = 0.5:0.05:1; 
-beta = 0.5:0.1:2; % Amplitude of the scaled response; should converge to unity
-sigma = 0:0.1:2;	% Standard deviation of the scaled (0-1) noise
+k1 = 0.001:0.0005:0.01;
+k2 = 0.001:0.01:.2;
+beta = 0.4:0.2:2; % Amplitude of the scaled response; should converge to unity
+sigma = 0.3:0.2:1;	% Standard deviation of the scaled (0-1) noise
+
+% Beta will converge to 1 as maxBOLD gets closer and closer to the
+% simulated maxBOLD. As a result, when simulating data, beta should always
+% be set to 1. And, Q+ should always be able to incorporate 1 in its
+% domain. Assert these conditions are true. 
+assert(simulatedPsiParams(4)==1,'Simulated Beta should always be 1.');
+assert(ismember(1,beta),'The domain for beta should always include 1.');
+
+
 myQpParams.psiParamsDomainList = {Sr, k1, k2, beta, sigma};
 
 % Pick some random params to simulate if none provided (but set the neural
@@ -114,22 +148,27 @@ for tt = 1:nTrials
         end
     end
     
-    % Update maxBOLD with our best guess at the maximum BOLD fMRI response
+     % Update maxBOLD with our best guess at the maximum BOLD fMRI response
     % that could be evoked by a stimulus (relative to the baseline
     % stimulus), which is the beta value of the model
-    psiParamsIndex = qpListMaxArg(questData.posterior);
-    psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
-        maxBOLD = maxBOLD.*psiParamsQuest(4);
+    try % Try fitting with BADS
+        psiParamsFit = qpFitBads(questData.trialData,questData.qpPF,psiParamsQuest,questData.nOutcomes,...
+    'lowerBounds', lowerBounds,'upperBounds',upperBounds,...
+    'plausibleLowerBounds',lowerBounds,'plausibleUpperBounds',upperBounds)
+        maxBOLD = maxBOLD.*psiParamsFit(4)
+        fprintf('Using the BADS fit to generate maxBOLD.\n');
+    catch % If not, fit with the best fitting parameters from Q+ 
+        psiParamsIndex = qpListMaxArg(questData.posterior);
+        psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:)
+        maxBOLD = maxBOLD.*psiParamsQuest(4)
+        fprintf('Using the Q+ fit to generate maxBOLD.\n');
+    end
     
     % Create a packet
     thePacket = createPacket('nTrials',tt,...,
         'trialLengthSecs',trialLengthSecs,...,
         'stimulusStructDeltaT',stimulusStructDeltaT);
-    
-    % If we were not in simulation mode, we would add the BOLD fMRI
-    % response to the packet here. Instead, it will be simulatd within
-    % tfeUpdate.
-    
+
     % Obtain outcomes from tfeUpdate 
     [outcomes] = ...
         tfeUpdate(thePacket, myQpParams, stimulusVec, baselineStimulus, ...
@@ -153,22 +192,23 @@ end
 % on the gridded parameter domain.
 psiParamsIndex = qpListMaxArg(questData.posterior);
 psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
-fprintf('Simulated parameters:              %0.1f, %0.1f, %0.1f, %0.1f, %0.2f \n', ...
+fprintf('Simulated parameters:              %0.3f, %0.3f, %0.3f, %0.3f, %0.3f \n', ...
     simulatedPsiParams(1),simulatedPsiParams(2),simulatedPsiParams(3),simulatedPsiParams(4),simulatedPsiParams(5));
-fprintf('Max posterior QUEST+ parameters:   %0.1f, %0.1f, %0.1f, %0.1f, %0.2f \n', ...
+fprintf('Max posterior QUEST+ parameters:   %0.3f, %0.3f, %0.3f, %0.3f, %0.3f \n', ...
     psiParamsQuest(1),psiParamsQuest(2),psiParamsQuest(3),psiParamsQuest(4),psiParamsQuest(5));
 
 %% Find maximum likelihood fit. Use psiParams from QUEST+ as the starting
 % parameter for the search, and impose as parameter bounds the range
 % provided to QUEST+.
-psiParamsFit = qpFit(questData.trialData,questData.qpPF,psiParamsQuest,questData.nOutcomes,...
-    'lowerBounds', lowerBounds,'upperBounds',upperBounds);
+psiParamsFit = qpFitBads(questData.trialData,questData.qpPF,psiParamsQuest,questData.nOutcomes,...
+    'lowerBounds', lowerBounds,'upperBounds',upperBounds,...
+    'plausibleLowerBounds',lowerBounds,'plausibleUpperBounds',upperBounds);
 
 outfilename = horzcat('doe_',outNum,'.csv');
 %save(outfilename,psiParamsFit);
 csvwrite(outfilename, psiParamsFit);
 
-fprintf('Maximum likelihood fit parameters: %0.1f, %0.1f, %0.1f, %0.1f, %0.2f \n', ...
+fprintf('Maximum likelihood fit parameters: %0.3f, %0.3f, %0.3f, %0.3f, %0.3f \n', ...
     psiParamsFit(1),psiParamsFit(2),psiParamsFit(3),psiParamsFit(4),psiParamsFit(5));
 
 end
