@@ -187,7 +187,11 @@ if showPlots
     % Set up the TTF figure
     subplot(3,1,2)
     freqDomain = logspace(log10(0.01),log10(100),100);
-    semilogx(freqDomain,doeTemporalModel(freqDomain,simulatedPsiParams),'-k');
+    predictedRelativeResponse = doeTemporalModel(freqDomain,simulatedPsiParams) - ...
+        doeTemporalModel(baselineStimulus,simulatedPsiParams);
+    % May need to scale the predictedRelativeResponse here to account for
+    % the offset produced by subtraction of the baseline amplitude.    
+    semilogx(freqDomain,predictedRelativeResponse,'-k');
     ylim([-0.5 1.5]);
     xlabel('log stimulus Frequency [Hz]');
     ylabel('Relative response amplitude');
@@ -298,7 +302,7 @@ for tt = 1:nTrials
         psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
         delete(currentTTFHandle)
         currentTTFHandle = semilogx(freqDomain,doeTemporalModel(freqDomain,psiParamsQuest),'-r');
-        legend('Veridical','Stimulus Outcomes','Best Fit from Q+');
+        legend('Veridical','Stimulus Outcomes','Best Fit from Q+','Location','northwest');
     
         % Entropy by trial
         subplot(3,1,3)
