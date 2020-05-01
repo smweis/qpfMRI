@@ -30,7 +30,8 @@ function [modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simu
 % Examples:
 %{
 
-model_params = [1.05 .01 .06 1.05 .4]; 
+% SIMULATED BETA MUST ALWAYS BE UNITY
+model_params = [1.05 .01 .06 1.00 .4]; 
 control_params = [800 12]; %TR (secs), trial length (msecs)
 sim_type = false; %Q+ (if true), random (if false)
 [modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simulate(model_params, control_params, sim_type);
@@ -124,7 +125,9 @@ myQpParams.qpPF = @(f,p) qpDoETemporalModel(f,p,myQpParams.nOutcomes,headroom);
 Sr = 0.899:0.025:1.099;
 k1 = 0.001:0.0005:0.01;
 k2 = 0.001:0.01:.2;
-beta = 0.5:0.2:2; % Amplitude of the scaled response; should converge to unity
+beta = 0.4:0.2:2; % Amplitude of the scaled response; should converge to unity
+    % NEED TO ENSURE THAT THE VALUE OF UNITY IS PRESENT IN THE SET OF
+    % BETA VALUES
 sigma = 0.3:0.2:1;	% Standard deviation of the scaled (0-1) noise
 myQpParams.psiParamsDomainList = {Sr, k1, k2, beta, sigma};
 
@@ -341,3 +344,4 @@ psiParamsFit = qpFitBads(questData.trialData,questData.qpPF,psiParamsQuest,quest
 fprintf('Maximum likelihood fit parameters: %0.3f, %0.3f, %0.3f, %0.3f, %0.3f \n', ...
     psiParamsFit(1),psiParamsFit(2),psiParamsFit(3),psiParamsFit(4),psiParamsFit(5));
 
+end
