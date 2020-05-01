@@ -76,10 +76,9 @@ stimCounts = qpCounts(qpData(trialData),nOutcomes);
 
 %% Set up options
 options = bads('defaults');
-options.Display = p.Results.display;
+options.Display = p.Reslts.display;
 %% Run bads
-psiParams = bads(@(x)qpFitError(x,stimCounts,qpPF),startingParams,...
-    p.Results.lowerBounds,p.Results.upperBounds,p.Results.plausibleLowerBounds,p.Results.plausibleUpperBounds,[],options);
+psiParams = bads(@(x)qpFitError(x,stimCounts,qpPF),startingParams,p.Results.lowerBounds,p.Results.upperBounds,[],[],[],options);
 
 end
 

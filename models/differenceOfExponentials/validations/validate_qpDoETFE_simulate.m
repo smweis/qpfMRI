@@ -106,7 +106,7 @@ verbose = true;
 myQpParams = qpParams;
 
 % Add the stimulus domain. ~Log spaced frequencies between 0 and 30 Hz
-myQpParams.stimParamsDomainList = {[baselineStimulus,1.875,3.75,7.5,15,30]};
+myQpParams.stimParamsDomainList = {[baselineStimulus,1.875,3.75,7.5,15,30,60]};
 nStims = length(myQpParams.stimParamsDomainList{1});
 
 % The number of outcome categories.
@@ -126,15 +126,22 @@ Sr = 0.899:0.025:1.099;
 k1 = 0.001:0.0005:0.01;
 k2 = 0.001:0.01:.2;
 beta = 0.4:0.2:2; % Amplitude of the scaled response; should converge to unity
-    % NEED TO ENSURE THAT THE VALUE OF UNITY IS PRESENT IN THE SET OF
-    % BETA VALUES
 sigma = 0.3:0.2:1;	% Standard deviation of the scaled (0-1) noise
+
+% Beta will converge to 1 as maxBOLD gets closer and closer to the
+% simulated maxBOLD. As a result, when simulating data, beta should always
+% be set to 1. And, Q+ should always be able to incorporate 1 in its
+% domain. Assert these conditions are true. 
+assert(simulatedPsiParams(4)==1,'Simulated Beta should always be 1.');
+assert(ismember(1,beta),'The domain for beta should always include 1.');
+
+
 myQpParams.psiParamsDomainList = {Sr, k1, k2, beta, sigma};
 
-% Pick some random params to simulate if none provided (but set the neural
-% noise to zero)
+% Pick some random params to simulate if none provided (but set beta to 1
+% and the neural noise to zero)
 if isempty(simulatedPsiParams)
-    simulatedPsiParams = [randsample(Sr,1) randsample(k1,1) randsample(k2,1) randsample(beta,1) 0];
+    simulatedPsiParams = [randsample(Sr,1) randsample(k1,1) randsample(k2,1) 1 0];
 end
 
 % Derive some lower and upper bounds from the parameter ranges. This is
@@ -199,6 +206,7 @@ if showPlots
     hold on
     currentOutcomesHandle = scatter(nan,nan);
     currentTTFHandle = plot(freqDomain,doeTemporalModel(freqDomain,simulatedPsiParams),'-k');
+    currentBadsTTFHandle = plot(freqDomain,doeTemporalModel(freqDomain,simulatedPsiParams),'-k');
     
     % Calculate the lower headroom bin offset. We'll use this later
     nLower = round(headroom*myQpParams.nOutcomes);
@@ -247,12 +255,15 @@ for tt = 1:nTrials
     % stimulus), which is the beta value of the model
     try 
         psiParamsFit = qpFitBads(questData.trialData,questData.qpPF,psiParamsQuest,questData.nOutcomes,...
-    'lowerBounds', lowerBounds,'upperBounds',upperBounds)
-        maxBOLD = maxBOLD.*psiParamsFit(4);
+    'lowerBounds', lowerBounds,'upperBounds',upperBounds,...
+    'plausibleLowerBounds',lowerBounds,'plausibleUpperBounds',upperBounds)
+        maxBOLD = maxBOLD.*psiParamsFit(4)
+        fprintf('Using the BADS fit to generate maxBOLD.\n');
     catch
         psiParamsIndex = qpListMaxArg(questData.posterior);
-        psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
-        maxBOLD = maxBOLD.*psiParamsQuest(4);
+        psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:)
+        maxBOLD = maxBOLD.*psiParamsQuest(4)
+        fprintf('Using the Q+ fit to generate maxBOLD.\n');
     end
 
     % Create a packet
@@ -260,9 +271,6 @@ for tt = 1:nTrials
         'trialLengthSecs',trialLengthSecs,...,
         'stimulusStructDeltaT',stimulusStructDeltaT);
     
-    % If we were not in simulation mode, we would add the BOLD fMRI
-    % response to the packet here. Instead, it will be simulatd within
-    % tfeUpdate.
     
     % Obtain outcomes from tfeUpdate 
     [outcomes, modelResponseStruct, thePacketOut] = ...
@@ -276,6 +284,7 @@ for tt = 1:nTrials
     questData = questDataUntrained;
 
     % Update quest data structure. This is the slow step in the simulation.
+    % For each stimulus and outcome, Q+ will be updated.
     for yy = 1:tt
         questData = qpUpdate(questData,stimulusVec(yy),outcomes(yy));
     end
@@ -300,10 +309,18 @@ for tt = 1:nTrials
         currentOutcomesHandle = scatter(stimulusVecPlot(1:tt),yVals,'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',.2);
         psiParamsIndex = qpListMaxArg(questData.posterior);
         psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
+        try
+            delete(currentBadsTTFHandle)
+            currentBadsTTFHandle = semilogx(freqDomain,doeTemporalModel(freqDomain,psiParamsFit),'-b');
+        catch
+            fprintf('No best fit for BADS yet.');
+            currentBadsTTFHandle = semilogx(freqDomain,doeTemporalModel(freqDomain,psiParamsQuest),'-b');
+        end
+        
         delete(currentTTFHandle)
         currentTTFHandle = semilogx(freqDomain,doeTemporalModel(freqDomain,psiParamsQuest),'-r');
-        legend('Veridical','Stimulus Outcomes','Best Fit from Q+','Location','northwest');
-    
+        legend('Veridical model','Stimulus Outcomes','Best Fit from BADS','Best Fit from Q+','Location','northwest');
+        
         % Entropy by trial
         subplot(3,1,3)
         delete(currentEntropyHandle)
