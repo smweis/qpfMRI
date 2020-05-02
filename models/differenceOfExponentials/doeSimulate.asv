@@ -38,7 +38,7 @@ trialLength = str2num(trialLength);
 TR = str2num(TR);
 
 %% Are we simulating old fashioned constant stimuli?
-assert(islogical(str2num(qpPres)),'Need to say whether Q+ is being used or not (make sure qpPres is logical.');
+assert(islogical(str2num(qpPres)),'.');
 simulateConstantStimuli = logical(str2num(qpPres)); 
 
 
@@ -164,9 +164,6 @@ for tt = 1:nTrials
         maxBOLD = maxBOLD.*psiParamsQuest(4)
         fprintf('Using the Q+ fit to generate maxBOLD.\n');
         fprintf('qpFitBads did not execute with the following error: \n%s',e.message);
-        fprintf('%s',e.stack.file);
-        fprintf('%s',e.stack.name);
-        fprintf('%s',e.stack.line);
     end
     
     % Create a packet
