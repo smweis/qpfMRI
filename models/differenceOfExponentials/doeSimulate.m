@@ -30,16 +30,15 @@ function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trial
 
 %}
 % 
-% We'll need to do some sanity checking our input. For now, we can handle
-% things this way: 
+% 
 model_params = [str2double(Sr_m) str2double(k1_m) str2double(k2_m) str2double(beta_m) str2double(sigma_m)]; 
 
 trialLength = str2double(trialLength);
 TR = str2double(TR);
 
 %% Are we simulating old fashioned constant stimuli?
-assert(islogical(str2num(qpPres)),'Need to say whether Q+ is being used or not (make sure qpPres is logical.');
-simulateConstantStimuli = logical(str2num(qpPres)); 
+assert(islogical(str2double(qpPres)),'Need to say whether Q+ is being used or not (make sure qpPres is logical.');
+simulateConstantStimuli = logical(str2double(qpPres)); 
 
 
 %% Model general values
@@ -156,20 +155,30 @@ for tt = 1:nTrials
     % stimulus), which is the beta value of the model
     try % Try fitting with BADS
         psiParamsFit = qpFitBads(questData.trialData,questData.qpPF,psiParamsQuest,questData.nOutcomes,...
-    'lowerBounds', lowerBounds,'upperBounds',upperBounds,...
-    'plausibleLowerBounds',lowerBounds,'plausibleUpperBounds',upperBounds)
-        maxBOLD = maxBOLD.*psiParamsFit(4)
+            'lowerBounds', lowerBounds,'upperBounds',upperBounds,...
+            'plausibleLowerBounds',lowerBounds,'plausibleUpperBounds',upperBounds)
+        % If it's the first trial, this initializes maxBOLD too low and the
+        % sim has to catch up.
+        if tt > 1
+            maxBOLD = maxBOLD.*psiParamsFit(4)
+        end
         fprintf('Using the BADS fit to generate maxBOLD.\n');
     catch e% If not, fit with the best fitting parameters from Q+ 
         psiParamsIndex = qpListMaxArg(questData.posterior);
         psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:)
-        maxBOLD = maxBOLD.*psiParamsQuest(4)
+        % If it's the first trial, this initializes maxBOLD too low and the
+        % simulation has to catch up.
+        if tt > 1
+            maxBOLD = maxBOLD.*psiParamsQuest(4)
+        end
         fprintf('Using the Q+ fit to generate maxBOLD.\n');
         fprintf('qpFitBads did not execute with the following error: \n%s',e.message);
         fprintf('%s',e.stack.file);
         fprintf('%s',e.stack.name);
         fprintf('%s',e.stack.line);
     end
+    
+    
     
     % Create a packet
     thePacket = createPacket('nTrials',tt,...,
