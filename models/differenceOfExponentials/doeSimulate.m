@@ -37,7 +37,7 @@ trialLength = str2double(trialLength);
 TR = str2double(TR);
 
 %% Are we simulating old fashioned constant stimuli?
-assert(islogical(str2double(qpPres)),'Need to say whether Q+ is being used or not (make sure qpPres is logical.');
+assert(str2double(qpPres)==1 || str2double(qpPres)==0,'You used a value for qpPres other than 1 or 0.');
 simulateConstantStimuli = logical(str2double(qpPres)); 
 
 
