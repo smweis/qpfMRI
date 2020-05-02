@@ -27,10 +27,13 @@ function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trial
 % Example: 
 %{
 [psiParamsFit] = doeSimulate('1.05', '.01', '.06', '1.00', '.4','800','12','1','false1');
-
 %}
 % 
 % 
+% A QUESTION FOR GEOFF: DO WE WANT MAXBOLD to stick around the initialized
+% value - it often starts off low and needs to catch up. 
+% 
+%% Convert the input
 model_params = [str2double(Sr_m) str2double(k1_m) str2double(k2_m) str2double(beta_m) str2double(sigma_m)]; 
 
 trialLength = str2double(trialLength);
@@ -76,6 +79,7 @@ myQpParams.nOutcomes = 51;
 % below the min and max output of the DoE model to account for noise
 headroom = 0.1;
 
+%% Make the psiParamsDomain
 % Create an anonymous function from qpDoETemporalModel in which we
 % specify the number of outcomes for the y-axis response
 myQpParams.qpPF = @(f,p) qpDoETemporalModel(f,p,myQpParams.nOutcomes,headroom);
@@ -106,6 +110,15 @@ end
 lowerBounds = [Sr(1) k1(1) k2(1) beta(1) sigma(1)];
 upperBounds = [Sr(end) k1(end) k2(end) beta(end) sigma(end)];
 
+
+% We also want to make sure that the veridical values are actually within
+% the domain bounds.
+for param = 1:length(simulatedPsiParams)
+    assert(lowerBounds(param) < simulatedPsiParams(param) && upperBounds(param) > simulatedPsiParams(param),...
+        'Parameter %d is not within the bounds of the parameter domain.',param);
+end
+
+
 % Create a simulated observer with binned output
 myQpParams.qpOutcomeF = @(f) qpSimulatedObserver(f,myQpParams.qpPF,simulatedPsiParams);
 
@@ -133,8 +146,7 @@ stimulusVec = nan(1,nTrials);
 %% Run simulated trials
 for tt = 1:nTrials
     
-    % Ask QP to supply our next stimulus. If it is the first two trials
-    % we force a baseline event
+    % If it is the first two trials we force a baseline event
     if tt<=2
         stimulusVec(tt) = baselineStimulus;
         fprintf('Initial baseline stimulus: %f',stimulusVec(tt));
@@ -159,18 +171,14 @@ for tt = 1:nTrials
             'plausibleLowerBounds',lowerBounds,'plausibleUpperBounds',upperBounds)
         % If it's the first trial, this initializes maxBOLD too low and the
         % sim has to catch up.
-        if tt > 1
-            maxBOLD = maxBOLD.*psiParamsFit(4)
-        end
+        maxBOLD = maxBOLD.*psiParamsFit(4)
         fprintf('Using the BADS fit to generate maxBOLD.\n');
     catch e% If not, fit with the best fitting parameters from Q+ 
         psiParamsIndex = qpListMaxArg(questData.posterior);
         psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:)
         % If it's the first trial, this initializes maxBOLD too low and the
         % simulation has to catch up.
-        if tt > 1
-            maxBOLD = maxBOLD.*psiParamsQuest(4)
-        end
+        maxBOLD = maxBOLD.*psiParamsQuest(4)
         fprintf('Using the Q+ fit to generate maxBOLD.\n');
         fprintf('qpFitBads did not execute with the following error: \n%s',e.message);
         fprintf('%s',e.stack.file);
