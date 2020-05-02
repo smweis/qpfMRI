@@ -139,17 +139,20 @@ for tt = 1:nTrials
     % we force a baseline event
     if tt<=2
         stimulusVec(tt) = baselineStimulus;
+        fprintf('Initial baseline stimulus: %f',stimulusVec(tt));
     else
         if simulateConstantStimuli
             % get random stimulus
             stimulusVec(tt) = questData.stimParamsDomain(randi(questData.nStimParamsDomain));
+            fprintf('Stimuli chosen randomly: %f',stimulusVec(tt));
         else
             % get next stimulus from Q+
             stimulusVec(tt) = qpQuery(questData);
+            fprintf('Stimuli chosen by Q+: %f',stimulusVec(tt));
         end
     end
     
-     % Update maxBOLD with our best guess at the maximum BOLD fMRI response
+    % Update maxBOLD with our best guess at the maximum BOLD fMRI response
     % that could be evoked by a stimulus (relative to the baseline
     % stimulus), which is the beta value of the model
     try % Try fitting with BADS
