@@ -10,13 +10,13 @@ function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trial
 %	flag. 
 %
 % Inputs:
-%   Sr_m           - 
-%   k1_m           -
-%   k2_m           -
-%   beta_m         -
-%   sigma_m        -
-%   TR             -
-%   trialLength    -
+%   Sr_m           - doe parameter 1
+%   k1_m           - doe parameter 2
+%   k2_m           - doe parameter 3
+%   beta_m         - Scaling parameter, must be 1.
+%   sigma_m        - Noise parameter.
+%   TR             - Length of a single TR in milliseconds.
+%   trialLength    - Length of a single trial in seconds.
 %   qpPres         - Logical. 1 for Q+, 0 for random.
 %   outNum         - String. Label for the output CSV file
 % 
@@ -32,10 +32,10 @@ function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trial
 % 
 % We'll need to do some sanity checking our input. For now, we can handle
 % things this way: 
-model_params = [str2num(Sr_m) str2num(k1_m) str2num(k2_m) str2num(beta_m) str2num(sigma_m)]; 
+model_params = [str2double(Sr_m) str2double(k1_m) str2double(k2_m) str2double(beta_m) str2double(sigma_m)]; 
 
-trialLength = str2num(trialLength);
-TR = str2num(TR);
+trialLength = str2double(trialLength);
+TR = str2double(TR);
 
 %% Are we simulating old fashioned constant stimuli?
 assert(islogical(str2num(qpPres)),'Need to say whether Q+ is being used or not (make sure qpPres is logical.');
@@ -69,7 +69,6 @@ myQpParams = qpParams;
 
 % Add the stimulus domain. ~Log spaced frequencies between 0 and 30 Hz
 myQpParams.stimParamsDomainList = {[baselineStimulus,1.875,3.75,7.5,15,30,60]};
-nStims = length(myQpParams.stimParamsDomainList{1});
 
 % The number of outcome categories.
 myQpParams.nOutcomes = 51;
@@ -141,7 +140,7 @@ for tt = 1:nTrials
         stimulusVec(tt) = baselineStimulus;
         fprintf('Initial baseline stimulus: %f',stimulusVec(tt));
     else
-        if simulateConstantStimuli
+        if ~simulateConstantStimuli
             % get random stimulus
             stimulusVec(tt) = questData.stimParamsDomain(randi(questData.nStimParamsDomain));
             fprintf('Stimuli chosen randomly: %f',stimulusVec(tt));
