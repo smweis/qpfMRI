@@ -1,4 +1,4 @@
-function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trialLength, qpPres, outNum)
+function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trialLength, qpPres, outNum, varargin)
 %% A simulation script to be compiled and run at speed for the DOE temporal model
 %
 % Syntax:
@@ -6,8 +6,9 @@ function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trial
 %
 % Description:
 %	Takes in simulated parameters for the model, the control (TR, trial
-%	length), and whether or not Q+ is in control of things, plus a debug
-%	flag. 
+%	length), and whether or not Q+ is in control of things. This is
+%	designed to be used with the UF Hipergator code, and so every variable
+%	coming in will be interpreted as a string.
 %
 % Inputs:
 %   Sr_m           - doe parameter 1
@@ -17,67 +18,96 @@ function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trial
 %   sigma_m        - Noise parameter.
 %   TR             - Length of a single TR in milliseconds.
 %   trialLength    - Length of a single trial in seconds.
-%   qpPres         - Logical. 1 for Q+, 0 for random.
-%   outNum         - String. Label for the output CSV file
+%   qpPres         - 1 for Q+, 0 for random.
+%   outNum         - Label for the output CSV file
 % 
-% Outputs:
-%   psiParamsFit   - 1x5 vector. The results of the BADS fit for the best
-%                    fitting model parameters.
+% Optional positional arguments:
+%   nTrials               - Number of trials
+%   stimulusStructDeltaT  - Resolution of the stimulus struct in msecs
+%   maxBOLDSimulated      - True size of the max BOLD response
+%   maxBOLD               - Initial guess for the max size BOLD response
+%   baselineStimulus      - Which stimulus (in freq Hz) is the "baseline"? 
+%                           This stimulus should be selected with the 
+%                           expectation that the neural response to this
+%                           stimulus will be minimal as compared to all 
+%                           other stimuli.
+%   nOutcomes             - The number of outcome categories.
+%   headroom              - The headroom is the proportion of outcomes that 
+%                           are reserved above and below the min and max 
+%                           output  to account for noise.
 %
+% Outputs:
+%   psiParamsFit   - 1x5 vector of the psychometric function parameters
+%                    returned by the BADS fit.
+%
+%
+
 % Example: 
 %{
-[psiParamsFit] = doeSimulate('1.05', '.01', '.06', '1.00', '.4','800','12','1','false1');
+[psiParamsFit] = doeSimulate('.98', '.003', '.06', '1.00','.4','800',...,
+'12','1','false1','30','100','1.6','1.0','0','51','.1');
 %}
 % 
 % 
 % A QUESTION FOR GEOFF: DO WE WANT MAXBOLD to stick around the initialized
 % value - it often starts off low and needs to catch up. 
 % 
-%% Convert the input
-model_params = [str2double(Sr_m) str2double(k1_m) str2double(k2_m) str2double(beta_m) str2double(sigma_m)]; 
 
+
+%% Are we debugging?
+p = inputParser;
+
+% Required input
+p.addRequired('Sr_m',@ischar);
+p.addRequired('k1_m',@ischar);
+p.addRequired('k2_m',@ischar);
+p.addRequired('beta_m',@ischar);
+p.addRequired('sigma_m',@ischar);
+p.addRequired('TR',@ischar);
+p.addRequired('trialLength',@ischar);
+p.addRequired('qpPres',@ischar);
+p.addRequired('outNum',@ischar);
+
+%% Replace any defaults then parse the input
+% Optional positionalparams
+p.addOptional('nTrials','30',@ischar);
+p.addOptional('stimulusStructDeltaT','100',@ischar);
+p.addOptional('maxBOLDSimulated','1.6',@ischar);
+p.addOptional('maxBOLD','1.0',@ischar);
+p.addOptional('baselineStimulus','0',@ischar);
+p.addOptional('nOutcomes','51',@ischar);
+p.addOptional('headroom','.1',@ischar);
+
+
+%% %% Convert the input parameters 
+% Establish qpParams
+myQpParams = qpParams;
+
+% Parse
+p.parse(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trialLength, qpPres,outNum, varargin{:});
+
+nTrials = str2double(p.Results.nTrials); 
+stimulusStructDeltaT = str2double(p.Results.stimulusStructDeltaT); 
+maxBOLDSimulated = str2double(p.Results.maxBOLDSimulated);
+maxBOLD = str2double(p.Results.maxBOLD);
+baselineStimulus = str2double(p.Results.baselineStimulus);
+myQpParams.nOutcomes = str2double(p.Results.nOutcomes);
+headroom = str2double(p.Results.headroom);
+
+simulatedPsiParams = [str2double(Sr_m) str2double(k1_m) str2double(k2_m) str2double(beta_m) str2double(sigma_m)]; 
 trialLength = str2double(trialLength);
 TR = str2double(TR);
 
-%% Are we simulating old fashioned constant stimuli?
+%% Are we simulating old fashioned constant stimuli or using Q+?
+
+% Check that we have sensible input for the qpPres
 assert(str2double(qpPres)==1 || str2double(qpPres)==0,'You used a value for qpPres other than 1 or 0.');
+
 simulateConstantStimuli = logical(str2double(qpPres)); 
-
-
-%% Model general values
-simulatedPsiParams = model_params;
-
-% Some information about the trials?
-nTrials = 30; % how many trials
-trialLengthSecs = trialLength; % seconds per trial (12)
-stimulusStructDeltaT = 100; % the resolution of the stimulus struct in msecs
-
-% True size of the BOLD response
-maxBOLDSimulated = 1.6;
-
-% Initial guess for the max size of the evoked BOLD response
-maxBOLD = 1.0;
-
-% Which stimulus (in freq Hz) is the "baseline" stimulus? This stimulus
-% should be selected with the expectation that the neural response to this
-% stimulus will be minimal as compared to all other stimuli.
-baselineStimulus = 0;
-
-
-
-%% Model specific values
-% Get the default Q+ params
-myQpParams = qpParams;
 
 % Add the stimulus domain. ~Log spaced frequencies between 0 and 30 Hz
 myQpParams.stimParamsDomainList = {[baselineStimulus,1.875,3.75,7.5,15,30,60]};
 
-% The number of outcome categories.
-myQpParams.nOutcomes = 51;
-
-% The headroom is the proportion of outcomes that are reserved above and
-% below the min and max output of the DoE model to account for noise
-headroom = 0.1;
 
 %% Make the psiParamsDomain
 % Create an anonymous function from qpDoETemporalModel in which we
@@ -118,6 +148,10 @@ for param = 1:length(simulatedPsiParams)
         'Parameter %d is not within the bounds of the parameter domain.',param);
 end
 
+% Create and save an rng seed to use for this simulation
+rngSeed = rng('shuffle');
+rndCheck = rand; % print a quick check to make sure our seed is different each time
+fprintf('Initial random number for comparison is %0.4f.',rndCheck);
 
 % Create a simulated observer with binned output
 myQpParams.qpOutcomeF = @(f) qpSimulatedObserver(f,myQpParams.qpPF,simulatedPsiParams);
@@ -131,12 +165,9 @@ myQpParams.continuousPF = @(f) doeTemporalModel(f,simulatedPsiParams);
 
 % Create a full length packet
 thePacket = createPacket('nTrials',nTrials,...,
-    'trialLengthSecs',trialLengthSecs,...,
+    'trialLengthSecs',trialLength,...,
     'stimulusStructDeltaT',stimulusStructDeltaT);
  
-% Create and save an rng seed to use for this simulation
-rngSeed = rng();
-
 % Create a copy of Q+
 questDataUntrained = questData;
 
@@ -168,29 +199,28 @@ for tt = 1:nTrials
     try % Try fitting with BADS
         psiParamsFit = qpFitBads(questData.trialData,questData.qpPF,psiParamsQuest,questData.nOutcomes,...
             'lowerBounds', lowerBounds,'upperBounds',upperBounds,...
-            'plausibleLowerBounds',lowerBounds,'plausibleUpperBounds',upperBounds)
-        % If it's the first trial, this initializes maxBOLD too low and the
-        % sim has to catch up.
-        maxBOLD = maxBOLD.*psiParamsFit(4)
-        fprintf('Using the BADS fit to generate maxBOLD.\n');
+            'plausibleLowerBounds',lowerBounds,'plausibleUpperBounds',upperBounds);
+        maxBOLD = maxBOLD.*psiParamsFit(4);
+        fprintf('Using the BADS fit to generate maxBOLD = %0.3f.\n Parameters: %0.3f, %0.3f, %0.3f, %0.3f, %0.3f \n', ...
+        maxBOLD, psiParamsFit(1),psiParamsFit(2),psiParamsFit(3),psiParamsFit(4),psiParamsFit(5));
     catch e% If not, fit with the best fitting parameters from Q+ 
         psiParamsIndex = qpListMaxArg(questData.posterior);
-        psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:)
-        % If it's the first trial, this initializes maxBOLD too low and the
-        % simulation has to catch up.
-        maxBOLD = maxBOLD.*psiParamsQuest(4)
-        fprintf('Using the Q+ fit to generate maxBOLD.\n');
+        psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
         fprintf('qpFitBads did not execute with the following error: \n%s',e.message);
         fprintf('%s',e.stack.file);
         fprintf('%s',e.stack.name);
         fprintf('%s',e.stack.line);
+        maxBOLD = maxBOLD.*psiParamsQuest(4);
+        fprintf('Using Q+ fit to generate maxBOLD = %0.3f.\n Parameters: %0.3f, %0.3f, %0.3f, %0.3f, %0.3f \n', ...
+        maxBOLD, psiParamsQuest(1),psiParamsQuest(2),psiParamsQuest(3),psiParamsQuest(4),psiParamsQuest(5));
+
     end
     
     
     
     % Create a packet
     thePacket = createPacket('nTrials',tt,...,
-        'trialLengthSecs',trialLengthSecs,...,
+        'trialLengthSecs',trialLength,...,
         'stimulusStructDeltaT',stimulusStructDeltaT);
 
     % Obtain outcomes from tfeUpdate 
