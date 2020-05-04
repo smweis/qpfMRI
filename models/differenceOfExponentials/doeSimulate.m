@@ -1,4 +1,4 @@
-function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trialLength, qpPres, outNum, varargin)
+function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trialLength, qpPres, outNum, seed, varargin)
 %% A simulation script to be compiled and run at speed for the DOE temporal model
 %
 % Syntax:
@@ -20,6 +20,7 @@ function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trial
 %   trialLength    - Length of a single trial in seconds.
 %   qpPres         - 1 for Q+, 0 for random.
 %   outNum         - Label for the output CSV file
+%   seed           - An integer to use to start the rng seed
 % 
 % Optional positional arguments:
 %   nTrials               - Number of trials
@@ -45,7 +46,7 @@ function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trial
 % Example: 
 %{
 [psiParamsFit] = doeSimulate('.98', '.003', '.06', '1.00','.4','800',...,
-'12','1','false1','30','100','1.6','1.0','0','51','.1');
+'12','1','true1','987','30','100','1.6','1.0','0','51','.1');
 %}
 % 
 % 
@@ -67,7 +68,8 @@ function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trial
 % ...
 % Row 30: .98 .003 .06 1.00 .4 800 12 1 false1 30 100 1.6
 % Row 31: .98 .003 .06 1.00 .4 800 12 1 false1 30 100 1.5
-
+% 
+% 4. Also want to double check the RNG issue.
 
 %% Parse input
 p = inputParser;
@@ -82,6 +84,7 @@ p.addRequired('TR',@ischar);
 p.addRequired('trialLength',@ischar);
 p.addRequired('qpPres',@ischar);
 p.addRequired('outNum',@ischar);
+p.addRequired('seed',@ischar);
 
 % Replace any defaults then parse the input
 % Optional positionalparams
@@ -112,6 +115,8 @@ headroom = str2double(p.Results.headroom);
 simulatedPsiParams = [str2double(Sr_m) str2double(k1_m) str2double(k2_m) str2double(beta_m) str2double(sigma_m)]; 
 trialLength = str2double(trialLength);
 TR = str2double(TR);
+seed = str2double(seed);
+
 
 %% Are we simulating old fashioned constant stimuli or using Q+?
 
@@ -165,7 +170,7 @@ for param = 1:length(simulatedPsiParams)
 end
 
 % Create and save an rng seed to use for this simulation
-rngSeed = rng('shuffle');
+rngSeed = rng(seed);
 rndCheck = rand; % print a quick check to make sure our seed is different each time
 fprintf('Initial random number for comparison is %0.4f.',rndCheck);
 
