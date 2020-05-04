@@ -69,7 +69,7 @@ function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trial
 % Row 31: .98 .003 .06 1.00 .4 800 12 1 false1 30 100 1.5
 
 
-%% Are we debugging?
+%% Parse input
 p = inputParser;
 
 % Required input
@@ -83,7 +83,7 @@ p.addRequired('trialLength',@ischar);
 p.addRequired('qpPres',@ischar);
 p.addRequired('outNum',@ischar);
 
-%% Replace any defaults then parse the input
+% Replace any defaults then parse the input
 % Optional positionalparams
 p.addOptional('nTrials','30',@ischar);
 p.addOptional('stimulusStructDeltaT','100',@ischar);
@@ -94,7 +94,7 @@ p.addOptional('nOutcomes','51',@ischar);
 p.addOptional('headroom','.1',@ischar);
 
 
-%% %% Convert the input parameters 
+%% Convert the input parameters 
 % Establish qpParams
 myQpParams = qpParams;
 
