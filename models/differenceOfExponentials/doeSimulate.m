@@ -102,7 +102,7 @@ p.addOptional('headroom','.1',@ischar);
 myQpParams = qpParams;
 
 % Parse
-p.parse(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trialLength, qpPres,outNum, varargin{:});
+p.parse(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trialLength, qpPres,outNum, seed, varargin{:});
 
 nTrials = str2double(p.Results.nTrials); 
 stimulusStructDeltaT = str2double(p.Results.stimulusStructDeltaT); 
