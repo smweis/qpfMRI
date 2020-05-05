@@ -152,7 +152,8 @@ end
 % properly. 
 rngSeed = rng(p.Results.rngSeed,'twister');
 rngSeed = rng(p.Results.rngSeed,'twister');
-
+rndCheck = rand; % print a quick check to make sure our seed is different each time
+fprintf('This better be the same each time... %0.4f.',rndCheck);
 
 % Construct the temporal fitting engine model object
 tfeObj = tfeIAMP('verbosity','none');

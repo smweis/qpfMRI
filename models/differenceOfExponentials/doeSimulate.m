@@ -54,7 +54,8 @@ function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trial
 % 1. maxBOLD question 1: Do we want MAXBOLD to stick around the initialized
 % value - it often starts off low and needs to catch up. 
 
-% 2. maxBOLD question 2: Have Q+ estimate maxBOLD fit, or BADS?
+% 2. maxBOLD question 2: Have Q+ estimate maxBOLD fit, or BADS? Q+ would be
+% quicker, I think. 
 % 
 % 3. We'd like to vary some of the parameters systematically. It would be
 % nice to have a csv that was structured in the format of the input we
@@ -69,7 +70,7 @@ function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trial
 % Row 30: .98 .003 .06 1.00 .4 800 12 1 false1 30 100 1.6
 % Row 31: .98 .003 .06 1.00 .4 800 12 1 false1 30 100 1.5
 % 
-% 4. Also want to double check the RNG issue.
+% 4. RNG appears fixed. 
 
 %% Parse input
 p = inputParser;
@@ -245,8 +246,7 @@ for tt = 1:nTrials
         'rngSeed',rngSeed.Seed,...,
         'maxBOLD',maxBOLD,...,
         'TRmsecs', TR);
-    rndCheck = rand; % print a quick check to make sure our seed is different each time
-    fprintf('Initial random number for comparison is %0.4f.',rndCheck);
+
     % Grab a naive copy of questData
     questData = questDataUntrained;
 
