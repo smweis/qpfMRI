@@ -37,8 +37,8 @@ function [outcomes, modelResponseStruct, thePacket, adjustedAmplitudes] = tfeUpd
 %  'maxBOLDSimulated'     - Scalar. The value (in % change units) of the
 %                           maximum expected response to a stimulus w.r.t.
 %                           the response to the baseline stimulus.
-%  'rngSeed'              - Numeric. By passing a seed to the random
-%                           nnumber generator, calling function can ensure
+%  'rngSeed'              - Struct. By passing a seed to the random
+%                           number generator, calling function can ensure
 %                           that this routine returns the same output for a
 %                           given input in simulation model.
 %  'noiseSD'              - Scalar. The amplitude of the noise added to the
@@ -134,7 +134,7 @@ p.addParameter('maxBOLD', 1.0, @isscalar);
 
 % Optional params used in simulation
 p.addParameter('maxBOLDSimulated', 1.0, @isscalar);
-p.addParameter('rngSeed',rng(1,'twister'),@isstruct);
+p.addParameter('rngSeed',rng(1,'twister'),@isnumeric);
 p.addParameter('noiseSD',0.25, @isscalar);
 p.addParameter('pinkNoise',1, @isnumeric);
 p.addParameter('TRmsecs',800, @isnumeric);
@@ -147,6 +147,12 @@ p.parse( thePacket, qpParams, stimulusVec, baselineStimulus, varargin{:});
 if isempty(find(stimulusVec==p.Results.baselineStimulus, 1))
     error('The stimulusVec must have at least one instance of the baselineStimulus.');
 end
+
+% Setting this within tfeUpdate seems necessary to ensure the seed is set
+% properly. 
+rngSeed = rng(p.Results.rngSeed,'twister');
+rngSeed = rng(p.Results.rngSeed,'twister');
+
 
 % Construct the temporal fitting engine model object
 tfeObj = tfeIAMP('verbosity','none');

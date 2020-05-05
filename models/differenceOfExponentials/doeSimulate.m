@@ -169,7 +169,9 @@ for param = 1:length(simulatedPsiParams)
         'Parameter %d is not within the bounds of the parameter domain.',param);
 end
 
-% Create and save an rng seed to use for this simulation
+% Create and save an rng seed to use for this simulation. Evidetly, this
+% has to be done twice...?
+rngSeed = rng(seed);
 rngSeed = rng(seed);
 rndCheck = rand; % print a quick check to make sure our seed is different each time
 fprintf('Initial random number for comparison is %0.4f.',rndCheck);
@@ -240,10 +242,11 @@ for tt = 1:nTrials
     [outcomes] = ...
         tfeUpdate(thePacket, myQpParams, stimulusVec, baselineStimulus, ...
         'maxBOLDSimulated',maxBOLDSimulated,...
-        'rngSeed',rngSeed,...,
+        'rngSeed',rngSeed.Seed,...,
         'maxBOLD',maxBOLD,...,
         'TRmsecs', TR);
-   
+    rndCheck = rand; % print a quick check to make sure our seed is different each time
+    fprintf('Initial random number for comparison is %0.4f.',rndCheck);
     % Grab a naive copy of questData
     questData = questDataUntrained;
 
