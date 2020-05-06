@@ -1,10 +1,11 @@
-function data = loadSimulatedData(dirName,dataLines)
+function [data, names] = loadSimulatedData(dirName,dataLines)
 
 % CAUTION CAUTION CAUTION: TEMPORARY LOADER! BUGS ABOUND
 
 dirFiles = dir(fullfile('..',dirName,'*.csv'));
 
 data = zeros(length(dirFiles),5);
+names = cell(length(dirFiles),1);
 
 
 % If dataLines is not specified, define defaults
@@ -34,4 +35,10 @@ opts = setvaropts(opts, ["VarName1", "VarName2", "VarName3", "VarName4", "VarNam
 
 for i = 1:length(dirFiles)
     data(i,:) = table2array(readtable(fullfile(dirFiles(i).folder,dirFiles(i).name),opts));
+    names{i} = dirFiles(i).name;
 end
+
+
+% TO DO: SORT output numerically. 
+%1. 
+

@@ -1,4 +1,4 @@
-function [modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simulate(model_params, control_params, sim_type, varargin)
+function [modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simulate(model_params, control_params, sim_type, seed, varargin)
 %% A validation script to evaluate how the DoE model is working
 %
 % Syntax:
@@ -33,13 +33,14 @@ function [modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simu
 % SIMULATED BETA MUST ALWAYS BE UNITY
 model_params = [1.05 .01 .06 1.00 .4]; 
 control_params = [800 12]; %TR (secs), trial length (msecs)
-sim_type = false; %Q+ (if true), random (if false)
-[modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simulate(model_params, control_params, sim_type);
+sim_type = logical(0); %Q+ (if true), random (if false)
+seed = 1234;
+[modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simulate(model_params, control_params, sim_type, seed);
 
 
 % To run again and skip reinitializing (only do so if you have NOT changed the parameter domains):
 
-[modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simulate(model_params, control_params, sim_type,'questDataCopy',questDataCopy);
+[modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simulate(model_params, control_params, sim_type,seed,'questDataCopy',questDataCopy);
 %}
 
 
@@ -51,13 +52,13 @@ p = inputParser;
 p.addRequired('model_params',@isvector);
 p.addRequired('control_params',@isvector);
 p.addRequired('sim_type',@islogical);
-
+p.addRequired('seed',@isnumeric);
 
 % Optional params used in fitting
 p.addParameter('questDataCopy', @isstruct);
 
 % Parse
-p.parse(model_params, control_params, sim_type, varargin{:});
+p.parse(model_params, control_params, sim_type, seed, varargin{:});
 
 try
     questDataCopy = p.Results.questDataCopy;
@@ -223,9 +224,13 @@ if showPlots
     ylabel('Entropy');
 end
 
+% Create and save an rng seed to use for this simulation. Evidently, this
+% has to be done twice...?
+rngSeed = rng(seed);
+rngSeed = rng(seed);
+rndCheck = rand; % print a quick check to make sure our seed is different each time
+fprintf('Initial random number for comparison is %0.4f.',rndCheck);
 
-% Create and save an rng seed to use for this simulation
-rngSeed = rng();
 
 % Create a copy of Q+
 questDataUntrained = questData;
@@ -276,7 +281,7 @@ for tt = 1:nTrials
     [outcomes, modelResponseStruct, thePacketOut] = ...
         tfeUpdate(thePacket, myQpParams, stimulusVec, baselineStimulus, ...
         'maxBOLDSimulated',maxBOLDSimulated,...
-        'rngSeed',rngSeed,...,
+        'rngSeed',rngSeed.Seed,...,
         'maxBOLD',maxBOLD,...,
         'TRmsecs', control_params(1));
    

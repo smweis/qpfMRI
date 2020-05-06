@@ -148,12 +148,10 @@ if isempty(find(stimulusVec==p.Results.baselineStimulus, 1))
     error('The stimulusVec must have at least one instance of the baselineStimulus.');
 end
 
-% Setting this within tfeUpdate seems necessary to ensure the seed is set
-% properly. 
+% Setting this within tfeUpdate is to ensure the seed is set properly. 
 rngSeed = rng(p.Results.rngSeed,'twister');
 rngSeed = rng(p.Results.rngSeed,'twister');
-rndCheck = rand; % print a quick check to make sure our seed is different each time
-fprintf('This better be the same each time... %0.4f.',rndCheck);
+
 
 % Construct the temporal fitting engine model object
 tfeObj = tfeIAMP('verbosity','none');

@@ -32,6 +32,9 @@ function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trial
 %                           expectation that the neural response to this
 %                           stimulus will be minimal as compared to all 
 %                           other stimuli.
+%   maxBOLDStimulus       - Which stimulus (in freq Hz) is expected to
+%                           return the max value? This is just for the 
+%                           initial maxBOLD estimate.
 %   nOutcomes             - The number of outcome categories.
 %   headroom              - The headroom is the proportion of outcomes that 
 %                           are reserved above and below the min and max 
@@ -51,12 +54,6 @@ function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trial
 % 
 % 
 % TODO: 
-% 1. maxBOLD question 1: Do we want MAXBOLD to stick around the initialized
-% value - it often starts off low and needs to catch up. 
-
-% 2. maxBOLD question 2: Have Q+ estimate maxBOLD fit, or BADS? Q+ would be
-% quicker, I think. 
-% 
 % 3. We'd like to vary some of the parameters systematically. It would be
 % nice to have a csv that was structured in the format of the input we
 % want, then we could call that csv as we are running the simulations.
@@ -69,8 +66,7 @@ function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trial
 % ...
 % Row 30: .98 .003 .06 1.00 .4 800 12 1 false1 30 100 1.6
 % Row 31: .98 .003 .06 1.00 .4 800 12 1 false1 30 100 1.5
-% 
-% 4. RNG appears fixed. 
+
 
 %% Parse input
 p = inputParser;
@@ -94,6 +90,7 @@ p.addOptional('stimulusStructDeltaT','100',@ischar);
 p.addOptional('maxBOLDSimulated','1.6',@ischar);
 p.addOptional('maxBOLD','1.0',@ischar);
 p.addOptional('baselineStimulus','0',@ischar);
+p.addOptional('maxBOLDStimulus','30',@ischar);
 p.addOptional('nOutcomes','51',@ischar);
 p.addOptional('headroom','.1',@ischar);
 
@@ -110,6 +107,7 @@ stimulusStructDeltaT = str2double(p.Results.stimulusStructDeltaT);
 maxBOLDSimulated = str2double(p.Results.maxBOLDSimulated);
 maxBOLD = str2double(p.Results.maxBOLD);
 baselineStimulus = str2double(p.Results.baselineStimulus);
+maxBOLDStimulus = str2double(p.Results.maxBOLDStimulus);
 myQpParams.nOutcomes = str2double(p.Results.nOutcomes);
 headroom = str2double(p.Results.headroom);
 
@@ -170,12 +168,10 @@ for param = 1:length(simulatedPsiParams)
         'Parameter %d is not within the bounds of the parameter domain.',param);
 end
 
-% Create and save an rng seed to use for this simulation. Evidetly, this
-% has to be done twice...?
+% Create and save an rng seed to use for this simulation.
 rngSeed = rng(seed);
 rngSeed = rng(seed);
-rndCheck = rand; % print a quick check to make sure our seed is different each time
-fprintf('Initial random number for comparison is %0.4f.',rndCheck);
+
 
 % Create a simulated observer with binned output
 myQpParams.qpOutcomeF = @(f) qpSimulatedObserver(f,myQpParams.qpPF,simulatedPsiParams);
@@ -195,10 +191,15 @@ stimulusVec = nan(1,nTrials);
 %% Run simulated trials
 for tt = 1:nTrials
     
-    % If it is the first two trials we force a baseline event
-    if tt<=2
-        stimulusVec(tt) = baselineStimulus;
-        fprintf('Initial baseline stimulus: %0.3f\n',stimulusVec(tt));
+    % If it is the first three trials we force a baseline or maxBOLD event
+    if tt<=3
+        if tt == 1 || tt == 3
+            stimulusVec(tt) = baselineStimulus;
+            fprintf('Initial baseline stimulus: %0.3f\n',stimulusVec(tt));
+        else
+            stimulusVec(tt) = maxBOLDStimulus;
+            fprintf('Initial maxBOLD stimulus: %0.3f\n',stimulusVec(tt));
+        end
     else
         if ~simulateConstantStimuli
             % get random stimulus
@@ -214,26 +215,17 @@ for tt = 1:nTrials
     % Update maxBOLD with our best guess at the maximum BOLD fMRI response
     % that could be evoked by a stimulus (relative to the baseline
     % stimulus), which is the beta value of the model
-    try % Try fitting with BADS
-        psiParamsFit = qpFitBads(questData.trialData,questData.qpPF,psiParamsQuest,questData.nOutcomes,...
-            'lowerBounds', lowerBounds,'upperBounds',upperBounds,...
-            'plausibleLowerBounds',lowerBounds,'plausibleUpperBounds',upperBounds);
-        maxBOLD = maxBOLD.*psiParamsFit(4);
-        fprintf('Using the BADS fit to generate maxBOLD \nmaxBOLD = %0.3f\n BADS parameters: %0.4f, %0.4f, %0.4f, %0.4f, %0.4f \n', ...
-        maxBOLD, psiParamsFit(1),psiParamsFit(2),psiParamsFit(3),psiParamsFit(4),psiParamsFit(5));
-    catch e% If not, fit with the best fitting parameters from Q+ 
-        psiParamsIndex = qpListMaxArg(questData.posterior);
-        psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
-        fprintf('qpFitBads did not execute with the following error: \n%s',e.message);
-        fprintf('%s',e.stack.file);
-        fprintf('%s',e.stack.name);
-        fprintf('%s',e.stack.line);
+
+    psiParamsIndex = qpListMaxArg(questData.posterior);
+    psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
+    
+    % Only update maxBOLD after we've had at least one maxBOLD trial
+    if tt > 2
         maxBOLD = maxBOLD.*psiParamsQuest(4);
         fprintf('Using Q+ fit to generate maxBOLD \nmaxBOLD = %0.3f\n Q+ parameters: %0.4f, %0.4f, %0.4f, %0.4f, %0.4f \n', ...
         maxBOLD, psiParamsQuest(1),psiParamsQuest(2),psiParamsQuest(3),psiParamsQuest(4),psiParamsQuest(5));
-
     end
-   
+
     % Create a packet
     thePacket = createPacket('nTrials',tt,...,
         'trialLengthSecs',trialLength,...,
