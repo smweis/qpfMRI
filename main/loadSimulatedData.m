@@ -1,8 +1,7 @@
 function [data, names] = loadSimulatedData(dirName,dataLines)
 
 % CAUTION CAUTION CAUTION: TEMPORARY LOADER! BUGS ABOUND
-
-dirFiles = dir(fullfile('..',dirName,'*.csv'));
+dirFiles = dir(fullfile(dirName,'*.csv'));
 
 data = zeros(length(dirFiles),5);
 names = cell(length(dirFiles),1);
@@ -38,7 +37,7 @@ for i = 1:length(dirFiles)
     names{i} = dirFiles(i).name;
 end
 
-
+numbers = [];
 % sort data numerically by run (assuming random ('false') followed by qp
 % ('true') in the simulations
 for i = 1:length(names)/2
@@ -50,20 +49,18 @@ numbers = numbers';
 [~,randomIndex] = sort(numbers);
 
 randomData = data(randomIndex,:);
-randomNames = names(idx);
+randomNames = names(randomIndex);
 
-qpIndex = randomIndex+300;
+qpIndex = randomIndex+50;
 qpData = data(qpIndex,:);
 qpNames = names(qpIndex);
 
 % hardcoding data from test_1
-realData(1:50,:) = repmat([.98 .003 .06 1.00 .4],50,1);
-realData(51:100,:) = repmat([.98 .003 .06 1.00 .8],50,1);
-realData(101:150,:) = repmat([.92 .003 .06 1.00 .4],50,1);
-realData(151:200,:) = repmat([.92 .007 .06 1.00 .4],50,1);
-realData(201:250,:) = repmat([.92 .003 .12 1.00 .4],50,1);
-realData(251:300,:) = repmat([.92 .003 .18 1.00 .4],50,1);
+realData(1:50,:) = repmat([1. .1 .2 1.00 .4],50,1);
 
+mean(qpData)
+mean(randomData)
+realData(1,:)
 
 qpSigned = (qpData - realData)./realData;
 randomSigned = (randomData - realData)./realData;
@@ -87,10 +84,8 @@ randomOneRunData = randomData(first:last,:);
 
 qpPlotParams = mean(qpOneRunData);
 randomPlotParams = mean(randomOneRunData);
-
-% Hold beta at 1 for plotting
-qpPlotParams(4) = 1;
-randomPlotParams(4) = 1;
+realDataPlot = realData(first,:);
+realDataPlot(4) = qpPlotParams(4);
 
 realData(first,:);
 
@@ -99,4 +94,6 @@ stimulusFreqHzFine = logspace(log10(.01),log10(64),100);
 semilogx(stimulusFreqHzFine,doeTemporalModel(stimulusFreqHzFine,qpPlotParams),'-r');
 hold on
 semilogx(stimulusFreqHzFine,doeTemporalModel(stimulusFreqHzFine,randomPlotParams),'-b');
-semilogx(stimulusFreqHzFine,doeTemporalModel(stimulusFreqHzFine,realData(first,:)),'-k');
+semilogx(stimulusFreqHzFine,doeTemporalModel(stimulusFreqHzFine,realDataPlot)-.036,'-k');
+semilogx(stimulusFreqHzFine,doeTemporalModel(stimulusFreqHzFine,realDataPlot),'-g');
+legend('q+','random','Veridical, scaled & transposed','Veridical, scaled','location','Northwest');

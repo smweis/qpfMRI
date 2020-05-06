@@ -126,8 +126,8 @@ myQpParams.qpPF = @(f,p) qpDoETemporalModel(f,p,myQpParams.nOutcomes,headroom);
 % Define the parameter ranges
 % NOTE: IF YOU CHANGE THESE, YOU MUST RE-INITIALIZE Q+
 Sr = 0.899:0.025:1.099;
-k1 = 0.001:0.0005:0.01;
-k2 = 0.001:0.01:.2;
+k1 = 0.01:0.04:0.4;
+k2 = 0.01:0.04:0.4;
 beta = 0.4:0.2:2; % Amplitude of the scaled response; should converge to unity
 sigma = 0.3:0.2:1;	% Standard deviation of the scaled (0-1) noise
 
