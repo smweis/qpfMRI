@@ -39,6 +39,64 @@ for i = 1:length(dirFiles)
 end
 
 
-% TO DO: SORT output numerically. 
-%1. 
+% sort data numerically by run (assuming random ('false') followed by qp
+% ('true') in the simulations
+for i = 1:length(names)/2
+    temp = strsplit(names{i},{'_','.'});
+    numbers(i) = str2double(temp(3));
+end
 
+numbers = numbers';
+[~,randomIndex] = sort(numbers);
+
+randomData = data(randomIndex,:);
+randomNames = names(idx);
+
+qpIndex = randomIndex+300;
+qpData = data(qpIndex,:);
+qpNames = names(qpIndex);
+
+% hardcoding data from test_1
+realData(1:50,:) = repmat([.98 .003 .06 1.00 .4],50,1);
+realData(51:100,:) = repmat([.98 .003 .06 1.00 .8],50,1);
+realData(101:150,:) = repmat([.92 .003 .06 1.00 .4],50,1);
+realData(151:200,:) = repmat([.92 .007 .06 1.00 .4],50,1);
+realData(201:250,:) = repmat([.92 .003 .12 1.00 .4],50,1);
+realData(251:300,:) = repmat([.92 .003 .18 1.00 .4],50,1);
+
+
+qpSigned = (qpData - realData)./realData;
+randomSigned = (randomData - realData)./realData;
+
+mean(qpSigned)
+mean(randomSigned)
+
+qpUnsigned = abs(qpData - realData)./realData;
+randomUnsigned = abs(randomData - realData)./realData;
+
+mean(qpUnsigned)
+mean(randomUnsigned)
+
+
+% one run and plotting
+first = 1;
+last = first+49;
+
+qpOneRunData = qpData(first:last,:);
+randomOneRunData = randomData(first:last,:);
+
+qpPlotParams = mean(qpOneRunData);
+randomPlotParams = mean(randomOneRunData);
+
+% Hold beta at 1 for plotting
+qpPlotParams(4) = 1;
+randomPlotParams(4) = 1;
+
+realData(first,:);
+
+figure
+stimulusFreqHzFine = logspace(log10(.01),log10(64),100);
+semilogx(stimulusFreqHzFine,doeTemporalModel(stimulusFreqHzFine,qpPlotParams),'-r');
+hold on
+semilogx(stimulusFreqHzFine,doeTemporalModel(stimulusFreqHzFine,randomPlotParams),'-b');
+semilogx(stimulusFreqHzFine,doeTemporalModel(stimulusFreqHzFine,realData(first,:)),'-k');

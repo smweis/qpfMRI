@@ -54,7 +54,7 @@ function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trial
 % 
 % 
 % TODO: 
-% 3. We'd like to vary some of the parameters systematically. It would be
+% 1. We'd like to vary some of the parameters systematically. It would be
 % nice to have a csv that was structured in the format of the input we
 % want, then we could call that csv as we are running the simulations.
 %
@@ -134,8 +134,8 @@ myQpParams.qpPF = @(f,p) qpDoETemporalModel(f,p,myQpParams.nOutcomes,headroom);
 
 % Make the psiParamsDomain
 Sr = 0.899:0.025:1.099;
-k1 = 0.001:0.0005:0.01;
-k2 = 0.001:0.01:.2;
+k1 = 0.01:0.04:0.4;
+k2 = 0.01:0.04:0.4;
 beta = 0.4:0.2:2; % Amplitude of the scaled response; should converge to unity
 sigma = 0.3:0.2:1;	% Standard deviation of the scaled (0-1) noise
 

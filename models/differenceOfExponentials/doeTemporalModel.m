@@ -31,7 +31,7 @@ function y = doeTemporalModel(frequenciesToModel, params)
     y = doeTemporalModel(freqHz,params);
     loglog(freqHz,y,'-k');
     hold on
-    ylim([1 100]);
+    ylim([0 100]);
 %}
 %{
     % Fit the DoE model to some empirical data
@@ -51,7 +51,7 @@ function y = doeTemporalModel(frequenciesToModel, params)
     params = fminsearch(myObj,x0);
     % Plot the results
     figure
-    stimulusFreqHzFine = logspace(log10(0.5),log10(64),100);
+    stimulusFreqHzFine = logspace(log10(0.01),log10(100),100);
     semilogx(stimulusFreqHzFine,doeTemporalModel(stimulusFreqHzFine,params)+minBOLD,'-k');
     hold on
     semilogx(stimulusFreqHz, pctBOLDresponse, '*r');

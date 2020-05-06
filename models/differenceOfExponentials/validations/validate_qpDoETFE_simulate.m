@@ -34,7 +34,9 @@ function [modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simu
 model_params = [1.05 .01 .06 1.00 .4]; 
 control_params = [800 12]; %TR (secs), trial length (msecs)
 sim_type = logical(0); %Q+ (if true), random (if false)
-seed = 1234;
+rng('shuffle');
+rng('shuffle');
+seed = randi(1000000);
 [modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simulate(model_params, control_params, sim_type, seed);
 
 
@@ -95,7 +97,7 @@ maxBOLD = 1.0;
 % should be selected with the expectation that the neural response to this
 % stimulus will be minimal as compared to all other stimuli.
 baselineStimulus = 0;
-
+maxBOLDStimulus = 30;
 % How talkative is the simulation?
 showPlots = true;
 verbose = true;
@@ -243,32 +245,30 @@ for tt = 1:nTrials
     
     % Ask QP to supply our next stimulus. If it is the first two trials
     % we force a baseline event
-    if tt<=2
-        stimulusVec(tt) = baselineStimulus;
+    if tt<=3
+        if tt == 1 || tt == 3
+            stimulusVec(tt) = baselineStimulus;
+            fprintf('Initial baseline stimulus: %0.3f\n',stimulusVec(tt));
+        else
+            stimulusVec(tt) = maxBOLDStimulus;
+            fprintf('Initial maxBOLD stimulus: %0.3f\n',stimulusVec(tt));
+        end
     else
-        if simulateConstantStimuli
+        if ~simulateConstantStimuli
             % get random stimulus
             stimulusVec(tt) = questData.stimParamsDomain(randi(questData.nStimParamsDomain));
+            fprintf('Stimuli chosen randomly: %0.3f\n',stimulusVec(tt));
         else
             % get next stimulus from Q+
             stimulusVec(tt) = qpQuery(questData);
+            fprintf('Stimuli chosen by Q+: %0.3f\n',stimulusVec(tt));
         end
     end
-    
-    % Update maxBOLD with our best guess at the maximum BOLD fMRI response
-    % that could be evoked by a stimulus (relative to the baseline
-    % stimulus), which is the beta value of the model
-    try % Try fitting with BADS
-        psiParamsFit = qpFitBads(questData.trialData,questData.qpPF,psiParamsQuest,questData.nOutcomes,...
-    'lowerBounds', lowerBounds,'upperBounds',upperBounds,...
-    'plausibleLowerBounds',lowerBounds,'plausibleUpperBounds',upperBounds)
-        maxBOLD = maxBOLD.*psiParamsFit(4)
-        fprintf('Using the BADS fit to generate maxBOLD.\n');
-    catch % If not, fit with the best fitting parameters from Q+ 
-        psiParamsIndex = qpListMaxArg(questData.posterior);
-        psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:)
-        maxBOLD = maxBOLD.*psiParamsQuest(4)
-        fprintf('Using the Q+ fit to generate maxBOLD.\n');
+    % Only update maxBOLD after we've had at least one maxBOLD trial
+    if tt > 2
+        maxBOLD = maxBOLD.*psiParamsQuest(4);
+        fprintf('Using Q+ fit to generate maxBOLD \nmaxBOLD = %0.3f\n Q+ parameters: %0.4f, %0.4f, %0.4f, %0.4f, %0.4f \n', ...
+        maxBOLD, psiParamsQuest(1),psiParamsQuest(2),psiParamsQuest(3),psiParamsQuest(4),psiParamsQuest(5));
     end
 
     % Create a packet
@@ -318,7 +318,7 @@ for tt = 1:nTrials
             delete(currentBadsTTFHandle)
             currentBadsTTFHandle = semilogx(freqDomain,doeTemporalModel(freqDomain,psiParamsFit),'-b');
         catch
-            fprintf('No best fit for BADS yet.');
+            fprintf('No best fit for BADS yet.\n');
             currentBadsTTFHandle = semilogx(freqDomain,doeTemporalModel(freqDomain,psiParamsQuest),'-b');
         end
         
