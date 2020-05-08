@@ -152,7 +152,7 @@ assert(ismember(1,beta),'The domain for beta should always include 1.');
 % Pick some random params to simulate if none provided (but set the neural
 % noise to zero and beta = 1)
 if isempty(simulatedPsiParams)
-    simulatedPsiParams = [randsample(Sr,1) randsample(k1,1) randsample(k2,1) 1 0];
+    simulatedPsiParams = [randsample(Sr,1) randsample(k1,1) randsample(k2,1) 1 0.4];
 end
 
 % Derive some lower and upper bounds from the parameter ranges. This is
@@ -237,7 +237,8 @@ for tt = 1:nTrials
         'maxBOLDSimulated',maxBOLDSimulated,...
         'rngSeed',rngSeed.Seed,...,
         'maxBOLD',maxBOLD,...,
-        'TRmsecs', TR);
+        'TRmsecs', TR, ...,
+        'noiseSD', simulatedPsiParams(5));
 
     % Grab a naive copy of questData
     questData = questDataUntrained;
@@ -272,8 +273,10 @@ fprintf('FINAL Maximum likelihood fit parameters: %0.4f, %0.4f, %0.4f, %0.4f, %0
 fprintf('FINAL maxBOLD estimate: %0.3f',maxBOLD);
 
 %% Output
+T = array2table(psiParamsFit,'VariableNames',{'Sr','k1','k2','beta','sigma'});
+T.maxBOLD = maxBOLD;
 outfilename = horzcat('doe_',outNum,'.csv');
 %save(outfilename,psiParamsFit);
-csvwrite(outfilename, psiParamsFit);
+writetable(T,outfilename);
 
 end

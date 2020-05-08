@@ -94,6 +94,7 @@ stimulusFreqHzFine = logspace(log10(.01),log10(64),100);
 semilogx(stimulusFreqHzFine,doeTemporalModel(stimulusFreqHzFine,qpPlotParams),'-r');
 hold on
 semilogx(stimulusFreqHzFine,doeTemporalModel(stimulusFreqHzFine,randomPlotParams),'-b');
-semilogx(stimulusFreqHzFine,doeTemporalModel(stimulusFreqHzFine,realDataPlot)-.036,'-k');
+%semilogx(stimulusFreqHzFine,doeTemporalModel(stimulusFreqHzFine,realDataPlot)-.036,'-k');
 semilogx(stimulusFreqHzFine,doeTemporalModel(stimulusFreqHzFine,realDataPlot),'-g');
-legend('q+','random','Veridical, scaled & transposed','Veridical, scaled','location','Northwest');
+semilogx(stimulusFreqHzFine,doeTemporalModel(stimulusFreqHzFine,realData(first,:)),'-k');
+legend('q+','random','Veridical, scaled & transposed','Veridical','Northwest');

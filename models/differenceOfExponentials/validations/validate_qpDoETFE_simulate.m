@@ -348,6 +348,32 @@ end
 
 
 
+% FIX THIS SO THAT BETA = 1 AND THEN RECALCULATE MAX BOLD
+% Obtain outcomes from tfeUpdate
+[outcomes, modelResponseStruct, thePacketOut] = ...
+    tfeUpdate(thePacket, myQpParams, stimulusVec, baselineStimulus, ...
+    'maxBOLDSimulated',maxBOLDSimulated,...
+    'rngSeed',rngSeed.Seed,...,
+    'maxBOLD',maxBOLD,...,
+    'TRmsecs', control_params(1));
+
+% Grab a naive copy of questData
+questData = questDataUntrained;
+
+% Update quest data structure. This is the slow step in the simulation.
+% For each stimulus and outcome, Q+ will be updated.
+for yy = 1:tt
+    questData = qpUpdate(questData,stimulusVec(yy),outcomes(yy));
+end
+
+
+
+
+
+
+
+
+
 %% Find out QUEST+'s estimate of the stimulus parameters, obtained
 % on the gridded parameter domain.
 psiParamsIndex = qpListMaxArg(questData.posterior);
