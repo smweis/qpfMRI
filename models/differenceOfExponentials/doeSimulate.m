@@ -251,6 +251,44 @@ for tt = 1:nTrials
     
 end
 
+%% Adjust Beta/MaxBOLD tradeoff
+% For the final parameter estimate, we want to assume that Beta is 1 and
+% maxBOLD is whatever it WOULD BE if beta were 1. 
+
+% Grab our current beta estimate is: 
+psiParamsIndex = qpListMaxArg(questData.posterior);
+psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
+betaGuess = psiParamsQuest(4);
+
+% Divide maxBOLD by our beta estimate: (beta / beta) = 1, so
+% new maxBOLD = maxBOLD/beta 
+maxBOLD = maxBOLD/betaGuess;
+
+% Now run through the fitting steps again with the new maxBOLD
+% Create a packet
+thePacket = createPacket('nTrials',tt,...,
+    'trialLengthSecs',trialLength,...,
+    'stimulusStructDeltaT',stimulusStructDeltaT);
+
+% Obtain outcomes from tfeUpdate
+[outcomes] = ...
+    tfeUpdate(thePacket, myQpParams, stimulusVec, baselineStimulus, ...
+    'maxBOLDSimulated',maxBOLDSimulated,...
+    'rngSeed',rngSeed.Seed,...,
+    'maxBOLD',maxBOLD,...,
+    'TRmsecs', TR, ...,
+    'noiseSD', simulatedPsiParams(5));
+
+% Grab a naive copy of questData
+questData = questDataUntrained;
+
+% Update quest data structure. This is the slow step in the simulation.
+for yy = 1:tt
+    questData = qpUpdate(questData,stimulusVec(yy),outcomes(yy));
+end
+
+
+
 %% Print some final output to the log
 
 % Find out QUEST+'s estimate of the stimulus parameters, obtained
