@@ -9,10 +9,18 @@ function [] = plotParamsDomain(model, params)
 % Example: 
 %{
 % Params domain to plot
+% Example 1:
 params = struct;
 params.Sr = logspace(log10(0.01),log10(5),10);
 params.k1 = linspace(.01,.08,10);
 params.k2 = logspace(log10(0.01),log10(100),10);
+
+% Example 2: 
+% from early doeSimulate code
+params = struct;
+params.Sr = 0.899:0.025:1.099;
+params.k1 = 0.01:0.04:0.4;
+params.k2 = 0.01:0.04:0.4;
 
 params.beta = 1;
 
