@@ -48,8 +48,22 @@ function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trial
 
 % Example: 
 %{
-[psiParamsFit] = doeSimulate('.98', '.003', '.06', '1.00','.4','800',...,
-'12','1','true1','987','30','100','1.6','1.0','0','51','.1');
+params = struct;
+params.Sr_m = '.98';
+params.k1_m = '.21';
+params.k2_m = '.06';
+params.beta_m = '1.00';
+params.sigma_m = '.11';
+params.TR = '800';
+params.trialLength = '12';
+params.qpPres = '0';
+params.outNum = 'true1';
+params.seed = 'choose';
+params.nTrials = '10';
+
+[psiParamsFit] = doeSimulate(params.Sr_m,params.k1_m,params.k2_m,...,
+params.beta_m,params.sigma_m,params.TR,params.trialLength,params.qpPres,...,
+params.outNum,params.seed,params.nTrials);
 %}
 % 
 % 
@@ -81,16 +95,17 @@ p.addRequired('TR',@ischar);
 p.addRequired('trialLength',@ischar);
 p.addRequired('qpPres',@ischar);
 p.addRequired('outNum',@ischar);
-p.addRequired('seed',@ischar);
+
 
 % Replace any defaults then parse the input
 % Optional positionalparams
+p.addOptional('seed','choose',@ischar);
 p.addOptional('nTrials','30',@ischar);
 p.addOptional('stimulusStructDeltaT','100',@ischar);
 p.addOptional('maxBOLDSimulated','1.6',@ischar);
 p.addOptional('maxBOLD','1.0',@ischar);
 p.addOptional('baselineStimulus','0',@ischar);
-p.addOptional('maxBOLDStimulus','30',@ischar);
+p.addOptional('maxBOLDStimulus','15',@ischar);
 p.addOptional('nOutcomes','51',@ischar);
 p.addOptional('headroom','.1',@ischar);
 
@@ -114,8 +129,10 @@ headroom = str2double(p.Results.headroom);
 simulatedPsiParams = [str2double(Sr_m) str2double(k1_m) str2double(k2_m) str2double(beta_m) str2double(sigma_m)]; 
 trialLength = str2double(trialLength);
 TR = str2double(TR);
-seed = str2double(seed);
 
+if strcmp(seed,'choose')
+    rng('shuffle'); seed = randi(2^32);
+end
 
 %% Are we simulating old fashioned constant stimuli or using Q+?
 
@@ -137,7 +154,7 @@ Sr = 0.899:0.025:1.099;
 k1 = 0.01:0.04:0.4;
 k2 = 0.01:0.04:0.4;
 beta = 0.4:0.2:2; % Amplitude of the scaled response; should converge to unity
-sigma = 0.3:0.2:1;	% Standard deviation of the scaled (0-1) noise
+sigma = 0.1:0.2:1;	% Standard deviation of the scaled (0-1) noise
 
 myQpParams.psiParamsDomainList = {Sr, k1, k2, beta, sigma};
 
@@ -215,12 +232,10 @@ for tt = 1:nTrials
     % Update maxBOLD with our best guess at the maximum BOLD fMRI response
     % that could be evoked by a stimulus (relative to the baseline
     % stimulus), which is the beta value of the model
-
-    psiParamsIndex = qpListMaxArg(questData.posterior);
-    psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
-    
     % Only update maxBOLD after we've had at least one maxBOLD trial
     if tt > 2
+        psiParamsIndex = qpListMaxArg(questData.posterior);
+        psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
         maxBOLD = maxBOLD.*psiParamsQuest(4);
         fprintf('Using Q+ fit to generate maxBOLD \nmaxBOLD = %0.3f\n Q+ parameters: %0.4f, %0.4f, %0.4f, %0.4f, %0.4f \n', ...
         maxBOLD, psiParamsQuest(1),psiParamsQuest(2),psiParamsQuest(3),psiParamsQuest(4),psiParamsQuest(5));
@@ -237,8 +252,7 @@ for tt = 1:nTrials
         'maxBOLDSimulated',maxBOLDSimulated,...
         'rngSeed',rngSeed.Seed,...,
         'maxBOLD',maxBOLD,...,
-        'TRmsecs', TR, ...,
-        'noiseSD', simulatedPsiParams(5));
+        'TRmsecs', TR);
 
     % Grab a naive copy of questData
     questData = questDataUntrained;
@@ -262,7 +276,7 @@ betaGuess = psiParamsQuest(4);
 
 % Divide maxBOLD by our beta estimate: (beta / beta) = 1, so
 % new maxBOLD = maxBOLD/beta 
-maxBOLD = maxBOLD/betaGuess;
+maxBOLD = maxBOLD.*betaGuess;
 
 % Now run through the fitting steps again with the new maxBOLD
 % Create a packet
@@ -276,8 +290,7 @@ thePacket = createPacket('nTrials',tt,...,
     'maxBOLDSimulated',maxBOLDSimulated,...
     'rngSeed',rngSeed.Seed,...,
     'maxBOLD',maxBOLD,...,
-    'TRmsecs', TR, ...,
-    'noiseSD', simulatedPsiParams(5));
+    'TRmsecs', TR);
 
 % Grab a naive copy of questData
 questData = questDataUntrained;

@@ -31,7 +31,7 @@ function [modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simu
 %{
 
 % SIMULATED BETA MUST ALWAYS BE UNITY
-model_params = [1.05 .01 .06 1.00 .4]; 
+model_params = [1.05 .21 .06 1.00 .4]; 
 control_params = [800 12]; %TR (secs), trial length (msecs)
 sim_type = logical(0); %Q+ (if true), random (if false)
 rng('shuffle');
@@ -83,7 +83,7 @@ simulateConstantStimuli = sim_type;
 simulatedPsiParams = model_params;
 
 % Some information about the trials?
-nTrials = 30; % how many trials
+nTrials = 60; % how many trials
 trialLengthSecs = control_params(2); % seconds per trial (12)
 stimulusStructDeltaT = 100; % the resolution of the stimulus struct in msecs
 
@@ -283,7 +283,8 @@ for tt = 1:nTrials
         'maxBOLDSimulated',maxBOLDSimulated,...
         'rngSeed',rngSeed.Seed,...,
         'maxBOLD',maxBOLD,...,
-        'TRmsecs', control_params(1));
+        'TRmsecs', control_params(1),...,
+        'noiseSD',simulatedPsiParams(5));
    
     % Grab a naive copy of questData
     questData = questDataUntrained;
@@ -355,7 +356,8 @@ end
     'maxBOLDSimulated',maxBOLDSimulated,...
     'rngSeed',rngSeed.Seed,...,
     'maxBOLD',maxBOLD,...,
-    'TRmsecs', control_params(1));
+    'TRmsecs', control_params(1),...,
+    'noiseSD',simulatedPsiParams(5));
 
 % Grab a naive copy of questData
 questData = questDataUntrained;

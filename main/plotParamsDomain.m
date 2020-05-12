@@ -14,6 +14,11 @@ params = struct;
 params.Sr = logspace(log10(0.01),log10(5),10);
 params.k1 = linspace(.01,.08,10);
 params.k2 = logspace(log10(0.01),log10(100),10);
+params.beta = 1;
+
+model = @doeTemporalModel;
+
+plotParamsDomain(model, params);
 
 % Example 2: 
 % from early doeSimulate code
@@ -119,7 +124,7 @@ for c = 1:nAllCombos
     color = color + 1;
     yVals = model(stimulusFreqHzFine,allParameterCombos(c,:));
     semilogx(stimulusFreqHzFine,yVals,'Color',colorMap(color,:));
-    set(gca,'xtick',[],'ytick',[])
+    set(gca,'xtick',[],'ytick',[],'XScale', 'log')
     
 end
 
