@@ -50,7 +50,7 @@ function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trial
 %{
 params = struct;
 params.Sr_m = '.98';
-params.k1_m = '.21';
+params.k1_m = '.04';
 params.k2_m = '.06';
 params.beta_m = '1.00';
 params.sigma_m = '.11';

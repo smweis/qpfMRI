@@ -31,7 +31,7 @@ function [modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simu
 %{
 
 % SIMULATED BETA MUST ALWAYS BE UNITY
-model_params = [1.05 .21 .06 1.00 .4]; 
+model_params = [1.05 .04 .06 1.00 .4]; 
 control_params = [800 12]; %TR (secs), trial length (msecs)
 sim_type = logical(0); %Q+ (if true), random (if false)
 rng('shuffle');
