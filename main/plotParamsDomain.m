@@ -31,7 +31,7 @@ params.beta = 1;
 
 model = @doeTemporalModel;
 
-plotParamsDomain(model, params);
+plotParamsDomain(model, params, varargin{:});
 %
 %}
 

@@ -34,9 +34,7 @@ function [modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simu
 model_params = [1.05 .04 .06 1.00 .4]; 
 control_params = [800 12]; %TR (secs), trial length (msecs)
 sim_type = logical(0); %Q+ (if true), random (if false)
-rng('shuffle');
-rng('shuffle');
-seed = randi(1000000);
+seed = randi(10000);
 [modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simulate(model_params, control_params, sim_type, seed);
 
 
@@ -83,7 +81,7 @@ simulateConstantStimuli = sim_type;
 simulatedPsiParams = model_params;
 
 % Some information about the trials?
-nTrials = 60; % how many trials
+nTrials = 20; % how many trials
 trialLengthSecs = control_params(2); % seconds per trial (12)
 stimulusStructDeltaT = 100; % the resolution of the stimulus struct in msecs
 
@@ -109,7 +107,7 @@ verbose = true;
 myQpParams = qpParams;
 
 % Add the stimulus domain. ~Log spaced frequencies between 0 and 30 Hz
-myQpParams.stimParamsDomainList = {[baselineStimulus,1.875,3.75,7.5,15,30,60]};
+myQpParams.stimParamsDomainList = {[baselineStimulus,1.875,3.75,7.5,15,30,60,120,180]};
 nStims = length(myQpParams.stimParamsDomainList{1});
 
 % The number of outcome categories.
@@ -128,7 +126,7 @@ myQpParams.qpPF = @(f,p) qpDoETemporalModel(f,p,myQpParams.nOutcomes,headroom);
 Sr = 0.899:0.025:1.099;
 k1 = 0.01:0.04:0.4;
 k2 = 0.01:0.04:0.4;
-beta = 0.4:0.2:2; % Amplitude of the scaled response; should converge to unity
+beta = 0.8:0.1:1.4; % Amplitude of the scaled response; should converge to unity
 sigma = 0.3:0.2:1;	% Standard deviation of the scaled (0-1) noise
 
 % Beta will converge to 1 as maxBOLD gets closer and closer to the
@@ -148,9 +146,10 @@ if isempty(simulatedPsiParams)
 end
 
 % Derive some lower and upper bounds from the parameter ranges. This is
-% used later in maximum likelihood fitting
-lowerBounds = [Sr(1) k1(1) k2(1) beta(1) sigma(1)];
-upperBounds = [Sr(end) k1(end) k2(end) beta(end) sigma(end)];
+% used later in maximum likelihood fitting. 
+% But force beta to be 1.
+lowerBounds = [Sr(1) k1(1) k2(1) .999 sigma(1)];
+upperBounds = [Sr(end) k1(end) k2(end) 1.001 sigma(end)];
 
 % Create a simulated observer with binned output
 myQpParams.qpOutcomeF = @(f) qpSimulatedObserver(f,myQpParams.qpPF,simulatedPsiParams);
@@ -196,7 +195,7 @@ if showPlots
     
     % Set up the TTF figure
     subplot(3,1,2)
-    freqDomain = logspace(log10(0.01),log10(100),100);
+    freqDomain = logspace(log10(0.01),log10(200),100);
     predictedRelativeResponse = doeTemporalModel(freqDomain,simulatedPsiParams) - ...
         doeTemporalModel(baselineStimulus,simulatedPsiParams);
     % May need to scale the predictedRelativeResponse here to account for
@@ -209,7 +208,6 @@ if showPlots
     hold on
     currentOutcomesHandle = scatter(nan,nan);
     currentTTFHandle = plot(freqDomain,doeTemporalModel(freqDomain,simulatedPsiParams),'-k');
-    currentBadsTTFHandle = plot(freqDomain,doeTemporalModel(freqDomain,simulatedPsiParams),'-k');
     
     % Calculate the lower headroom bin offset. We'll use this later
     nLower = round(headroom*myQpParams.nOutcomes);
@@ -315,17 +313,10 @@ for tt = 1:nTrials
         currentOutcomesHandle = scatter(stimulusVecPlot(1:tt),yVals,'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',.2);
         psiParamsIndex = qpListMaxArg(questData.posterior);
         psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
-        try
-            delete(currentBadsTTFHandle)
-            currentBadsTTFHandle = semilogx(freqDomain,doeTemporalModel(freqDomain,psiParamsFit),'-b');
-        catch
-            fprintf('No best fit for BADS yet.\n');
-            currentBadsTTFHandle = semilogx(freqDomain,doeTemporalModel(freqDomain,psiParamsQuest),'-b');
-        end
         
         delete(currentTTFHandle)
         currentTTFHandle = semilogx(freqDomain,doeTemporalModel(freqDomain,psiParamsQuest),'-r');
-        legend('Veridical model','Stimulus Outcomes','Best Fit from BADS','Best Fit from Q+','Location','northwest');
+        legend('Veridical model','Stimulus Outcomes','Best Fit from Q+','Location','northwest');
         
         % Entropy by trial
         subplot(3,1,3)
@@ -351,6 +342,16 @@ end
 
 % FIX THIS SO THAT BETA = 1 AND THEN RECALCULATE MAX BOLD
 % Obtain outcomes from tfeUpdate
+
+% Grab our current beta estimate is: 
+psiParamsIndex = qpListMaxArg(questData.posterior);
+psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
+betaGuess = psiParamsQuest(4);
+
+% Divide maxBOLD by our beta estimate: (beta / beta) = 1, so
+% new maxBOLD = maxBOLD/beta 
+maxBOLD = maxBOLD.*betaGuess;
+
 [outcomes, modelResponseStruct, thePacketOut] = ...
     tfeUpdate(thePacket, myQpParams, stimulusVec, baselineStimulus, ...
     'maxBOLDSimulated',maxBOLDSimulated,...
@@ -385,10 +386,12 @@ fprintf('Simulated parameters:              %0.3f, %0.3f, %0.3f, %0.3f, %0.3f \n
 fprintf('Max posterior QUEST+ parameters:   %0.3f, %0.3f, %0.3f, %0.3f, %0.3f \n', ...
     psiParamsQuest(1),psiParamsQuest(2),psiParamsQuest(3),psiParamsQuest(4),psiParamsQuest(5));
 
+psiParamsBads = psiParamsQuest;
+psiParamsBads(4) = 1;
 %% Find maximum likelihood fit. Use psiParams from QUEST+ as the starting
 % parameter for the search, and impose as parameter bounds the range
 % provided to QUEST+.
-psiParamsFit = qpFitBads(questData.trialData,questData.qpPF,psiParamsQuest,questData.nOutcomes,...
+psiParamsFit = qpFitBads(questData.trialData,questData.qpPF,psiParamsBads,questData.nOutcomes,...
     'lowerBounds', lowerBounds,'upperBounds',upperBounds,...
     'plausibleLowerBounds',lowerBounds,'plausibleUpperBounds',upperBounds);
 fprintf('Maximum likelihood fit parameters: %0.3f, %0.3f, %0.3f, %0.3f, %0.3f \n', ...

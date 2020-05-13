@@ -53,7 +53,7 @@ params.Sr_m = '.98';
 params.k1_m = '.04';
 params.k2_m = '.06';
 params.beta_m = '1.00';
-params.sigma_m = '.11';
+params.sigma_m = '.8';
 params.TR = '800';
 params.trialLength = '12';
 params.qpPres = '0';
@@ -153,7 +153,7 @@ myQpParams.qpPF = @(f,p) qpDoETemporalModel(f,p,myQpParams.nOutcomes,headroom);
 Sr = 0.899:0.025:1.099;
 k1 = 0.01:0.04:0.4;
 k2 = 0.01:0.04:0.4;
-beta = 0.4:0.2:2; % Amplitude of the scaled response; should converge to unity
+beta = linspace(0.5,2,7); % Amplitude of the scaled response; should converge to unity
 sigma = 0.1:0.2:1;	% Standard deviation of the scaled (0-1) noise
 
 myQpParams.psiParamsDomainList = {Sr, k1, k2, beta, sigma};
@@ -174,8 +174,8 @@ end
 
 % Derive some lower and upper bounds from the parameter ranges. This is
 % used later in maximum likelihood fitting
-lowerBounds = [Sr(1) k1(1) k2(1) beta(1) sigma(1)];
-upperBounds = [Sr(end) k1(end) k2(end) beta(end) sigma(end)];
+lowerBounds = [Sr(1) k1(1) k2(1) .999 sigma(1)];
+upperBounds = [Sr(end) k1(end) k2(end) 1.001 sigma(end)];
 
 
 % We also want to make sure that the veridical values are actually within
@@ -252,7 +252,8 @@ for tt = 1:nTrials
         'maxBOLDSimulated',maxBOLDSimulated,...
         'rngSeed',rngSeed.Seed,...,
         'maxBOLD',maxBOLD,...,
-        'TRmsecs', TR);
+        'TRmsecs', TR,...,
+        'noiseSD',simulatedPsiParams(5));
 
     % Grab a naive copy of questData
     questData = questDataUntrained;
@@ -290,7 +291,8 @@ thePacket = createPacket('nTrials',tt,...,
     'maxBOLDSimulated',maxBOLDSimulated,...
     'rngSeed',rngSeed.Seed,...,
     'maxBOLD',maxBOLD,...,
-    'TRmsecs', TR);
+    'TRmsecs', TR,...,
+    'noiseSD',simulatedPsiParams(5));
 
 % Grab a naive copy of questData
 questData = questDataUntrained;
@@ -313,10 +315,13 @@ fprintf('Simulated parameters:              %0.4f, %0.4f, %0.4f, %0.4f, %0.4f \n
 fprintf('FINAL Max posterior QUEST+ parameters:   %0.4f, %0.4f, %0.4f, %0.4f, %0.4f \n', ...
     psiParamsQuest(1),psiParamsQuest(2),psiParamsQuest(3),psiParamsQuest(4),psiParamsQuest(5));
 
+psiParamsBads = psiParamsQuest;
+psiParamsBads(4) = 1;
+
 % Find maximum likelihood fit. Use psiParams from QUEST+ as the starting
 % parameter for the search, and impose as parameter bounds the range
 % provided to QUEST+.
-psiParamsFit = qpFitBads(questData.trialData,questData.qpPF,psiParamsQuest,questData.nOutcomes,...
+psiParamsFit = qpFitBads(questData.trialData,questData.qpPF,psiParamsBads,questData.nOutcomes,...
     'lowerBounds', lowerBounds,'upperBounds',upperBounds,...
     'plausibleLowerBounds',lowerBounds,'plausibleUpperBounds',upperBounds);
 fprintf('FINAL Maximum likelihood fit parameters: %0.4f, %0.4f, %0.4f, %0.4f, %0.4f \n', ...
