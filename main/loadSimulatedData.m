@@ -3,7 +3,7 @@ function [data, names] = loadSimulatedData(dirName,dataLines)
 % CAUTION CAUTION CAUTION: TEMPORARY LOADER! BUGS ABOUND
 dirFiles = dir(fullfile(dirName,'*.csv'));
 
-data = zeros(length(dirFiles),5);
+data = zeros(length(dirFiles),6);
 names = cell(length(dirFiles),1);
 
 
@@ -13,23 +13,19 @@ if nargin < 2
 end
 
 %% Setup the Import Options and import the data
-opts = delimitedTextImportOptions("NumVariables", 5);
+opts = delimitedTextImportOptions("NumVariables", 6);
 
 % Specify range and delimiter
 opts.DataLines = dataLines;
 opts.Delimiter = ",";
 
 % Specify column names and types
-opts.VariableNames = ["VarName1", "VarName2", "VarName3", "VarName4", "VarName5"];
-opts.VariableTypes = ["double", "double", "double", "double", "double"];
+opts.VariableNames = ["Sr", "k1", "k2", "beta", "sigma", "maxBOLD"];
+opts.VariableTypes = ["double", "double", "double", "double", "double", "double"];
 
 % Specify file level properties
 opts.ExtraColumnsRule = "ignore";
 opts.EmptyLineRule = "read";
-
-% Specify variable properties
-opts = setvaropts(opts, ["VarName1", "VarName2", "VarName3", "VarName4", "VarName5"], "TrimNonNumeric", true);
-opts = setvaropts(opts, ["VarName1", "VarName2", "VarName3", "VarName4", "VarName5"], "ThousandsSeparator", ",");
 
 
 for i = 1:length(dirFiles)
@@ -56,7 +52,7 @@ qpData = data(qpIndex,:);
 qpNames = names(qpIndex);
 
 % hardcoding data from test_1
-realData(1:50,:) = repmat([1. .1 .2 1.00 .4],50,1);
+realData(1:50,:) = repmat([1. .1 .2 1.00 .4 1.5],50,1);
 
 mean(qpData)
 mean(randomData)

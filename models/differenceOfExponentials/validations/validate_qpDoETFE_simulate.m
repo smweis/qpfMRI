@@ -95,7 +95,7 @@ maxBOLD = 1.0;
 % should be selected with the expectation that the neural response to this
 % stimulus will be minimal as compared to all other stimuli.
 baselineStimulus = 0;
-maxBOLDStimulus = 30;
+maxBOLDStimulus = 20;
 % How talkative is the simulation?
 showPlots = true;
 verbose = true;
@@ -107,7 +107,7 @@ verbose = true;
 myQpParams = qpParams;
 
 % Add the stimulus domain. ~Log spaced frequencies between 0 and 30 Hz
-myQpParams.stimParamsDomainList = {[baselineStimulus,1.875,3.75,7.5,15,30,60,120,180]};
+myQpParams.stimParamsDomainList = {[baselineStimulus,1.875,3.75,7.5,15,20,30,60]};
 nStims = length(myQpParams.stimParamsDomainList{1});
 
 % The number of outcome categories.
