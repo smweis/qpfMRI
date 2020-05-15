@@ -1,6 +1,6 @@
 function [psiParamsFit]=doeSimulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trialLength, qpPres, outNum, seed, varargin)
 %% A simulation script to be compiled and run at speed for the DOE temporal model
-%
+%% OBSOLETE: SEE SIMULATE
 % Syntax:
 %  [psiParamsFit]=validate_qpDoETFE_simulate(Sr_m, k1_m, k2_m, beta_m, sigma_m, TR, trialLength, qpPres, outNum)
 %

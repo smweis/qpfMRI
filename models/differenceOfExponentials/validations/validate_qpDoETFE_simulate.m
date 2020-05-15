@@ -1,6 +1,6 @@
 function [modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simulate(model_params, control_params, sim_type, seed, varargin)
 %% A validation script to evaluate how the DoE model is working
-%
+%% OBSOLETE: SEE SIMULATE
 % Syntax:
 %  [modelResponseStruct,thePacketOut,questDataCopy]=validate_qpDoETFE_simulate(model_params, control_params, sim_type, debug)
 %

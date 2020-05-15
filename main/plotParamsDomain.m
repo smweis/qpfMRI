@@ -1,10 +1,27 @@
-function [] = plotParamsDomain(model, params)
-% model     -          functionHandle.
-%
-% params    -          A struct consisting of all parameter domains. 
-%                      Current functionality can plot 3 parameters.
-%                      DoE    (n=5): Sr, k1, k2, beta, sigma
-%                      Watson (n=5): tau, kappa, zeta, beta, sigma
+function plotParamsDomain(model, paramsDomain, varargin)
+% 
+% Inputs:
+%   model                 - A function handle. This should be the
+%                           'continuous function.' The Quest+ specific
+%                           function will be defined in the model-specific
+%                           code block. Currently supported:
+%                             @doeTemporalModel
+%                             @watsonTemporalModel
+%   paramsDomain          - Struct consisting of upper bounds, lower
+%                           bounds, and intervals for all necessary
+%                           parameters. All models should have beta and
+%                           sigma as parameters.
+%                             DoE    (n=5): Sr, k1, k2, beta, sigma
+%                             Watson (n=5): tau, kappa, zeta, beta, sigma
+% Optional key/value pairs (used in fitting):
+%  
+%   p.addParameter('xParam',1,@isnumeric);
+%   p.addParameter('yParam', 2, @isnumeric);
+%   p.addParameter('colorParam', 3, @isscalar);
+%   p.addParameter('minStim',.01,@isscalar);
+%   p.addParameter('maxStim',100,@isscalar);
+%   p.addParameter('figWidth',900,@isnumeric);
+%   p.addParameter('figHeight',900,@isnumeric);
 %
 % Example: 
 %{
@@ -14,50 +31,71 @@ params = struct;
 params.Sr = logspace(log10(0.01),log10(5),10);
 params.k1 = linspace(.01,.08,10);
 params.k2 = logspace(log10(0.01),log10(100),10);
-params.beta = 1;
+paramsDomain.beta = 0.8:0.1:1.4; % Amplitude of the scaled response; should converge to unity
+paramsDomain.sigma = 0.3:0.2:1;	% Standard deviation of the scaled (0-1) noise
 
 model = @doeTemporalModel;
 
-plotParamsDomain(model, params);
+plotParamsDomain(model, paramsDomain);
 
 % Example 2: 
 % from early doeSimulate code
-params = struct;
-params.Sr = 0.899:0.025:1.099;
-params.k1 = 0.01:0.04:0.4;
-params.k2 = 0.01:0.04:0.4;
+paramsDomain = struct;
+paramsDomain.Sr = 0.899:0.025:1.099;
+paramsDomain.k1 = 0.01:0.04:0.4;
+paramsDomain.k2 = 0.01:0.04:0.4;
+paramsDomain.beta = 0.8:0.1:1.4; % Amplitude of the scaled response; should converge to unity
+paramsDomain.sigma = 0.3:0.2:1;	% Standard deviation of the scaled (0-1) noise
 
-params.beta = 1;
 
 model = @doeTemporalModel;
 
-plotParamsDomain(model, params, varargin{:});
+plotParamsDomain(model, paramsDomain);
 %
 %}
+%% Handle initial inputs
+p = inputParser;
 
-% Model specific processing. This should be functionalized. 
-modelsCreated = {'doeTemporalModel','watsonTemporalModel'};
-s = functions(model);
-assert(any(strcmp(modelsCreated,s.function)==1),'Model not defined');
+% Required input
+p.addRequired('model',@(x) isa(x,'function_handle'));
+p.addRequired('paramsDomain',@isstruct);
 
-if contains(s.function,'doe')
-    assert(isfield(params,'Sr'),'Sr missing or misnamed for DoE model.');
-    assert(isfield(params,'k1'),'k1 missing or misnamed for DoE model.');
-    assert(isfield(params,'k2'),'k2 missing or misnamed for DoE model.');
-elseif contains(s.function,'watson')
-    assert(isfield(params,'tau'),'tau missing or misnamed for Watson model.');
-    assert(isfield(params,'kappa'),'kappa missing or misnamed for Watson model.');
-    assert(isfield(params,'zeta'),'zeta missing or misnamed for Watson model.');
+% Optional params
+p.addParameter('xParam',1,@isnumeric);
+p.addParameter('yParam', 2, @isnumeric);
+p.addParameter('colorParam', 3, @isscalar);
+p.addParameter('minStim',.01,@isscalar);
+p.addParameter('maxStim',100,@isscalar);
+p.addParameter('figWidth',900,@isnumeric);
+p.addParameter('figHeight',900,@isnumeric);
+
+
+% Parse
+p.parse( model, paramsDomain, varargin{:});
+
+% First verify the model is valid and the parameters are accounted for.
+[paramNamesInOrder] = checkModel(model,paramsDomain);
+
+% Models are passed with beta and sigma but we need to ignore them here.
+betaIndex = find(strcmp(paramNamesInOrder,'beta'));
+sigmaIndex = find(strcmp(paramNamesInOrder,'sigma'));
+
+% Beta and Sigma are not required and won't be plotted for this
+nParameters = length(paramNamesInOrder);
+% Beta needs to replaced with 1.
+paramsDomain.(paramNamesInOrder{betaIndex}) = 1; 
+
+% If sigma is provided, it's just ignored.
+if ~isempty(sigmaIndex)
+    nParameters = nParameters - 1; 
 end
 
-parameterNames = fieldnames(params);
-nParameters = length(parameterNames);
 paramSpaceSize = zeros(1,nParameters);
 paramVectors = cell(nParameters,1);
 
-for p = 1:nParameters
-    paramSpaceSize(p) = length(params.(parameterNames{p}));
-    paramVectors{p} = params.(parameterNames{p});
+for par = 1:nParameters
+    paramSpaceSize(par) = length(paramsDomain.(paramNamesInOrder{par}));
+    paramVectors{par} = paramsDomain.(paramNamesInOrder{par});
 end
 
 % Make one list of all possible parameter combinations
@@ -66,15 +104,17 @@ nAllCombos = length(allParameterCombos);
 
 % Prep for plotting
 
-
-if nParameters == 4 % including beta
-    iterator1 = paramSpaceSize(2)*paramSpaceSize(3);
-    iterator2 = paramSpaceSize(3);
-    colorLength = paramSpaceSize(3);
-elseif nParameters == 3 % including beta
-    iterator1 = paramSpaceSize(1)*paramSpaceSize(2);
-    iterator2 = paramSpaceSize(2);
-    colorLength = paramSpaceSize(2);
+% Currently 2 or 3 parameters are supported
+if nParameters == 4 % including beta and sigma
+    iterator1 = paramSpaceSize(p.Results.yParam)*paramSpaceSize(p.Results.colorParam);
+    iterator2 = paramSpaceSize(p.Results.colorParam);
+    colorLength = paramSpaceSize(p.Results.colorParam);
+elseif nParameters == 2 % including beta and sigma
+    iterator1 = paramSpaceSize(p.Results.yParam)*paramSpaceSize(p.Results.colorParam);
+    iterator2 = paramSpaceSize(p.Results.colorParam);
+    colorLength = paramSpaceSize(p.Results.colorParam);
+else
+    error('Too many parameters are specified');
 end
 
 colorMap = jet(colorLength+1);
@@ -82,21 +122,24 @@ color = 1;
 subplotNum = 1;
 plotRow = 1;
 plotColumn = 1;
-stimulusFreqHzFine = logspace(log10(0.01),log10(100),100);
+
+stimulusFreqHzFine = logspace(log10(p.Results.minStim),log10(p.Results.maxStim),100);
 
 % Initialize figure
-fig = figure;
+fig = figure('Position', [10 10 p.Results.figWidth p.Results.figHeight]);
 
 % Plot all combinations
 for c = 1:nAllCombos
     % For the first one, initialize
     if c == 1
-        subplot(paramSpaceSize(1),paramSpaceSize(2),subplotNum);
+        subplot(paramSpaceSize(p.Results.xParam),paramSpaceSize(p.Results.yParam),subplotNum);
         yVals = model(stimulusFreqHzFine,allParameterCombos(c,:));
         semilogx(stimulusFreqHzFine,yVals,'Color',colorMap(color,:));
-        plotTitle = sprintf('%s: %.03f',parameterNames{2},paramVectors{2,1}(plotColumn));
+        plotTitle = sprintf('%s: %.03f',paramNamesInOrder{p.Results.yParam},...,
+            paramVectors{p.Results.yParam,1}(plotColumn));
         title(plotTitle); 
-        ylabel(sprintf('%s: %.02f',parameterNames{1},paramVectors{1,1}(plotRow)),'Fontsize',10);
+        ylabel(sprintf('%s: %.02f',paramNamesInOrder{p.Results.xParam},...,
+            paramVectors{p.Results.xParam,1}(plotRow)),'Fontsize',10);
         hold on;
 
     % every time it iterates through the first parameter (every b*c)
@@ -104,20 +147,22 @@ for c = 1:nAllCombos
         color = 1;
         plotColumn = 1;
         plotRow = plotRow + 1;
-        subplotNum = paramSpaceSize(2)*(plotRow-1) + plotColumn;
-        subplot(paramSpaceSize(1),paramSpaceSize(2),subplotNum);
-        ylabel(sprintf('%s: %.02f',parameterNames{1},paramVectors{1,1}(plotRow)),'Fontsize',10);
+        subplotNum = paramSpaceSize(p.Results.yParam)*(plotRow-1) + plotColumn;
+        subplot(paramSpaceSize(p.Results.xParam),paramSpaceSize(p.Results.yParam),subplotNum);
+        ylabel(sprintf('%s: %.02f',paramNamesInOrder{p.Results.xParam},...
+            paramVectors{p.Results.xParam,1}(plotRow)),'Fontsize',10);
         hold on;
     elseif mod(c-1,iterator2) == 0
         color = 1;
         plotColumn = plotColumn + 1;
-        subplotNum = paramSpaceSize(2)*(plotRow-1) + plotColumn;
-        subplot(paramSpaceSize(1),paramSpaceSize(2),subplotNum);
+        subplotNum = paramSpaceSize(p.Results.yParam)*(plotRow-1) + plotColumn;
+        subplot(paramSpaceSize(p.Results.xParam,1),paramSpaceSize(p.Results.yParam),subplotNum);
         hold on;
     end
     
     if plotRow == 1
-        plotTitle = sprintf('%s: %.03f',parameterNames{2},paramVectors{2,1}(plotColumn));
+        plotTitle = sprintf('%s: %.03f',paramNamesInOrder{p.Results.yParam},...,
+            paramVectors{p.Results.yParam,1}(plotColumn));
         title(plotTitle); 
     end
     
@@ -135,11 +180,10 @@ han.YLabel.Visible='on';
 
 
 colormap(jet(colorLength+1));
-cbh = colorbar('YTickLabel',[0 round(paramVectors{end-1},2)]);
+cbh = colorbar('YTickLabel',[0 round(paramVectors{p.Results.colorParam},2)]);
 colorTitleHandle = get(cbh,'Title');
-titleString = sprintf('%s',parameterNames{end-1});
+titleString = sprintf('%s',paramNamesInOrder{p.Results.colorParam});
 set(colorTitleHandle ,'String',titleString,'Fontsize',15);
 set(cbh, 'Position', [.07 .2 .02 .6]);
 hold off;
-    
     
