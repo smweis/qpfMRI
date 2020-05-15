@@ -1,5 +1,5 @@
 function [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain, qpPres, varargin)
-%% Description and examples
+%% simulate
 % A script that will simulate fMRI BOLD data and fit a model with or
 % without Q+ control
 %
@@ -30,7 +30,7 @@ function [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain, qpPr
 %                                   choice.
 %
 % Optional key/value pairs (used in fitting):
-%  
+%  %% TODO - I HAVE NOT DEFINED THESE YET!
 %   'simulatedPsiParams',@isstruct);
 %	'headroom', 0.1, @isnumeric);
 %   'maxBOLD', 1.0, @isscalar);
@@ -48,7 +48,13 @@ function [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain, qpPr
 %	'headroom',.1,@isscalar);
 %	'stimulusDomain',{},@iscell);
 %	'questDataCopy',{},@isstruct);
-%
+% Optional key/value pairs (used in plotting):
+%   'showPlots',false,@islogical);
+%   'minStim',.01,@isscalar);
+%   'maxStim',100,@isscalar);
+%   'figWidth',900,@isnumeric);
+%   'figHeight',900,@isnumeric);
+
 % Outputs:
 %   psiParamsFit          - 1xn vector returning the BADS best fit for the
 %                           parameters
