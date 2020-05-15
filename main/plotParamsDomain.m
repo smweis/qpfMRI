@@ -1,5 +1,6 @@
-function plotParamsDomain(model, paramsDomain,myQpParams,headroom,varargin)
-% 
+function plotParamsDomain(model, paramsDomain, varargin)
+%% Plot all possible combos of a parameter domain. 
+% TODO: Note - I'm not sure how well this behaves with a 4-parameter model.
 % Inputs:
 %   model                 - A function handle. This should be the
 %                           'continuous function.' The Quest+ specific
@@ -13,15 +14,25 @@ function plotParamsDomain(model, paramsDomain,myQpParams,headroom,varargin)
 %                           sigma as parameters.
 %                             DoE    (n=5): Sr, k1, k2, beta, sigma
 %                             Watson (n=5): tau, kappa, zeta, beta, sigma
-% Optional key/value pairs (used in fitting):
+%
+% Optional key/value pairs:
 %  
-%   p.addParameter('xParam',1,@isnumeric);
-%   p.addParameter('yParam', 2, @isnumeric);
-%   p.addParameter('colorParam', 3, @isscalar);
-%   p.addParameter('minStim',.01,@isscalar);
-%   p.addParameter('maxStim',100,@isscalar);
-%   p.addParameter('figWidth',900,@isnumeric);
-%   p.addParameter('figHeight',900,@isnumeric);
+%   'xParam'                - Integer (Default = 1)
+%                             Which parameter to vary along the x subplot axis.
+%   'yParam'                - Integer (Default = 2)
+%                             Which parameter to vary along the y subplot axis. 
+%   'colorParam'            - Integer (Default = 3)
+%                             Which parameter to vary color for. 
+%   'minStim'               - Scalar (Default = .01)
+%                             Lowest value to use for plotting stimulus
+%                             domain.
+%   'maxStim'               - Scalar (Default = 100)
+%                             Highest value to use for plotting stimulus
+%                             domain.
+%   'figWidth'              - Integer (Default = 900)
+%                             Width of figure window size.
+%   'figHeight'             - Integer (Default = 900)
+%                             Height of figure window size.
 %
 % Example: 
 %{
@@ -59,13 +70,14 @@ p = inputParser;
 % Required input
 p.addRequired('model',@(x) isa(x,'function_handle'));
 p.addRequired('paramsDomain',@isstruct);
-p.addRequired('myQpParams',@isstruct);
-p.addRequired('headroom',@isnumeric);
+
 
 % Optional params
+p.addParameter('nOutcomes',51,@isnumeric);
+p.addParameter('headroom',.1,@isscalar);
 p.addParameter('xParam',1,@isnumeric);
 p.addParameter('yParam', 2, @isnumeric);
-p.addParameter('colorParam', 3, @isscalar);
+p.addParameter('colorParam', 3, @isnumeric);
 p.addParameter('minStim',.01,@isscalar);
 p.addParameter('maxStim',100,@isscalar);
 p.addParameter('figWidth',900,@isnumeric);
@@ -73,10 +85,14 @@ p.addParameter('figHeight',900,@isnumeric);
 
 
 % Parse
-p.parse( model, paramsDomain, myQpParams, headroom, varargin{:});
+p.parse( model, paramsDomain, varargin{:});
+
+nOutcomes = p.Results.nOutcomes;
+headroom = p.Results.headroom;
 
 % First verify the model is valid and the parameters are accounted for.
-[paramNamesInOrder] = checkModel(model,paramsDomain,myQpParams,headroom);
+[paramNamesInOrder] = checkModel(model,paramsDomain,...,
+    'nOutcomes',nOutcomes,'headroom',headroom);
 
 % Models are passed with beta and sigma but we need to ignore them here.
 betaIndex = find(strcmp(paramNamesInOrder,'beta'));
@@ -106,12 +122,12 @@ nAllCombos = length(allParameterCombos);
 
 % Prep for plotting
 
-% Currently 2 or 3 parameters are supported
-if nParameters == 4 % including beta and sigma
+% Currently 3 or 4 parameters are supported (including Beta)
+if nParameters == 4 % including beta
     iterator1 = paramSpaceSize(p.Results.yParam)*paramSpaceSize(p.Results.colorParam);
     iterator2 = paramSpaceSize(p.Results.colorParam);
     colorLength = paramSpaceSize(p.Results.colorParam);
-elseif nParameters == 2 % including beta and sigma
+elseif nParameters == 3 % including beta
     iterator1 = paramSpaceSize(p.Results.yParam)*paramSpaceSize(p.Results.colorParam);
     iterator2 = paramSpaceSize(p.Results.colorParam);
     colorLength = paramSpaceSize(p.Results.colorParam);

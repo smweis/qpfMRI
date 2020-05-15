@@ -1,10 +1,10 @@
-function [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain, qpPres, varargin)
+function [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain, varargin)
 %% simulate
 % A script that will simulate fMRI BOLD data and fit a model with or
 % without Q+ control
 %
 % Syntax:
-%  [psiParamsFit]=simulate(model, paramsDomain, qpPres, varargin)
+%  [psiParamsFit]=simulate(model, paramsDomain, varargin)
 %
 % Description:
 %	Takes in a model and a possible set of parameters and whether or not Q+ 
@@ -24,43 +24,88 @@ function [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain, qpPr
 %                             DoE    (n=5): Sr, k1, k2, beta, sigma
 %                             Watson (n=5): tau, kappa, zeta, beta, sigma
 %
-%   qpPres                - Logical: 
-%                           true  - run simulation with Q+ stimulus choice
-%                           false - run simulation with random stimulus
-%                                   choice.
+% Optional key/value pairs:
 %
-% Optional key/value pairs (used in fitting):
-%  %% TODO - I HAVE NOT DEFINED THESE YET!
-%   'simulatedPsiParams',@isstruct);
-%	'headroom', 0.1, @isnumeric);
-%   'maxBOLD', 1.0, @isscalar);
-%   'maxBOLDSimulated', 1.5, @isscalar);
-%	'rngSeed',rng(1,'twister'),@isnumeric);
-%	'TR',800, @isnumeric);
-%	'trialLength',12, @isnumeric);
-%	'outNum','test',@ischar);
-%	'seed','choose');
-%	'nTrials',10,@isnumeric);
-%	'stimulusStructDeltaT',100,@isnumeric);
-%	'baselineStimulus',0);
-%	'maxBOLDStimulus',15);
-%	'nOutcomes',51,@isnumeric);
-%	'headroom',.1,@isscalar);
-%	'stimulusDomain',{},@iscell);
-%	'questDataCopy',{},@isstruct);
+%   'qpPres'                -  Logical: (Default = false)
+%                              true  - run simulation with Q+ stimulus choice
+%                              false - run simulation with random stimulus
+%                                      choice.
+%   'simulatedPsiParams'    - Struct: (Default = randomly selected values
+%                             from paramsDomain). The veridical parameters
+%                             that are used for the forward model. Beta must
+%                             be 1. 
+%	'headroom'              - Scalar: (Default = 0.1)
+%                             The proportion of the nOutcomes from qpParams 
+%                             that will be used as extra on top and bottom.
+%   'maxBOLD'               - Scalar: (Default = 1.0)
+%                             The initial guess for the maximum BOLD value
+%                             with respect to the baseline stimulus. 
+%   'maxBOLDSimulated'      - Scalar: (Default = 1.5)
+%                             The value (in % change units) of the
+%                             maximum expected response to a stimulus w.r.t.
+%                             the response to the baseline stimulus.
+%	'seed'                  - No check (Default = 'choose')
+%                             The value to initialize the rng. If 'choose'
+%                             it will randomly initialize the seed using
+%                             'shuffle'. 
+%	'TR'                    - Integer: (Default = 800)
+%                             Length of the time to repetition (TR) in
+%                             milliseconds. 
+%	'trialLength'           - Integer: (Default = 12)
+%                             Length of one trial in seconds.
+%	'outNum'                - String: (Default = 'test')
+%                             Name of the output file (e.g., 'test.csv')
+%	'nTrials'               - Integer (Default = 10) 
+%                             Number of trials to simulate. 
+%	'stimulusStructDeltaT'  - Integer (Default = 100)
+%                             Resolution of the stimulus struct in milliseconds
+%                             (e.g., a value will be created every 100 ms).
+%	'baselineStimulus'      - No check (Default = 0)
+%                             tfeUpdate requires a baseline stimulus for
+%                             which every value will be referenced. 
+%	'maxBOLDStimulus'       - No check (Default = 15)
+%                             It may help maxBOLD to require an early trial
+%                             be a value we expect would result in a large
+%                             BOLD response. 
+%	'nOutcomes'             - Integer (Default = 51)
+%                             The number of outcome bins Q+ can assign a
+%                             response to. The larger this is the slower
+%                             Q+ will be. 
+%	'stimulusDomain'        - Cell array (Default = a range of frequency values).
+%                             All possible stimulus values that can be
+%                             assigned.
+%   'noiseSD'               - Scalar: (Default = .1)
+%                             The amplitude of the noise added to the
+%                             simulated BOLD fMRI signal in units of standard
+%                             deviations.
+%	'questDataCopy'         - Struct (Default is empty)
+%                             If it is not necessary to reinitialize Q+
+%                             (questData untrained is in memory), you can
+%                             pass the initialized questDataCopy to
+%                             simulate to save the time initializing. Note,
+%                             any change to paramsDomain requires
+%                             re-initialization. Be cautious changes other
+%                             options without re-initializing. 
 % Optional key/value pairs (used in plotting):
-%   'showPlots',false,@islogical);
-%   'minStim',.01,@isscalar);
-%   'maxStim',100,@isscalar);
-%   'figWidth',900,@isnumeric);
-%   'figHeight',900,@isnumeric);
+%   'showPlots'             - Logical: (Default = false)
+%                             Whether to show plots.
+%   'minStim'               - Scalar (Default = .01)
+%                             Lowest value to use for plotting stimulus
+%                             domain.
+%   'maxStim'               - Scalar (Default = 100)
+%                             Highest value to use for plotting stimulus
+%                             domain.
+%   'figWidth'              - Integer (Default = 900)
+%                             Width of figure window size.
+%   'figHeight'             - Integer (Default = 900)
+%                             Height of figure window size.
 
 % Outputs:
 %   psiParamsFit          - 1xn vector returning the BADS best fit for the
 %                           parameters
 %   maxBOLD               - Scalar. Best estimate at the maximum BOLD
 %                           value.
-% 
+%   questDataCopy         - Struct. Copy of initialized questData.
 
 %Example: 
 %{
@@ -75,10 +120,11 @@ paramsDomain.beta = 0.8:0.1:1.4; % Amplitude of the scaled response; should conv
 paramsDomain.sigma = 0.3:0.2:1;	% Standard deviation of the scaled (0-1) noise
 
 simulatedPsiParams = struct;
-simulatedPsiParams.Sr = .98;
-simulatedPsiParams.k1 = .04;
-simulatedPsiParams.k2 = .06;
-simulatedPsiParams.beta = 1;
+simulatedPsiParams = struct; 
+simulatedPsiParams.Sr = 1.004; 
+simulatedPsiParams.k1 = .016; 
+simulatedPsiParams.k2 = .118; 
+simulatedPsiParams.beta = 1.0; 
 simulatedPsiParams.sigma = .1;
 
 qpPres = false;
@@ -86,13 +132,16 @@ qpPres = false;
 showPlots = true;
 
 % Note, this will save a copy of questData after it is initialized. 
-[psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain, qpPres,...,
- 'simulatedPsiParams', simulatedPsiParams, 'showPlots',showPlots);
+[psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain,...,
+'qpPres',qpPres,'simulatedPsiParams', simulatedPsiParams, 'showPlots',showPlots);
+
+
 
 % If paramsDomain is not changed, the following line can be run with
 questDataCopy as an optional argument to save the initialization step.
-[psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain, qpPres,...,
- 'simulatedPsiParams', simulatedPsiParams,'questDataCopy',questDataCopy);
+[psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain,...,
+'qpPres',qpPres,'simulatedPsiParams', simulatedPsiParams,'showPlots',showPlots,...,
+'questDataCopy',questDataCopy);
 
 
 %}
@@ -103,14 +152,13 @@ p = inputParser;
 % Required input
 p.addRequired('model',@(x) isa(x,'function_handle'));
 p.addRequired('paramsDomain',@isstruct);
-p.addRequired('qpPres',@islogical);
 
 % Optional params
+p.addParameter('qpPres',false,@islogical);
 p.addParameter('simulatedPsiParams',{},@isstruct);
 p.addParameter('headroom', 0.1, @isnumeric);
 p.addParameter('maxBOLD', 1.0, @isscalar);
 p.addParameter('maxBOLDSimulated', 1.5, @isscalar);
-p.addParameter('rngSeed',rng(1,'twister'),@isnumeric);
 p.addParameter('TR',800, @isnumeric);
 p.addParameter('trialLength',12, @isnumeric);
 p.addParameter('outNum','test',@ischar);
@@ -132,13 +180,14 @@ p.addParameter('figWidth',900,@isnumeric);
 p.addParameter('figHeight',900,@isnumeric);
 
 % Parse
-p.parse( model, paramsDomain, qpPres, varargin{:});
+p.parse( model, paramsDomain, varargin{:});
 
 
 % Establish qpParams
 myQpParams = qpParams();
 
 % Some variable name cleaning
+qpPres = p.Results.qpPres;
 headroom = p.Results.headroom;
 maxBOLD = p.Results.maxBOLD;
 maxBOLDSimulated = p.Results.maxBOLDSimulated;
@@ -165,7 +214,8 @@ catch
 end
 
 %% This function contains all supported models and returns the model-specific values. 
-[paramNamesInOrder, myQpParams.qpPF, myQpParams.psiParamsDomainList] = checkModel(model,paramsDomain,myQpParams,headroom);
+[paramNamesInOrder, myQpParams.qpPF, myQpParams.psiParamsDomainList] = checkModel(model,...,
+    paramsDomain,'nOutcomes',myQpParams.nOutcomes,'headroom',headroom);
 
 %% Handle more inputs
 % This finds beta and sigma no matter where it is.
@@ -270,7 +320,8 @@ if showPlots
     
     
     % First, we'll plot the parameter domains
-    plotParamsDomain(model, paramsDomain, myQpParams,headroom, 'minStim',minStim,'maxStim',maxStim,...,
+    plotParamsDomain(model, paramsDomain,'nOutcomes',myQpParams.nOutcomes,...,
+        'headroom',headroom,'minStim',minStim,'maxStim',maxStim,...,
         'figHeight',figHeight,'figWidth',figWidth);
     hold off;
     
