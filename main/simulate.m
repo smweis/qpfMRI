@@ -64,6 +64,7 @@ function [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain, qpPr
 
 %Example: 
 %{
+
 model = @doeTemporalModel;
 
 paramsDomain = struct;
@@ -135,7 +136,7 @@ p.parse( model, paramsDomain, qpPres, varargin{:});
 
 
 % Establish qpParams
-myQpParams = qpParams;
+myQpParams = qpParams();
 
 % Some variable name cleaning
 headroom = p.Results.headroom;
@@ -164,7 +165,7 @@ catch
 end
 
 %% This function contains all supported models and returns the model-specific values. 
-[paramNamesInOrder, myQpParams.qpPF, myQpParams.psiParamsDomainList] = checkModel(model,paramsDomain);
+[paramNamesInOrder, myQpParams.qpPF, myQpParams.psiParamsDomainList] = checkModel(model,paramsDomain,myQpParams,headroom);
 
 %% Handle more inputs
 % This finds beta and sigma no matter where it is.

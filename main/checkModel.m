@@ -1,4 +1,4 @@
-function [paramNamesInOrder, qpPF, psiParamsDomainList] = checkModel(model,paramsDomain)
+function [paramNamesInOrder, qpPF, psiParamsDomainList] = checkModel(model,paramsDomain, myQpParams, headroom)
 %checkModel will validate that the model and parameters specified match and
 %are currently supported. 
 % Inputs:
@@ -25,8 +25,9 @@ paramsDomain.k1 = 0.01:0.04:0.4;
 paramsDomain.k2 = 0.01:0.04:0.4;
 paramsDomain.beta = 0.8:0.1:1.4; % Amplitude of the scaled response; should converge to unity
 paramsDomain.sigma = 0.3:0.2:1;	% Standard deviation of the scaled (0-1) noise
-
-[paramNamesInOrder, myQpParams.qpPF, myQpParams.psiParamsDomainList] = checkModel(model,paramsDomain);
+myQpParams = qpParams;
+headroom = .1;
+[paramNamesInOrder, myQpParams.qpPF, myQpParams.psiParamsDomainList] = checkModel(model,paramsDomain,myQpParams,headroom);
 
 %}
 
