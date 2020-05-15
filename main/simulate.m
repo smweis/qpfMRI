@@ -295,6 +295,8 @@ if showPlots
     % Set up the TTF figure
     subplot(3,1,2)
     freqDomain = logspace(log10(minStim),log10(maxStim),100);
+    
+    % MIGHT WANT TO FIX THIS DOWN THE ROAD??
     predictedRelativeResponse = model(freqDomain,simulatedPsiParams) - ...
         model(baselineStimulus,simulatedPsiParams);
     % May need to scale the predictedRelativeResponse here to account for
@@ -404,8 +406,10 @@ for tt = 1:nTrials
         currentOutcomesHandle = scatter(stimulusVecPlot(1:tt),yVals,'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',.2);
         psiParamsIndex = qpListMaxArg(questData.posterior);
         psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
+        predictedQuestRelativeResponse = model(freqDomain,psiParamsQuest) - ...
+            model(baselineStimulus,psiParamsQuest);
         delete(currentTTFHandle)
-        currentTTFHandle = semilogx(freqDomain,model(freqDomain,psiParamsQuest),'-r');
+        currentTTFHandle = semilogx(freqDomain,predictedQuestRelativeResponse,'-r');
         legend('Veridical model','Stimulus Outcomes','Best Fit from Q+','Location','northwest');
         drawnow
         % Entropy by trial
@@ -498,9 +502,13 @@ fprintf('\nmaxBOLD estimate: %0.3f\n',maxBOLD);
 if showPlots
     figure('Position', [10 10 figWidth figHeight]);
     hold on;
-    semilogx(freqDomain,model(freqDomain,simulatedPsiParams),'-k');
-    semilogx(freqDomain,model(freqDomain,psiParamsQuest),'-r');
-    semilogx(freqDomain,model(freqDomain,psiParamsFit),'-b');
+    predictedQuestRelativeResponse = model(freqDomain,psiParamsQuest) - ...
+        model(baselineStimulus,psiParamsQuest);
+    predictedBADSRelativeResponse = model(freqDomain,psiParamsFit) - ...
+        model(baselineStimulus,psiParamsFit);
+    semilogx(freqDomain,predictedRelativeResponse,'-k');
+    semilogx(freqDomain,predictedQuestRelativeResponse,'-r');
+    semilogx(freqDomain,predictedBADSRelativeResponse,'-b');
     set(gca,'XScale', 'log')
     xlabel('log stimulus Frequency [Hz]');
     ylabel('Relative response amplitude');
