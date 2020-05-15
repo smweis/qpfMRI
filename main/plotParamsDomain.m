@@ -1,4 +1,4 @@
-function plotParamsDomain(model, paramsDomain, varargin)
+function plotParamsDomain(model, paramsDomain,myQpParams,headroom,varargin)
 % 
 % Inputs:
 %   model                 - A function handle. This should be the
@@ -59,6 +59,8 @@ p = inputParser;
 % Required input
 p.addRequired('model',@(x) isa(x,'function_handle'));
 p.addRequired('paramsDomain',@isstruct);
+p.addRequired('myQpParams',@isstruct);
+p.addRequired('headroom',@isnumeric);
 
 % Optional params
 p.addParameter('xParam',1,@isnumeric);
@@ -71,10 +73,10 @@ p.addParameter('figHeight',900,@isnumeric);
 
 
 % Parse
-p.parse( model, paramsDomain, varargin{:});
+p.parse( model, paramsDomain, myQpParams, headroom, varargin{:});
 
 % First verify the model is valid and the parameters are accounted for.
-[paramNamesInOrder] = checkModel(model,paramsDomain);
+[paramNamesInOrder] = checkModel(model,paramsDomain,myQpParams,headroom);
 
 % Models are passed with beta and sigma but we need to ignore them here.
 betaIndex = find(strcmp(paramNamesInOrder,'beta'));

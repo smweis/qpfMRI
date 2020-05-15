@@ -270,7 +270,7 @@ if showPlots
     
     
     % First, we'll plot the parameter domains
-    plotParamsDomain(model, paramsDomain, 'minStim',minStim,'maxStim',maxStim,...,
+    plotParamsDomain(model, paramsDomain, myQpParams,headroom, 'minStim',minStim,'maxStim',maxStim,...,
         'figHeight',figHeight,'figWidth',figWidth);
     hold off;
     
