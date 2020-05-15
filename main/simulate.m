@@ -393,7 +393,7 @@ for tt = 1:nTrials
         delete(currentBOLDHandleFit)
         currentBOLDHandleData = plot(thePacketOut.response.timebase,thePacketOut.response.values,'.k');
         currentBOLDHandleFit = plot(modelResponseStruct.timebase,modelResponseStruct.values,'-r');
-                
+        drawnow        
         % TTF figure
         subplot(3,1,2)
         % Current guess at the TTF, along with stims and outcomes
@@ -407,7 +407,7 @@ for tt = 1:nTrials
         delete(currentTTFHandle)
         currentTTFHandle = semilogx(freqDomain,model(freqDomain,psiParamsQuest),'-r');
         legend('Veridical model','Stimulus Outcomes','Best Fit from Q+','Location','northwest');
-        
+        drawnow
         % Entropy by trial
         subplot(3,1,3)
         delete(currentEntropyHandle)
