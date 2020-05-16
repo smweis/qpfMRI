@@ -4,9 +4,7 @@ function [psiParamsFit,maxBOLD,questDataCopy] = compiledSimulate(modelName, vara
 % A script that will simulate fMRI BOLD data and fit a model with or
 % without Q+ control. 
 %
-% Syntax:
-%  [psiParamsFit,maxBOLD,questDataCopy] = compiledSimulate(modelName)
-%
+% 
 % Description:
 %	Takes in a model and a possible set of parameters and whether or not Q+ 
 %   is in control of things flag. 
@@ -15,7 +13,7 @@ function [psiParamsFit,maxBOLD,questDataCopy] = compiledSimulate(modelName, vara
 %   model                 - String that is equivalent to a function handle. 
 %                           This should be the 'continuous function.' 
 %
-
+%
 % See simulate.m for all additional inputs. 
 
 %Example: 
@@ -125,19 +123,9 @@ p.addParameter('showPlots',false,@islogical);
 
 p.parse(modelName, varargin{:});
 
-%% More model specific stuff here.
-% Define parameter names for model. Sorry, this should be integrated with
-% checkModel, but it's not at the moment. 
-if contains(modelName,'doe')
-    % Model name specification is flexible, and can be altered here. 
-    modelName = 'doeTemporalModel';
-    paramNamesInOrder = {'Sr','k1','k2','beta','sigma'};
-elseif contains(modelName,'watson')
-    modelName = 'watsonsTemporalModel';
-    paramNamesInOrder = {'tau', 'kappa', 'zeta', 'beta', 'sigma'};
-else
-    error('Model %s not supported',modelName);
-end
+%% Create the model function from the model name
+model = str2func(modelName);
+[paramNamesInOrder] = checkModel(model);
 
 %% Getting the input into a form that we can use it for simulate.
 % Assemble the paramsDomain and, if specified, simulatedPsiParams
@@ -168,11 +156,6 @@ else
     simulatedPsiParams = {};
 end
 
-
-
-
-% Create the model function from the model name
-model = str2func(modelName);
 
 
 % Handle the rest of the optional arguments: 

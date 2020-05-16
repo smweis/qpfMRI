@@ -1,4 +1,4 @@
-function [paramNamesInOrder, qpPF, psiParamsDomainList] = checkModel(model, paramsDomain, varargin)
+function [paramNamesInOrder, varargout] = checkModel(model, varargin)
 %checkModel will validate that the model and parameters specified match and
 %are currently supported. 
 % Inputs:
@@ -8,6 +8,7 @@ function [paramNamesInOrder, qpPF, psiParamsDomainList] = checkModel(model, para
 %                            code block. Currently supported:
 %                              @doeTemporalModel
 %                              @watsonTemporalModel
+% Optional positional input:
 %   paramsDomain           - Struct consisting of upper bounds, lower
 %                            bounds, and intervals for all necessary
 %                            parameters. All models should have beta and
@@ -22,8 +23,21 @@ function [paramNamesInOrder, qpPF, psiParamsDomainList] = checkModel(model, para
 %                             The number of outcome bins Q+ can assign a
 %                             response to. The larger this is the slower
 %                             Q+ will be. 
+% Outputs: 
+%   paramNamesInOrder       - Cell. The list of parameter names in the order the
+%                             model expects them to be. 
+%
+% Optional positional outputs:  
+% 
+%   qpPF                    - Cell. A cell array of the parameter domains
+%   
+%   psiParamsDomain         - function handle. The model for use with Q+.
+%                             This can only be returned if paramsDomain
+%                             is passed as an optional positional argument.
+                           
 %Example
 %{
+
 model = @doeTemporalModel;
 
 paramsDomain = struct;
@@ -35,58 +49,90 @@ paramsDomain.sigma = 0.3:0.2:1;	% Standard deviation of the scaled (0-1) noise
 
 [paramNamesInOrder, qpPF, psiParamsDomainList] = checkModel(model,paramsDomain);
 
+% Just to get the paramNamesInOrder, can be called without paramsDomain
+[paramNamesInOrder] = checkModel(model);
+
 %}
 %% Handle initial inputs
 p = inputParser;
 
 % Required input
 p.addRequired('model',@(x) isa(x,'function_handle'));
-p.addRequired('paramsDomain',@isstruct);
+
+% Optional positional argument, paramsDomain
+p.addOptional('paramsDomain',{},@isstruct);
 
 % Optional params
 p.addParameter('headroom', 0.1, @isnumeric);
 p.addParameter('nOutcomes',51,@isnumeric);
 
 % Parse
-p.parse( model, paramsDomain, varargin{:});
+p.parse( model, varargin{:});
 
 % P is used later
+paramsDomain = p.Results.paramsDomain;
 headroom = p.Results.headroom;
 nOutcomes = p.Results.nOutcomes;
 
-%% Model definitions
+
+
+%% ALL MODEL SPECIFIC STUFF HAS BEEN MOVED HERE! 
 % To add a new model, copy the elseif block and add the new model name to 
 % the models created variable, just below.
-modelsCreated = {'doeTemporalModel','watsonTemporalModel'};
+
+% Add all continuous model names to the list below. 
+modelNames = {'doeTemporalModel','watsonTemporalModel'};
+
+% Add all model parameters as a field in the struct below.
+% This is important if the model expects input in a certain order, but
+% is required for current functionality.
+modelParamNames = struct;
+modelParamNames.doeTemporalModel = {'Sr', 'k1', 'k2', 'beta', 'sigma'};
+modelParamNames.watsonTemporalModel = {'tau', 'kappa', 'zeta', 'beta', 'sigma'};
+
+% Add all qpPF handles below
+qpPF = struct;
+qpPF.doeTemporalModel = @(f,p) qpDoETemporalModel(f,p,nOutcomes,headroom);
+qpPF.watsonTemporalModel = @(f,p) qpWatsonTemporalModel(f,p,nOutcomes,headroom);
+
+
+
+
+%% Do the checks.
 
 % A variable number of parameters are supported, but all models must
 % contain a beta and a sigma parameter. 
 s = functions(model);
-assert(any(strcmp(modelsCreated,s.function)==1),'Model not defined');
+assert(any(strcmp(modelNames,s.function)==1),'Model not defined');
 
-% Model specific functions.
-if contains(s.function,'doe')
-    % This is important if the model expects input in a certain order, but
-    % is required for current functionality.
-    paramNamesInOrder = {'Sr', 'k1', 'k2', 'beta', 'sigma'};
-    psiParamsDomainList = cell(1,length(paramNamesInOrder));
-    for i = 1:length(paramNamesInOrder)
-        % Check that all parameter names expected are present in the domain
-        % and add the domain to myQpParams for Q+.
-        assert(isfield(paramsDomain,paramNamesInOrder{i}),'Parameter missing or misnamed for DoE model.');
-        psiParamsDomainList{i} = paramsDomain.(paramNamesInOrder{i});
+% Grab the right parameter names and qpPF function
+paramNamesInOrder = modelParamNames.(s.function);
+
+varargout{1} = qpPF.(s.function);
+
+% If there's only one input argument but more than 2 output arguments, give
+% a warning.
+if nargin == 1
+    createPsiParams = false;
+    if nargout > 2
+        warning('No psiParamsDomainList can be returned without psiParamDomains');
+        varargout{2} = {};
     end
-    % The QP form of the model should be specified below. 
-    qpPF = @(f,p) qpDoETemporalModel(f,p,nOutcomes,headroom);
-    
-elseif contains(s.function,'watson')
-    paramNamesInOrder = {'tau', 'kappa', 'zeta', 'beta', 'sigma'};
+else
+    createPsiParams = true;
+end
+
+
+if createPsiParams
+    % Initialize the psiParamsDomain
+    varargout{2} = cell(1,length(paramNamesInOrder));
+
+    % Step through each parameter, making sure all fields are accounted
+    % for, then assign them to the cell.
     for i = 1:length(paramNamesInOrder)
         assert(isfield(paramsDomain,paramNamesInOrder{i}),'Parameter missing or misnamed for Watson model.');
+        varargout{2}{i} = paramsDomain.(paramNamesInOrder{i});
     end
-    % Create an anonymous function from qpDoETemporalModel in which we
-    % specify the number of outcomes for the y-axis response
-    qpPF = @(f,p) qpWatsonTemporalModel(f,p,nOutcomes,headroom);
     
 end
 
