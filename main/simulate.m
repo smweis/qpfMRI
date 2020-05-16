@@ -77,7 +77,8 @@ function [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain, vara
 %   'noiseSD'               - Scalar: (Default = .1)
 %                             The amplitude of the noise added to the
 %                             simulated BOLD fMRI signal in units of standard
-%                             deviations.
+%                             deviations. This will only be used if
+%                             simulatedPsiParams.sigma is empty.
 %	'questDataCopy'         - Struct (Default is empty)
 %                             If it is not necessary to reinitialize Q+
 %                             (questData untrained is in memory), you can
@@ -117,10 +118,9 @@ paramsDomain.Sr = 0.899:0.025:1.099;
 paramsDomain.k1 = 0.01:0.04:0.4;
 paramsDomain.k2 = 0.01:0.04:0.4;
 paramsDomain.beta = 0.8:0.1:1.4; % Amplitude of the scaled response; should converge to unity
-paramsDomain.sigma = 0.3:0.2:1;	% Standard deviation of the scaled (0-1) noise
+paramsDomain.sigma = 0.3:0.2:1.0;	% Standard deviation of the scaled (0-1) noise
 
 simulatedPsiParams = struct;
-simulatedPsiParams = struct; 
 simulatedPsiParams.Sr = 1.004; 
 simulatedPsiParams.k1 = .016; 
 simulatedPsiParams.k2 = .118; 

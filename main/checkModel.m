@@ -65,7 +65,6 @@ s = functions(model);
 assert(any(strcmp(modelsCreated,s.function)==1),'Model not defined');
 
 % Model specific functions.
-% 
 if contains(s.function,'doe')
     % This is important if the model expects input in a certain order, but
     % is required for current functionality.
