@@ -577,7 +577,7 @@ end
 resultsOut = array2table(psiParamsFit,'VariableNames',paramNamesInOrder);
 resultsOut.maxBOLD = maxBOLD;
 resultsFileName = [outNum 'Results.csv'];
-resultsFolderName = ['.' filesep p.Results.outFolder 'results'];
+resultsFolderName = ['.' filesep p.Results.outFolder filesep 'results'];
 
 if ~exist(resultsFolderName,'dir')
     mkdir(resultsFolderName);
