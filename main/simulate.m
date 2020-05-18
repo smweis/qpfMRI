@@ -55,6 +55,8 @@ function [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain, vara
 %                             Length of one trial in seconds.
 %	'outNum'                - String: (Default = 'test')
 %                             Name of the output file (e.g., 'test.csv')
+%	'outFolder'             - String: (Default = 'Results')
+%                             Name of the output file (e.g., './Results')
 %	'nTrials'               - Integer (Default = 10) 
 %                             Number of trials to simulate. 
 %	'stimulusStructDeltaT'  - Integer (Default = 100)
@@ -162,6 +164,7 @@ p.addParameter('maxBOLDSimulated', 1.5, @isscalar);
 p.addParameter('TR',800, @isnumeric);
 p.addParameter('trialLength',12, @isnumeric);
 p.addParameter('outNum','test',@ischar);
+p.addParameter('outFolder','Results',@ischar);
 p.addParameter('seed','choose');
 p.addParameter('nTrials',10,@isnumeric);
 p.addParameter('stimulusStructDeltaT',100,@isnumeric);
@@ -569,9 +572,10 @@ end
 %% Output
 T = array2table(psiParamsFit,'VariableNames',paramNamesInOrder);
 T.maxBOLD = maxBOLD;
-outfilename = horzcat(outNum,'.csv');
+outFileName = [outNum,'.csv'];
+outFolderName = ['.' filesep p.Results.folderName];
 %save(outfilename,psiParamsFit);
-writetable(T,outfilename);
+writetable(T,[outFolderName filesep outFileName]);
 
 end
 
