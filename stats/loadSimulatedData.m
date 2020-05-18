@@ -1,10 +1,12 @@
-function [data, names] = loadSimulatedData(dirName,dataLines)
+function [data] = loadSimulatedData(dirName,dataLines)
 
 % CAUTION CAUTION CAUTION: TEMPORARY LOADER! BUGS ABOUND
-dirFiles = dir(fullfile(dirName,'*.csv'));
+paramDir = [dirName filesep 'params'];
+resultsDir = [dirName filesep 'results'];
 
-data = zeros(length(dirFiles),6);
-names = cell(length(dirFiles),1);
+
+resultsDirFiles = dir(fullfile(resultsDir,'*.csv'));
+paramDirFiles = dir(fullfile(paramDir,'*.csv'));
 
 
 % If dataLines is not specified, define defaults
@@ -20,77 +22,88 @@ opts.DataLines = dataLines;
 opts.Delimiter = ",";
 
 % Specify column names and types
-opts.VariableNames = ["Sr", "k1", "k2", "beta", "sigma", "maxBOLD"];
-opts.VariableTypes = ["double", "double", "double", "double", "double", "double"];
+optsResults.VariableNames = ["Sr", "k1", "k2", "beta", "sigma", "maxBOLD", "qpPres","simID"];
+optsResults.VariableTypes = ["double", "double", "double", "double", "double", "double", "string", "string"];
+
+optsParams.VariableNames = ["SrSim","k1Sim","k2Sim","betaSim","sigmaSim","maxBOLDSim","simID"];
+optsParams.VariableTypes = ["double", "double", "double", "double", "double", "double", "string"];
+
+paramsData = table('Size',[length(resultsDirFiles),length(optsParams.VariableNames)],...
+    'VariableTypes',optsParams.VariableTypes,'VariableNames',optsParams.VariableNames);
+
+resultsData = table('Size',[length(resultsDirFiles),length(optsResults.VariableNames)],...
+    'VariableTypes',optsResults.VariableTypes,'VariableNames',optsResults.VariableNames);
 
 % Specify file level properties
 opts.ExtraColumnsRule = "ignore";
 opts.EmptyLineRule = "read";
 
 
-for i = 1:length(dirFiles)
-    data(i,:) = table2array(readtable(fullfile(dirFiles(i).folder,dirFiles(i).name),opts));
-    names{i} = dirFiles(i).name;
+for i = 1:length(resultsDirFiles)
+    temp = strsplit(resultsDirFiles(i).name,{'_','.'});
+    paramsData.simID(i) = [temp{1} '_' temp{2}];
+    resultsData.qpPres(i) = temp(1);
+    resultsData.simID(i) = [temp{1} '_' temp{2}];
+    resultsData(i,1:6) = readtable(fullfile(resultsDirFiles(i).folder,resultsDirFiles(i).name));
+    paramsData(i,1:6) = readtable(fullfile(paramDirFiles(i).folder,paramDirFiles(i).name));
 end
 
-numbers = [];
-% sort data numerically by run (assuming random ('false') followed by qp
-% ('true') in the simulations
-for i = 1:length(names)/2
-    temp = strsplit(names{i},{'_','.'});
-    numbers(i) = str2double(temp(3));
-end
+data = join(resultsData,paramsData);
 
-numbers = numbers';
-[~,randomIndex] = sort(numbers);
+avgResults = varfun(@mean,data,'InputVariables',{'Sr','k1','k2','beta','sigma'},...
+       'GroupingVariables','qpPres')
 
-randomData = data(randomIndex,:);
-randomNames = names(randomIndex);
+   
 
-qpIndex = randomIndex+50;
-qpData = data(qpIndex,:);
-qpNames = names(qpIndex);
+% If params are all the same, we can use this: 
+sampleSimulatedParams = [data.SrSim(1) data.k1Sim(1) data.k2Sim(1) data.betaSim(1),data.sigmaSim(1)];
 
-% hardcoding data from test_1
-realData(1:50,:) = repmat([1. .1 .2 1.00 .4 1.5],50,1);
-
-mean(qpData)
-mean(randomData)
-realData(1,:)
-
-qpSigned = (qpData - realData)./realData;
-randomSigned = (randomData - realData)./realData;
-
-mean(qpSigned)
-mean(randomSigned)
-
-qpUnsigned = abs(qpData - realData)./realData;
-randomUnsigned = abs(randomData - realData)./realData;
-
-mean(qpUnsigned)
-mean(randomUnsigned)
+idx = avgResults.qpPres=="true";
+a = avgResults(idx,:);
+qpParams = [a.mean_Sr a.mean_k1 a.mean_k2 a.mean_beta a.mean_sigma];
+idx = avgResults.qpPres=="false";
+b = avgResults(idx,:);
+randomParams = [b.mean_Sr b.mean_k1 b.mean_k2 b.mean_beta b.mean_sigma];
 
 
-% one run and plotting
-first = 1;
-last = first+49;
-
-qpOneRunData = qpData(first:last,:);
-randomOneRunData = randomData(first:last,:);
-
-qpPlotParams = mean(qpOneRunData);
-randomPlotParams = mean(randomOneRunData);
-realDataPlot = realData(first,:);
-realDataPlot(4) = qpPlotParams(4);
-
-realData(first,:);
-
+% Plot the average results
 figure
-stimulusFreqHzFine = logspace(log10(.01),log10(64),100);
-semilogx(stimulusFreqHzFine,doeTemporalModel(stimulusFreqHzFine,qpPlotParams),'-r');
+freqDomain = logspace(log10(.01),log10(100),100);
+predictedRelativeResponse = doeTemporalModel(freqDomain,sampleSimulatedParams) - ...
+        doeTemporalModel(0,sampleSimulatedParams);
+predictedQpRelativeResponse = doeTemporalModel(freqDomain,qpParams) - ...
+        doeTemporalModel(0,qpParams);
+predictedRandomRelativeResponse = doeTemporalModel(freqDomain,randomParams) - ...
+        doeTemporalModel(0,randomParams);
+
+semilogx(freqDomain,predictedRelativeResponse,'-k','LineWidth',2);
 hold on
-semilogx(stimulusFreqHzFine,doeTemporalModel(stimulusFreqHzFine,randomPlotParams),'-b');
-%semilogx(stimulusFreqHzFine,doeTemporalModel(stimulusFreqHzFine,realDataPlot)-.036,'-k');
-semilogx(stimulusFreqHzFine,doeTemporalModel(stimulusFreqHzFine,realDataPlot),'-g');
-semilogx(stimulusFreqHzFine,doeTemporalModel(stimulusFreqHzFine,realData(first,:)),'-k');
-legend('q+','random','Veridical, scaled & transposed','Veridical','Northwest');
+semilogx(freqDomain,predictedQpRelativeResponse,'-r','LineWidth',2);
+semilogx(freqDomain,predictedRandomRelativeResponse,'-b','LineWidth',2);
+
+set(gca,'XScale', 'log')
+legend('Veridical','Q+','Random','Location','Northwest');
+
+
+
+data.SrBias = (data.Sr - data.SrSim)./data.SrSim;
+data.k1Bias = (data.k1 - data.k1Sim)./data.k1Sim;
+data.k2Bias = (data.k2 - data.k2Sim)./data.k2Sim;
+data.betaBias = (data.beta - data.betaSim)./data.betaSim;
+data.sigmaBias = (data.sigma - data.sigmaSim)./data.sigmaSim;
+
+
+data.SrNoise = abs(data.Sr - data.SrSim)./data.SrSim;
+data.k1Noise = abs(data.k1 - data.k1Sim)./data.k1Sim;
+data.k2Noise = abs(data.k2 - data.k2Sim)./data.k2Sim;
+data.betaNoise = abs(data.beta - data.betaSim)./data.betaSim;
+data.sigmaNoise = abs(data.sigma - data.sigmaSim)./data.sigmaSim;
+
+
+biasResults = varfun(@mean,data,'InputVariables',{'SrBias','k1Bias','k2Bias','betaBias','sigmaBias'},...
+       'GroupingVariables','qpPres')
+
+   
+noiseResults = varfun(@mean,data,'InputVariables',{'SrNoise','k1Noise','k2Noise','betaNoise','sigmaNoise'},...
+       'GroupingVariables','qpPres')
+
