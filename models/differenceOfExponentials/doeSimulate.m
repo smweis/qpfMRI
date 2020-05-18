@@ -132,6 +132,7 @@ TR = str2double(TR);
 
 if strcmp(seed,'choose')
     rng('shuffle'); seed = randi(2^32);
+    rng(seed);
 end
 
 %% Are we simulating old fashioned constant stimuli or using Q+?

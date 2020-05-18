@@ -134,7 +134,7 @@ p.addParameter('maxBOLD', 1.0, @isscalar);
 
 % Optional params used in simulation
 p.addParameter('maxBOLDSimulated', 1.0, @isscalar);
-p.addParameter('rngSeed',rng(1,'twister'),@isnumeric);
+p.addParameter('rngSeed',rng(1,'twister'),@isstruct);
 p.addParameter('noiseSD',0.25, @isscalar);
 p.addParameter('pinkNoise',1, @isnumeric);
 p.addParameter('TRmsecs',800, @isnumeric);
@@ -149,8 +149,8 @@ if isempty(find(stimulusVec==p.Results.baselineStimulus, 1))
 end
 
 % Setting this within tfeUpdate is to ensure the seed is set properly. 
-rngSeed = rng(p.Results.rngSeed,'twister');
-rngSeed = rng(p.Results.rngSeed,'twister');
+rngSeed = rng(p.Results.rngSeed);
+rngSeed = rng(p.Results.rngSeed);
 
 
 % Construct the temporal fitting engine model object

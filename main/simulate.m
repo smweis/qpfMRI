@@ -227,8 +227,12 @@ sigmaIndex = find(strcmp(paramNamesInOrder,'sigma'));
 
 % If seed is a keyword, pick a random seed.
 if strcmp(seed,'choose')
-    rng('shuffle'); seed = randi(2^32);
+    rngSeed = rng('shuffle'); rngSeed = rng('shuffle');
+else 
+    rngSeed = rng(seed); rngSeed = rng(seed);
 end
+
+fprintf('First random number is: %.03f',rand);
 
 % Pick some random params to simulate if none provided (but set the neural
 % noise to .1 SD and beta = 1)
@@ -282,10 +286,6 @@ for param = 1:length(paramNamesInOrder)
             'Parameter %s is not within the bounds of the parameter domain.',paramNamesInOrder{param});
     end
 end
-
-% Create and save an rng seed to use for this simulation.
-rngSeed = rng(seed);
-rngSeed = rng(seed);
 
 
 % Create a simulated observer with binned output
@@ -428,7 +428,7 @@ for tt = 1:nTrials
     [outcomes, modelResponseStruct, thePacketOut] = ...
         tfeUpdate(thePacket, myQpParams, stimulusVec, baselineStimulus, ...
         'maxBOLDSimulated',maxBOLDSimulated,...
-        'rngSeed',rngSeed.Seed,...,
+        'rngSeed',rngSeed,...,
         'maxBOLD',maxBOLD,...,
         'TRmsecs', TR,...,
         'noiseSD',simulatedPsiParams(sigmaIndex));
@@ -503,7 +503,7 @@ thePacket = createPacket('nTrials',tt,...,
 [outcomes] = ...
     tfeUpdate(thePacket, myQpParams, stimulusVec, baselineStimulus, ...
     'maxBOLDSimulated',maxBOLDSimulated,...
-    'rngSeed',rngSeed.Seed,...,
+    'rngSeed',rngSeed,...,
     'maxBOLD',maxBOLD,...,
     'TRmsecs', TR,...,
     'noiseSD',simulatedPsiParams(sigmaIndex));
