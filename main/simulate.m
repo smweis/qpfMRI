@@ -570,12 +570,31 @@ if showPlots
 end
 
 %% Output
-T = array2table(psiParamsFit,'VariableNames',paramNamesInOrder);
-T.maxBOLD = maxBOLD;
-outFileName = [outNum,'.csv'];
-outFolderName = ['.' filesep p.Results.folderName];
-%save(outfilename,psiParamsFit);
-writetable(T,[outFolderName filesep outFileName]);
+% Two files will be created for each run. 
+% [outnum]Results.csv contains the BADS results of the simulation. 
+% [outnum]Params.csv contains the simulated parameters.
+
+resultsOut = array2table(psiParamsFit,'VariableNames',paramNamesInOrder);
+resultsOut.maxBOLD = maxBOLD;
+resultsFileName = [outNum 'Results.csv'];
+resultsFolderName = ['.' filesep p.Results.outFolder 'results'];
+
+if ~exist(resultsFolderName,'dir')
+    mkdir(resultsFolderName);
+end
+
+writetable(resultsOut,[resultsFolderName filesep resultsFileName]);
+
+simulatedParamsOut = array2table(simulatedPsiParams,'VariableNames',paramNamesInOrder);
+simulatedParamsOut.maxBOLDSimulated = maxBOLDSimulated;
+paramsFileName = [outNum 'Params.csv'];
+paramsFolderName = ['.' filesep p.Results.outFolder filesep 'params'];
+
+if ~exist(paramsFolderName,'dir')
+    mkdir(paramsFolderName);
+end
+
+writetable(simulatedParamsOut,[paramsFolderName filesep paramsFileName]);
 
 end
 

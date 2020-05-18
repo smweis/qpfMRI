@@ -23,8 +23,8 @@ d=`date +%m-%d-%Y`
 
 cd /ufrc/stevenweisberg/stevenweisberg/qpfMRIResults/compiled.$d
 
-./run_simulate.sh /apps/matlab/mcr/2019b/v97 \
-doeTemporalModel \# model name
+./run_compiledSimulate.sh /apps/matlab/mcr/2019b/v97 \
+doeTemporalModel \
 param1Lower .899 \
 param1Interval .025 \
 param1Upper 1.099 \
@@ -36,7 +36,7 @@ param3Interval .04 \
 param3Upper .4 \
 param4Lower .8 \
 param4Interval .1 \
-param4Upper .1.4 \
+param4Upper 1.4 \
 param5Lower .3 \
 param5Interval .2 \
 param5Upper 1.0 \
