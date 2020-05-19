@@ -73,9 +73,12 @@ function [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain, vara
 %                             The number of outcome bins Q+ can assign a
 %                             response to. The larger this is the slower
 %                             Q+ will be. 
-%	'stimulusDomain'        - Cell array (Default = a range of frequency values).
+%	'stimulusDomain'        - Cell array (Default = a range of stimulus values).
 %                             All possible stimulus values that can be
 %                             assigned.
+%   'stimulusDomainSpacing  - Default = 'lin'. 
+%                             Whether the stimulusDomain is spaced linear
+%                             or log.
 %   'noiseSD'               - Scalar: (Default = .1)
 %                             The amplitude of the noise added to the
 %                             simulated BOLD fMRI signal in units of standard
@@ -137,13 +140,35 @@ showPlots = true;
 [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain,...,
 'qpPres',qpPres,'simulatedPsiParams', simulatedPsiParams, 'showPlots',showPlots);
 
+%%%% LOGISIC EXAMPLE:
+
+model = @logistic;
+
+paramsDomain = struct;
+paramsDomain.slope = linspace(.01,1,40);
+paramsDomain.semiSat = linspace(.01,1,40);
+paramsDomain.beta = 0.8:0.1:1.4; 
+paramsDomain.sigma = linspace(.3,1.5,8);
+
+stimulusDomain = {linspace(.01,1,10)};
+stimulusDomainSpacing = 'lin';
+
+qpPres = false;
+
+showPlots = true;
+
+% Note, this will save a copy of questData after it is initialized. 
+[psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain,...,
+'qpPres',qpPres, 'showPlots',showPlots,'stimulusDomain',stimulusDomain,...,
+'stimulusDomainSpacing',stimulusDomainSpacing);
+
 
 
 % If paramsDomain is not changed, the following line can be run with
 questDataCopy as an optional argument to save the initialization step.
 [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain,...,
 'qpPres',qpPres,'simulatedPsiParams', simulatedPsiParams,'showPlots',showPlots,...,
-'questDataCopy',questDataCopy);
+'questDataCopy',questDataCopy,'stimulusDomain',stimulusDomain);
 
 
 %}
@@ -168,11 +193,12 @@ p.addParameter('outFolder','Results',@ischar);
 p.addParameter('seed','choose');
 p.addParameter('nTrials',10,@isnumeric);
 p.addParameter('stimulusStructDeltaT',100,@isnumeric);
-p.addParameter('baselineStimulus',0);
-p.addParameter('maxBOLDStimulus',15);
+p.addParameter('baselineStimulus','');
+p.addParameter('maxBOLDStimulus','');
 p.addParameter('nOutcomes',51,@isnumeric);
 p.addParameter('noiseSD',.1,@isscalar);
 p.addParameter('stimulusDomain',{},@iscell);
+p.addParameter('stimulusDomainSpacing','lin',@ischar);
 p.addParameter('questDataCopy',{},@isstruct);
 
 % Optional params for plotting
@@ -206,7 +232,6 @@ noiseSD = p.Results.noiseSD;
 myQpParams.nOutcomes = p.Results.nOutcomes;
 showPlots = p.Results.showPlots;
 minStim = p.Results.minStim;
-maxStim = p.Results.maxStim;
 figWidth = p.Results.figWidth;
 figHeight = p.Results.figHeight;
 
@@ -232,8 +257,6 @@ else
     rngSeed = rng(seed); rngSeed = rng(seed);
 end
 
-fprintf('First random number is: %.03f',rand);
-
 % Pick some random params to simulate if none provided (but set the neural
 % noise to .1 SD and beta = 1)
 if isempty(p.Results.simulatedPsiParams)
@@ -257,11 +280,24 @@ else
     assert(ismember(1,paramsDomain.beta),'The domain for beta should always include 1.');
 end
 
-% Add the stimulus domain. 
-if isempty(p.Results.stimulusDomain)
-    %~Log spaced frequencies between 0 and 30 Hz
+% Add the stimulus domain.  
+if iscell(p.Results.stimulusDomain)
+    myQpParams.stimParamsDomainList = p.Results.stimulusDomain;
+elseif isvector(p.Results.stimulusDomain)
+    myQpParams.stimParamsDomainList = {p.Results.stimulusDomain};
+else
     myQpParams.stimParamsDomainList = {[baselineStimulus,1.875,3.75,7.5,15,30,60]};
 end
+
+% Without knowledge of these things, we assume the lowest and highest
+% values in the stimulus domain are the baseline and max stimuli
+if isempty(baselineStimulus)
+    baselineStimulus = min(myQpParams.stimParamsDomainList{1});
+end
+if isempty(maxBOLDStimulus)
+    maxBOLDStimulus = max(myQpParams.stimParamsDomainList{1});
+end
+
 
 % Derive some lower and upper bounds from the parameter ranges. This is
 % used later in maximum likelihood fitting
@@ -281,8 +317,8 @@ upperBounds(betaIndex) = 1.001;
 % the domain bounds. Don't do this for sigma. 
 for param = 1:length(paramNamesInOrder)
     if ~strcmp(paramNamesInOrder{param},'sigma')
-        assert(lowerBounds(param) < simulatedPsiParams(param)...
-            && upperBounds(param) > simulatedPsiParams(param),...,
+        assert(lowerBounds(param) <= simulatedPsiParams(param)...
+            && upperBounds(param) >= simulatedPsiParams(param),...,
             'Parameter %s is not within the bounds of the parameter domain.',paramNamesInOrder{param});
     end
 end
@@ -318,13 +354,25 @@ stimulusVec = nan(1,nTrials);
 
 %% Plotting features
 
+if strcmpi(p.Results.stimulusDomainSpacing,'log')
+    plotFunc = @semilogx;
+else
+    plotFunc = @plot;
+end
+
 % Create a plot in which we can track the model progress
 if showPlots
-    
-    
+    if strcmpi(p.Results.stimulusDomainSpacing,'log')
+        stimulusDomainFine = logspace(log(min(myQpParams.stimParamsDomainList{1})),...,
+            log(max(myQpParams.stimParamsDomainList{1})),100);
+    else
+        stimulusDomainFine = linspace(min(myQpParams.stimParamsDomainList{1}),...,
+            max(myQpParams.stimParamsDomainList{1}),100);
+    end
     % First, we'll plot the parameter domains
-    plotParamsDomain(model, paramsDomain,'nOutcomes',myQpParams.nOutcomes,...,
-        'headroom',headroom,'minStim',minStim,'maxStim',maxStim,...,
+    plotParamsDomain(model, paramsDomain, stimulusDomainFine,...,
+        'nOutcomes',myQpParams.nOutcomes,'headroom',headroom,...,
+        'stimulusDomainSpacing',p.Results.stimulusDomainSpacing,...,
         'figHeight',figHeight,'figWidth',figWidth);
     hold off;
     
@@ -348,21 +396,21 @@ if showPlots
     
     % Set up the TTF figure
     subplot(3,1,2)
-    freqDomain = logspace(log10(minStim),log10(maxStim),100);
+    
     
     % MIGHT WANT TO FIX THIS DOWN THE ROAD??
-    predictedRelativeResponse = model(freqDomain,simulatedPsiParams) - ...
+    predictedRelativeResponse = model(stimulusDomainFine,simulatedPsiParams) - ...
         model(baselineStimulus,simulatedPsiParams);
     % May need to scale the predictedRelativeResponse here to account for
     % the offset produced by subtraction of the baseline amplitude.    
-    semilogx(freqDomain,predictedRelativeResponse,'-k');
+    plotFunc(stimulusDomainFine,predictedRelativeResponse,'-k');
     ylim([-0.5 1.5]);
-    xlabel('log stimulus Frequency [Hz]');
+    xlabel('Stimulus Values');
     ylabel('Relative response amplitude');
-    title('Estimate of Model TTF');
+    title('Estimate of Model');
     hold on
     currentOutcomesHandle = scatter(nan,nan);
-    currentTTFHandle = plot(freqDomain,model(freqDomain,simulatedPsiParams),'-k');
+    currentTTFHandle = plot(stimulusDomainFine,model(stimulusDomainFine,simulatedPsiParams),'-k');
     
     % Calculate the lower headroom bin offset. We'll use this later
     nLower = round(headroom*myQpParams.nOutcomes);
@@ -460,10 +508,12 @@ for tt = 1:nTrials
         currentOutcomesHandle = scatter(stimulusVecPlot(1:tt),yVals,'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',.2);
         psiParamsIndex = qpListMaxArg(questData.posterior);
         psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
-        predictedQuestRelativeResponse = model(freqDomain,psiParamsQuest) - ...
+        predictedQuestRelativeResponse = model(stimulusDomainFine,psiParamsQuest) - ...
             model(baselineStimulus,psiParamsQuest);
         delete(currentTTFHandle)
-        currentTTFHandle = semilogx(freqDomain,predictedQuestRelativeResponse,'-r');
+        
+        % MAY WANT TO FIX TO ALLOW LOG PLOTS
+        currentTTFHandle = plot(stimulusDomainFine,predictedQuestRelativeResponse,'-r');
         legend('Veridical model','Stimulus Outcomes','Best Fit from Q+','Location','northwest');
         drawnow
         % Entropy by trial
@@ -556,15 +606,17 @@ fprintf('\nmaxBOLD estimate: %0.3f\n',maxBOLD);
 if showPlots
     figure('Position', [10 10 figWidth figHeight]);
     hold on;
-    predictedQuestRelativeResponse = model(freqDomain,psiParamsQuest) - ...
+    predictedQuestRelativeResponse = model(stimulusDomainFine,psiParamsQuest) - ...
         model(baselineStimulus,psiParamsQuest);
-    predictedBADSRelativeResponse = model(freqDomain,psiParamsFit) - ...
+    predictedBADSRelativeResponse = model(stimulusDomainFine,psiParamsFit) - ...
         model(baselineStimulus,psiParamsFit);
-    semilogx(freqDomain,predictedRelativeResponse,'-k');
-    semilogx(freqDomain,predictedQuestRelativeResponse,'-r');
-    semilogx(freqDomain,predictedBADSRelativeResponse,'-b');
-    set(gca,'XScale', 'log')
-    xlabel('log stimulus Frequency [Hz]');
+    plotFunc(stimulusDomainFine,predictedRelativeResponse,'-k');
+    plotFunc(stimulusDomainFine,predictedQuestRelativeResponse,'-r');
+    plotFunc(stimulusDomainFine,predictedBADSRelativeResponse,'-b');
+    if strcmpi(p.Results.stimulusDomainSpacing,'log')
+        set(gca,'XScale', 'log');
+    end
+    xlabel('Stimulus Values');
     ylabel('Relative response amplitude');
     legend('Veridical model','Best Fit from Q+','Best Fit from BADS','Location','northwest');
 end

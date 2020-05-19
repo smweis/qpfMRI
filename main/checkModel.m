@@ -81,7 +81,7 @@ nOutcomes = p.Results.nOutcomes;
 % the models created variable, just below.
 
 % Add all continuous model names to the list below. 
-modelNames = {'doeTemporalModel','watsonTemporalModel'};
+modelNames = {'doeTemporalModel','watsonTemporalModel','logistic'};
 
 % Add all model parameters as a field in the struct below.
 % This is important if the model expects input in a certain order, but
@@ -89,12 +89,7 @@ modelNames = {'doeTemporalModel','watsonTemporalModel'};
 modelParamNames = struct;
 modelParamNames.doeTemporalModel = {'Sr', 'k1', 'k2', 'beta', 'sigma'};
 modelParamNames.watsonTemporalModel = {'tau', 'kappa', 'zeta', 'beta', 'sigma'};
-
-% Add all qpPF handles below
-qpPF = struct;
-qpPF.doeTemporalModel = @(f,p) qpDoETemporalModel(f,p,nOutcomes,headroom);
-qpPF.watsonTemporalModel = @(f,p) qpWatsonTemporalModel(f,p,nOutcomes,headroom);
-
+modelParamNames.logistic = {'slope','semiSat','beta','sigma'};
 
 
 
@@ -105,10 +100,16 @@ qpPF.watsonTemporalModel = @(f,p) qpWatsonTemporalModel(f,p,nOutcomes,headroom);
 s = functions(model);
 assert(any(strcmp(modelNames,s.function)==1),'Model not defined');
 
+
+
 % Grab the right parameter names and qpPF function
 paramNamesInOrder = modelParamNames.(s.function);
 
-varargout{1} = qpPF.(s.function);
+
+% Return the qpPF handle
+varargout{1} = @(f,p) qpModelWrapper(model,f,p,nOutcomes,headroom);
+
+
 
 % If there's only one input argument but more than 2 output arguments, give
 % a warning.

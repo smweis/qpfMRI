@@ -1,4 +1,4 @@
-function plotParamsDomain(model, paramsDomain, varargin)
+function plotParamsDomain(model, paramsDomain, stimulusDomain, varargin)
 %% Plot all possible combos of a parameter domain. 
 % TODO: Note - I'm not sure how well this behaves with a 4-parameter model.
 % Inputs:
@@ -14,9 +14,9 @@ function plotParamsDomain(model, paramsDomain, varargin)
 %                           sigma as parameters.
 %                             DoE    (n=5): Sr, k1, k2, beta, sigma
 %                             Watson (n=5): tau, kappa, zeta, beta, sigma
-%
+%   stimulusDomain        - Vector specifying the expected domain of the
+%                             stimulus.
 % Optional key/value pairs:
-%  
 %   'xParam'                - Integer (Default = 1)
 %                             Which parameter to vary along the x subplot axis.
 %   'yParam'                - Integer (Default = 2)
@@ -44,10 +44,10 @@ params.k1 = linspace(.01,.08,10);
 params.k2 = logspace(log10(0.01),log10(100),10);
 paramsDomain.beta = 0.8:0.1:1.4; % Amplitude of the scaled response; should converge to unity
 paramsDomain.sigma = 0.3:0.2:1;	% Standard deviation of the scaled (0-1) noise
-
 model = @doeTemporalModel;
+stimulusDomain = [1.875, 3.75, 7.5, 15, 30, 60];
 
-plotParamsDomain(model, paramsDomain);
+plotParamsDomain(model, paramsDomain, stimulusDomain);
 
 % Example 2: 
 % from early doeSimulate code
@@ -57,11 +57,10 @@ paramsDomain.k1 = 0.01:0.04:0.4;
 paramsDomain.k2 = 0.01:0.04:0.4;
 paramsDomain.beta = 0.8:0.1:1.4; % Amplitude of the scaled response; should converge to unity
 paramsDomain.sigma = 0.3:0.2:1;	% Standard deviation of the scaled (0-1) noise
-
-
 model = @doeTemporalModel;
+stimulusDomain = [1.875, 3.75, 7.5, 15, 30, 60];
 
-plotParamsDomain(model, paramsDomain);
+plotParamsDomain(model, paramsDomain, stimulusDomain);
 %
 %}
 %% Handle initial inputs
@@ -70,22 +69,21 @@ p = inputParser;
 % Required input
 p.addRequired('model',@(x) isa(x,'function_handle'));
 p.addRequired('paramsDomain',@isstruct);
-
+p.addRequired('stimulusDomain',@isvector);
 
 % Optional params
+p.addParameter('stimulusDomainSpacing','lin',@ischar);
 p.addParameter('nOutcomes',51,@isnumeric);
 p.addParameter('headroom',.1,@isscalar);
 p.addParameter('xParam',1,@isnumeric);
 p.addParameter('yParam', 2, @isnumeric);
 p.addParameter('colorParam', 3, @isnumeric);
-p.addParameter('minStim',.01,@isscalar);
-p.addParameter('maxStim',100,@isscalar);
 p.addParameter('figWidth',900,@isnumeric);
 p.addParameter('figHeight',900,@isnumeric);
 
 
 % Parse
-p.parse( model, paramsDomain, varargin{:});
+p.parse( model, paramsDomain, stimulusDomain, varargin{:});
 
 nOutcomes = p.Results.nOutcomes;
 headroom = p.Results.headroom;
@@ -112,9 +110,47 @@ paramSpaceSize = zeros(1,nParameters);
 paramVectors = cell(nParameters,1);
 
 for par = 1:nParameters
-    paramSpaceSize(par) = length(paramsDomain.(paramNamesInOrder{par}));
+    
     paramVectors{par} = paramsDomain.(paramNamesInOrder{par});
+    if length(paramVectors{par}) > 10
+        warning('Too many divisions for %s to plot in a reasonable way. Parameter domain made coarser.',...,
+            paramNamesInOrder{par});
+        paramVectors{par} = linspace(min(paramVectors{par}),max(paramVectors{par}),10);
+    end
+    paramSpaceSize(par) = length(paramVectors{par});
 end
+
+
+% Currently 3 or 4 parameters are supported (including Beta)
+if nParameters == 4  % including beta
+    figWidth = p.Results.figWidth;
+    figHeight = p.Results.figHeight;
+    colorParam = p.Results.colorParam;
+    colorLength = paramSpaceSize(p.Results.colorParam);
+    iterator1 = paramSpaceSize(p.Results.yParam)*paramSpaceSize(p.Results.colorParam);
+    iterator2 = paramSpaceSize(p.Results.colorParam);
+    xParam = paramSpaceSize(p.Results.xParam);
+    yParam = paramSpaceSize(p.Results.yParam);
+    plotTitleParam = p.Results.yParam;
+elseif nParameters == 3
+    if p.Results.colorParam == 3
+        colorParam = p.Results.yParam;
+    end
+    figWidth = 500;
+    figHeight = 1000;
+    xParam = paramSpaceSize(p.Results.xParam);
+    yParam = 1;
+    colorLength = paramSpaceSize(p.Results.yParam);
+    iterator1 = paramSpaceSize(p.Results.xParam)*paramSpaceSize(p.Results.yParam);
+    iterator2 = paramSpaceSize(p.Results.yParam);
+    plotTitleParam = p.Results.xParam;
+    
+else
+    error('Too many parameters are specified');
+end
+
+
+
 
 % Make one list of all possible parameter combinations
 allParameterCombos = allcomb(paramVectors{:});
@@ -122,18 +158,16 @@ nAllCombos = length(allParameterCombos);
 
 % Prep for plotting
 
-% Currently 3 or 4 parameters are supported (including Beta)
-if nParameters == 4 % including beta
-    iterator1 = paramSpaceSize(p.Results.yParam)*paramSpaceSize(p.Results.colorParam);
-    iterator2 = paramSpaceSize(p.Results.colorParam);
-    colorLength = paramSpaceSize(p.Results.colorParam);
-elseif nParameters == 3 % including beta
-    iterator1 = paramSpaceSize(p.Results.yParam)*paramSpaceSize(p.Results.colorParam);
-    iterator2 = paramSpaceSize(p.Results.colorParam);
-    colorLength = paramSpaceSize(p.Results.colorParam);
-else
-    error('Too many parameters are specified');
+if strcmpi(p.Results.stimulusDomainSpacing,'log')
+    plotFunc = @semilogx;
+else 
+    plotFunc = @plot;
 end
+
+
+% Initialize figure
+fig = figure('Position', [10 10 figWidth figHeight]);
+
 
 colorMap = jet(colorLength+1);
 color = 1;
@@ -141,23 +175,16 @@ subplotNum = 1;
 plotRow = 1;
 plotColumn = 1;
 
-stimulusFreqHzFine = logspace(log10(p.Results.minStim),log10(p.Results.maxStim),100);
-
-% Initialize figure
-fig = figure('Position', [10 10 p.Results.figWidth p.Results.figHeight]);
-
 % Plot all combinations
 for c = 1:nAllCombos
     % For the first one, initialize
     if c == 1
-        subplot(paramSpaceSize(p.Results.xParam),paramSpaceSize(p.Results.yParam),subplotNum);
-        yVals = model(stimulusFreqHzFine,allParameterCombos(c,:));
-        semilogx(stimulusFreqHzFine,yVals,'Color',colorMap(color,:));
-        plotTitle = sprintf('%s: %.03f',paramNamesInOrder{p.Results.yParam},...,
+        subplot(xParam,yParam,subplotNum);
+        yVals = model(stimulusDomain,allParameterCombos(c,:));
+        plotFunc(stimulusDomain,yVals,'Color',colorMap(color,:));
+        plotTitle = sprintf('%s: %.03f',paramNamesInOrder{plotTitleParam},...,
             paramVectors{p.Results.yParam,1}(plotColumn));
         title(plotTitle); 
-        ylabel(sprintf('%s: %.02f',paramNamesInOrder{p.Results.xParam},...,
-            paramVectors{p.Results.xParam,1}(plotRow)),'Fontsize',10);
         hold on;
 
     % every time it iterates through the first parameter (every b*c)
@@ -166,29 +193,35 @@ for c = 1:nAllCombos
         plotColumn = 1;
         plotRow = plotRow + 1;
         subplotNum = paramSpaceSize(p.Results.yParam)*(plotRow-1) + plotColumn;
-        subplot(paramSpaceSize(p.Results.xParam),paramSpaceSize(p.Results.yParam),subplotNum);
-        ylabel(sprintf('%s: %.02f',paramNamesInOrder{p.Results.xParam},...
-            paramVectors{p.Results.xParam,1}(plotRow)),'Fontsize',10);
+        subplot(xParam,yParam,subplotNum);
         hold on;
     elseif mod(c-1,iterator2) == 0
         color = 1;
         plotColumn = plotColumn + 1;
+        
+        if nParameters == 4
+            ylabel(sprintf('%s: %.02f',paramNamesInOrder{p.Results.xParam},...
+                paramVectors{p.Results.xParam,1}(plotRow)),'Fontsize',10);
+        end
+            
         subplotNum = paramSpaceSize(p.Results.yParam)*(plotRow-1) + plotColumn;
-        subplot(paramSpaceSize(p.Results.xParam,1),paramSpaceSize(p.Results.yParam),subplotNum);
+        subplot(xParam,yParam,subplotNum);
         hold on;
     end
     
     if plotRow == 1
-        plotTitle = sprintf('%s: %.03f',paramNamesInOrder{p.Results.yParam},...,
+        plotTitle = sprintf('%s: %.03f',paramNamesInOrder{plotTitleParam},...,
             paramVectors{p.Results.yParam,1}(plotColumn));
         title(plotTitle); 
     end
-    
+
     color = color + 1;
-    yVals = model(stimulusFreqHzFine,allParameterCombos(c,:));
-    semilogx(stimulusFreqHzFine,yVals,'Color',colorMap(color,:));
-    set(gca,'xtick',[],'ytick',[],'XScale', 'log')
+    yVals = model(stimulusDomain,allParameterCombos(c,:));
+    plotFunc(stimulusDomain,yVals,'Color',colorMap(color,:));
     
+    if strcmpi(p.Results.stimulusDomainSpacing,'log')
+        set(gca,'xtick',[],'ytick',[],'XScale', 'log');
+    end
 end
 
 han=axes(fig,'visible','off'); 
@@ -198,10 +231,11 @@ han.YLabel.Visible='on';
 
 
 colormap(jet(colorLength+1));
-cbh = colorbar('YTickLabel',[0 round(paramVectors{p.Results.colorParam},2)]);
+cbh = colorbar('YTickLabel',[0 round(paramVectors{colorParam},2)]);
 colorTitleHandle = get(cbh,'Title');
-titleString = sprintf('%s',paramNamesInOrder{p.Results.colorParam});
+titleString = sprintf('%s',paramNamesInOrder{colorParam});
 set(colorTitleHandle ,'String',titleString,'Fontsize',15);
 set(cbh, 'Position', [.07 .2 .02 .6]);
+drawnow;
 hold off;
     

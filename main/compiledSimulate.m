@@ -52,13 +52,64 @@ showPlots = true;
 
 % Note, this will save a copy of questData after it is initialized. 
 [psiParamsFit,maxBOLD,questDataCopy]=compiledSimulate(modelName,...,
-'param1Lower',p1L,'param1Upper',p1U,'param1Interval',p1I,...,
-'param2Lower',p2L,'param2Upper',p2U,'param2Interval',p2I,...,
-'param3Lower',p3L,'param3Upper',p3U,'param3Interval',p3I,...,
-'param4Lower',p4L,'param4Upper',p4U,'param4Interval',p4I,...,
-'param5Lower',p5L,'param5Upper',p5U,'param5Interval',p5I,...,
+'param1Lower',p1L,'param1Upper',p1U,'param1nDivisions',p1I,...,
+'param2Lower',p2L,'param2Upper',p2U,'param2nDivisions',p2I,...,
+'param3Lower',p3L,'param3Upper',p3U,'param3nDivisions',p3I,...,
+'param4Lower',p4L,'param4Upper',p4U,'param4nDivisions',p4I,...,
+'param5Lower',p5L,'param5Upper',p5U,'param5nDivisions',p5I,...,
 'param1Simulated',p1S,'param2Simulated',p2S,'param3Simulated',p3S,...,
 'param4Simulated',p4S,'param5Simulated',p5S,'showPlots',showPlots);
+
+
+% Logisitic Regression example
+modelName = 'logistic';
+
+% Parameters lower bounds on domains
+p1L = '.01'; 
+p2L = '.01';
+p3L = '.8';
+p4L = '.3';
+
+% Parameters upper bounds on domains
+p1U = '1';
+p2U = '1';
+p3U = '1.4';
+p4U = '2.0';
+
+% Parameters nDivisions for domain creation
+p1n = '40';
+p2n = '40';
+p3n = '8';
+p4n = '8';
+
+% Parameters spacing for domain creations
+p1S = 'lin';
+p2S = 'lin';
+p3S = 'lin';
+p4S = 'lin';
+
+
+% Simulated values for parameters. (These are optional).
+
+% Stimulus domain
+stimLower = '.01';
+stimUpper = '1';
+stimnDivisions = '10';
+stimSpacing = 'lin';
+
+% Show plots just for verification that this works the same with simulate. 
+showPlots = true;
+
+% Note, this will save a copy of questData after it is initialized. 
+[psiParamsFit,maxBOLD,questDataCopy]=compiledSimulate(modelName,...,
+'param1Lower',p1L,'param1Upper',p1U,'param1nDivisions',p1N,'param1Space',p1S,...,
+'param2Lower',p2L,'param2Upper',p2U,'param2nDivisions',p2N,'param2Space',p2S,...,
+'param3Lower',p3L,'param3Upper',p3U,'param3nDivisions',p3N,'param3Space',p3S,...,
+'param4Lower',p4L,'param4Upper',p4U,'param4nDivisions',p4N,'param4Space',p4S,...,
+'stimDomainUpper',stimUpper,'stimDomainLower',stimLower,...,
+'stmiDomainnDivisions',stimnDivisions,'stimDomainSpacing',stimSpacing,...,
+'param1Simulated',p1S,'param2Simulated',p2S,'param3Simulated',p3S,...,
+'param4Simulated',p4S,'showPlots',showPlots);
 
 
 %}
@@ -72,29 +123,41 @@ p = inputParser;
 p.addRequired(modelName,@ischar);
 
 %% Required input for any model.
-% The above are required to assemble params domain.
+% The following are required to assemble params domain.
 p.addParameter('param1Lower','',@ischar);
 p.addParameter('param2Lower','',@ischar);
 p.addParameter('param3Lower','',@ischar);
 p.addParameter('param4Lower','',@ischar);
 p.addParameter('param5Lower','',@ischar);
-p.addParameter('param1Interval','',@ischar);
-p.addParameter('param2Interval','',@ischar);
-p.addParameter('param3Interval','',@ischar);
-p.addParameter('param4Interval','',@ischar);
-p.addParameter('param5Interval','',@ischar);
+p.addParameter('param1nDivisions','',@ischar);
+p.addParameter('param2nDivisions','',@ischar);
+p.addParameter('param3nDivisions','',@ischar);
+p.addParameter('param4nDivisions','',@ischar);
+p.addParameter('param5nDivisions','',@ischar);
 p.addParameter('param1Upper','',@ischar);
 p.addParameter('param2Upper','',@ischar);
 p.addParameter('param3Upper','',@ischar);
 p.addParameter('param4Upper','',@ischar);
 p.addParameter('param5Upper','',@ischar);
+p.addParameter('param1Spacing','',@ischar);
+p.addParameter('param2Spacing','',@ischar);
+p.addParameter('param3Spacing','',@ischar);
+p.addParameter('param4Spacing','',@ischar);
+p.addParameter('param5Spacing','',@ischar);
 
+% The following are optional for specific simulated parameters. 
+% Otherwise parameters will be selected randomly from the parameter domain.
 p.addParameter('param1Simulated','',@ischar);
 p.addParameter('param2Simulated','',@ischar);
 p.addParameter('param3Simulated','',@ischar);
 p.addParameter('param4Simulated','',@ischar);
 p.addParameter('param5Simulated','',@ischar);
 
+% The following are to assemble the stimulus domain.
+p.addParameter('stimDomainLower','',@ischar);
+p.addParameter('stimDomainnDivisions','',@ischar);
+p.addParameter('stimDomainUpper','',@ischar);
+p.addParameter('stimDomainSpacing','',@ischar);
 
 %% Optional model general parameters
 p.addParameter('qpPres','false',@ischar);
@@ -113,7 +176,6 @@ p.addParameter('outNum','test',@ischar);
 p.addParameter('seed','choose',@ischar);
 
 % Optional params for future support (not currently supported)
-p.addParameter('stimulusDomain',{},@iscell);
 p.addParameter('questDataCopy',{},@isstruct);
 
 % Plotting parameters. This will only accept logicals (not strings) and
@@ -127,7 +189,7 @@ p.parse(modelName, varargin{:});
 model = str2func(modelName);
 [paramNamesInOrder] = checkModel(model);
 
-%% Getting the input into a form that we can use it for simulate.
+%% Build parameter domains
 % Assemble the paramsDomain and, if specified, simulatedPsiParams
 
 % Initialize paramDomains
@@ -136,13 +198,42 @@ paramsDomain = struct;
 % Assemble the parameter domains
 for name = 1:length(paramNamesInOrder)
     lower = str2double(p.Results.(['param' num2str(name) 'Lower']));
-    interval = str2double(p.Results.(['param' num2str(name) 'Interval']));
+    nDivision = str2double(p.Results.(['param' num2str(name) 'nDivisions']));
     upper = str2double(p.Results.(['param' num2str(name) 'Upper']));
     % Make the sure the parameter domain can be properly specified.
     assert(lower<upper,'Improper parameter domain %s',paramNamesInOrder{name});
-    assert(interval<upper-lower,sprintf('Improper parameter domain %s',paramNamesInOrder{name}));
-    paramsDomain.(paramNamesInOrder{name}) = lower:interval:upper;
+    if contains(p.Results.(['param' num2str(name) 'Spacing']),'lin')
+        paramsDomain.(paramNamesInOrder{name}) = linspace(lower,upper,nDivision);
+    elseif contains(p.Results.(['param' num2str(name) 'Spacing']),'log')
+        paramsDomain.(paramNamesInOrder{name}) = logspace(lower,upper,nDivision);
+    else
+        error('Improper spacing key for %s. Log or linear spacing supported',paramNamesInOrder{name});
+    end
 end
+
+%% Build stimulus domain
+% Initialize 
+stimulusDomain = {};
+
+% Assemble the parameter domains
+if ~isempty(p.Results.stimDomainLower)
+    lower = str2double(p.Results.stimDomainLower);
+    nDivision = str2double(p.Results.stimDomainnDivisions);
+    upper = str2double(p.Results.stimDomainUpper);
+    % Make the sure the parameter domain can be properly specified.
+    assert(lower<upper,'Improper parameter domain %s',paramNamesInOrder{name});
+    if contains(p.Results.stimDomainSpacing,'lin')
+        stimulusDomain = {linspace(lower,upper,nDivision)};
+    elseif contains(p.Results.stimDomainSpacing,'log')
+        stimulusDomain = {logspace(lower,upper,nDivision)};
+    else
+        error('Improper spacing key for stimulus domain. Log or linear spacing supported');
+    end
+
+end
+
+
+
 
 % Check if one of the simulated parameters was passed. If not, simulate.m
 % will choose one randomly from the parameter domains.
@@ -186,7 +277,7 @@ seed = p.Results.seed;
     'baselineStimulus',baselineStimulus,'maxBOLDStimulus',maxBOLDStimulus,...,
     'nOutcomes',nOutcomes,'headroom',headroom,'noiseSD',noiseSD,...,
     'TR',TR,'trialLength',trialLength,'outNum',outNum,'seed',seed,...,
-    'showPlots',p.Results.showPlots);
+    'showPlots',p.Results.showPlots,'stimulusDomain',stimulusDomain);
 
 end
 

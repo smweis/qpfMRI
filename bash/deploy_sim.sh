@@ -24,26 +24,22 @@ d=`date +%m-%d-%Y`
 cd /ufrc/stevenweisberg/stevenweisberg/qpfMRIResults/compiled.$d
 
 ./run_compiledSimulate.sh /apps/matlab/mcr/2019b/v97 \
-doeTemporalModel \
-param1Lower .899 \
-param1Interval .025 \
-param1Upper 1.099 \
+logistic \
+param1Lower .01 \
+param1nDivisions 40 \
+param1Upper 1.0 \
 param2Lower .01 \
-param2Interval .04 \
-param2Upper .4 \
-param3Lower .01 \
-param3Interval .04 \
-param3Upper .4 \
-param4Lower .8 \
-param4Interval .1 \
-param4Upper 1.4 \
-param5Lower .3 \
-param5Interval .2 \
-param5Upper 1.0 \
-param1Simulated 1.004 \
-param2Simulated .016 \
-param3Simulated .118 \
-param4Simulated 1.0 \
-param5Simulated .1 \ 
+param2nDivisions 40 \
+param2Upper 1.0 \
+param3Lower .8 \
+param3nDivisions 7 \
+param3Upper 1.4 \
+param4Lower .3 \
+param4nDivisions 10 \
+param4Upper 1.5 \
+param1Simulated .23 \
+param2Simulated .23 \
+param3Simulated 1.0 \
+param4Simulated .1 \
 qpPres $1 \ 
 outNum $2
