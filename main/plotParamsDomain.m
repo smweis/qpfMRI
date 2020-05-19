@@ -17,6 +17,8 @@ function plotParamsDomain(model, paramsDomain, stimulusDomain, varargin)
 %   stimulusDomain        - Vector specifying the expected domain of the
 %                             stimulus.
 % Optional key/value pairs:
+%   'stimulusDomain'      - String. Default = 'log'
+%                           The spacing of the stimulus domain.
 %   'xParam'                - Integer (Default = 1)
 %                             Which parameter to vary along the x subplot axis.
 %   'yParam'                - Integer (Default = 2)
@@ -58,9 +60,10 @@ paramsDomain.k2 = 0.01:0.04:0.4;
 paramsDomain.beta = 0.8:0.1:1.4; % Amplitude of the scaled response; should converge to unity
 paramsDomain.sigma = 0.3:0.2:1;	% Standard deviation of the scaled (0-1) noise
 model = @doeTemporalModel;
-stimulusDomain = [1.875, 3.75, 7.5, 15, 30, 60];
-
-plotParamsDomain(model, paramsDomain, stimulusDomain);
+stimulusDomain = logspace(log10(0.01),log10(200),100);;
+stimDomainSpacing = 'log';
+plotParamsDomain(model, paramsDomain, stimulusDomain,...,
+'stimulusDomainSpacing',stimDomainSpacing);
 %
 %}
 %% Handle initial inputs
