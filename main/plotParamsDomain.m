@@ -1,6 +1,7 @@
 function plotParamsDomain(model, paramsDomain, stimulusDomain, varargin)
 %% Plot all possible combos of a parameter domain. 
-% TODO: Note - I'm not sure how well this behaves with a 4-parameter model.
+% Plots all possible combinations of a parameter domain across a range of
+% stimulus values.
 % Inputs:
 %   model                 - A function handle. This should be the
 %                           'continuous function.' The Quest+ specific
@@ -8,16 +9,18 @@ function plotParamsDomain(model, paramsDomain, stimulusDomain, varargin)
 %                           code block. Currently supported:
 %                             @doeTemporalModel
 %                             @watsonTemporalModel
+%                             @logistic
 %   paramsDomain          - Struct consisting of upper bounds, lower
 %                           bounds, and intervals for all necessary
 %                           parameters. All models should have beta and
 %                           sigma as parameters.
 %                             DoE    (n=5): Sr, k1, k2, beta, sigma
 %                             Watson (n=5): tau, kappa, zeta, beta, sigma
+%                             logistic (n=4): slope, semiSat, beta, sigma
 %   stimulusDomain        - Vector specifying the expected domain of the
 %                             stimulus.
 % Optional key/value pairs:
-%   'stimulusDomain'      - String. Default = 'log'
+%   'stimulusDomain'      - String. Default = 'lin'
 %                           The spacing of the stimulus domain.
 %   'xParam'                - Integer (Default = 1)
 %                             Which parameter to vary along the x subplot axis.
@@ -25,11 +28,6 @@ function plotParamsDomain(model, paramsDomain, stimulusDomain, varargin)
 %                             Which parameter to vary along the y subplot axis. 
 %   'colorParam'            - Integer (Default = 3)
 %                             Which parameter to vary color for. 
-%   'minStim'               - Scalar (Default = .01)
-%                             Lowest value to use for plotting stimulus
-%                             domain.
-%   'maxStim'               - Scalar (Default = 100)
-%                             Highest value to use for plotting stimulus
 %                             domain.
 %   'figWidth'              - Integer (Default = 900)
 %                             Width of figure window size.
@@ -65,6 +63,24 @@ stimDomainSpacing = 'log';
 plotParamsDomain(model, paramsDomain, stimulusDomain,...,
 'stimulusDomainSpacing',stimDomainSpacing);
 %
+
+
+
+
+model = @logistic;
+
+paramsDomain = struct;
+paramsDomain.slope = linspace(.01,1,40);
+paramsDomain.semiSat = linspace(.01,1,40);
+paramsDomain.beta = 0.8:0.1:1.4; 
+paramsDomain.sigma = linspace(.3,1.5,8);
+
+stimulusDomain = {linspace(.01,1,10)};
+stimulusDomainSpacing = 'lin';
+
+plotParamsDomain(model, paramsDomain, stimulusDomain,...,
+'stimulusDomainSpacing',stimDomainSpacing);
+
 %}
 %% Handle initial inputs
 p = inputParser;

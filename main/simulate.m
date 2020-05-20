@@ -79,11 +79,6 @@ function [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain, vara
 %   'stimulusDomainSpacing  - Default = 'lin'. 
 %                             Whether the stimulusDomain is spaced linear
 %                             or log.
-%   'noiseSD'               - Scalar: (Default = .1)
-%                             The amplitude of the noise added to the
-%                             simulated BOLD fMRI signal in units of standard
-%                             deviations. This will only be used if
-%                             simulatedPsiParams.sigma is empty.
 %	'questDataCopy'         - Struct (Default is empty)
 %                             If it is not necessary to reinitialize Q+
 %                             (questData untrained is in memory), you can
@@ -95,12 +90,6 @@ function [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain, vara
 % Optional key/value pairs (used in plotting):
 %   'showPlots'             - Logical: (Default = false)
 %                             Whether to show plots.
-%   'minStim'               - Scalar (Default = .01)
-%                             Lowest value to use for plotting stimulus
-%                             domain.
-%   'maxStim'               - Scalar (Default = 100)
-%                             Highest value to use for plotting stimulus
-%                             domain.
 %   'figWidth'              - Integer (Default = 900)
 %                             Width of figure window size.
 %   'figHeight'             - Integer (Default = 900)
@@ -115,15 +104,16 @@ function [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain, vara
 
 %Example: 
 %{
-
+---------------------------------------------------------------------------
+% Example 1: DoE Temporal Model - a somewhat poorly behaved model.
 model = @doeTemporalModel;
 
 paramsDomain = struct;
 paramsDomain.Sr = 0.899:0.025:1.099;
 paramsDomain.k1 = 0.01:0.04:0.4;
 paramsDomain.k2 = 0.01:0.04:0.4;
-paramsDomain.beta = 0.8:0.1:1.4; % Amplitude of the scaled response; should converge to unity
-paramsDomain.sigma = 0.3:0.2:1.0;	% Standard deviation of the scaled (0-1) noise
+paramsDomain.beta = 0.8:0.1:1.4;
+paramsDomain.sigma = 0.3:0.2:1.0;	
 
 simulatedPsiParams = struct;
 simulatedPsiParams.Sr = 1.004; 
@@ -136,11 +126,12 @@ qpPres = false;
 
 showPlots = true;
 
-% Note, this will save a copy of questData after it is initialized. 
 [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain,...,
-'qpPres',qpPres,'simulatedPsiParams', simulatedPsiParams, 'showPlots',showPlots);
+'qpPres',qpPres,'simulatedPsiParams', simulatedPsiParams,...,
+ 'showPlots',showPlots);
 
-%%%% LOGISIC EXAMPLE:
+---------------------------------------------------------------------------
+Example 2: Logistic Model
 
 model = @logistic;
 
@@ -161,8 +152,10 @@ showPlots = true;
 [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain,...,
 'qpPres',qpPres, 'showPlots',showPlots,'stimulusDomain',stimulusDomain,...,
 'stimulusDomainSpacing',stimulusDomainSpacing);
-
-
+---------------------------------------------------------------------------
+Time saver for debugging: After running one of the above examples, keep
+everything in memory and run the line below. Especially useful if the
+paramsDomain is large or multi-dimensional.
 
 % If paramsDomain is not changed, the following line can be run with
 questDataCopy as an optional argument to save the initialization step.
@@ -196,15 +189,12 @@ p.addParameter('stimulusStructDeltaT',100,@isnumeric);
 p.addParameter('baselineStimulus','');
 p.addParameter('maxBOLDStimulus','');
 p.addParameter('nOutcomes',51,@isnumeric);
-p.addParameter('noiseSD',.1,@isscalar);
 p.addParameter('stimulusDomain',{},@iscell);
 p.addParameter('stimulusDomainSpacing','lin',@ischar);
 p.addParameter('questDataCopy',{},@isstruct);
 
 % Optional params for plotting
 p.addParameter('showPlots',false,@islogical);
-p.addParameter('minStim',.01,@isscalar);
-p.addParameter('maxStim',100,@isscalar);
 p.addParameter('figWidth',900,@isnumeric);
 p.addParameter('figHeight',900,@isnumeric);
 
@@ -228,10 +218,8 @@ nTrials = p.Results.nTrials;
 stimulusStructDeltaT = p.Results.stimulusStructDeltaT; 
 baselineStimulus = p.Results.baselineStimulus;
 maxBOLDStimulus = p.Results.maxBOLDStimulus;
-noiseSD = p.Results.noiseSD;
 myQpParams.nOutcomes = p.Results.nOutcomes;
 showPlots = p.Results.showPlots;
-minStim = p.Results.minStim;
 figWidth = p.Results.figWidth;
 figHeight = p.Results.figHeight;
 
@@ -266,7 +254,7 @@ if isempty(p.Results.simulatedPsiParams)
     end
     % Beta is always one
     simulatedPsiParams(betaIndex) = 1;
-    simulatedPsiParams(sigmaIndex) = noiseSD;
+    simulatedPsiParams(sigmaIndex) = .1;
 else
     simulatedPsiParams = zeros(1,length(paramNamesInOrder));
     for i = 1:length(paramNamesInOrder)
@@ -289,14 +277,19 @@ else
     myQpParams.stimParamsDomainList = {[baselineStimulus,1.875,3.75,7.5,15,30,60]};
 end
 
-% Without knowledge of these things, we assume the lowest and highest
-% values in the stimulus domain are the baseline and max stimuli
-if isempty(baselineStimulus)
+% Create baseline stimulus and maxBOLD stimulus if not passed.
+if isempty(p.Results.baselineStimulus)
     baselineStimulus = min(myQpParams.stimParamsDomainList{1});
+else
+    baselineStimulus = p.Results.baselineStimulus;
 end
-if isempty(maxBOLDStimulus)
+
+if isempty(p.Results.maxBOLDStimulus)
     maxBOLDStimulus = max(myQpParams.stimParamsDomainList{1});
+else
+    maxBOLDStimulus = p.Results.maxBOLDStimulus;
 end
+
 
 
 % Derive some lower and upper bounds from the parameter ranges. This is
@@ -374,15 +367,18 @@ if showPlots
         'nOutcomes',myQpParams.nOutcomes,'headroom',headroom,...,
         'stimulusDomainSpacing',p.Results.stimulusDomainSpacing,...,
         'figHeight',figHeight,'figWidth',figWidth);
+    
     hold off;
     
-    % Create the packet early
+    % Create the packet early for plotting
     thePacket = createPacket('nTrials',nTrials,...,
         'trialLengthSecs',trialLength,...,
         'stimulusStructDeltaT',stimulusStructDeltaT);
-
+    
+    % Initialize the figure
     figure('Position',[10 10 figWidth figHeight]);
     hold on;
+    
     % Set up the BOLD fMRI response and model fit
     subplot(3,1,1)
     currentBOLDHandleData = plot(thePacket.stimulus.timebase,zeros(size(thePacket.stimulus.timebase)),'-k');
@@ -396,8 +392,6 @@ if showPlots
     
     % Set up the TTF figure
     subplot(3,1,2)
-    
-    
     % MIGHT WANT TO FIX THIS DOWN THE ROAD??
     predictedRelativeResponse = model(stimulusDomainFine,simulatedPsiParams) - ...
         model(baselineStimulus,simulatedPsiParams);
@@ -503,7 +497,7 @@ for tt = 1:nTrials
         % Current guess at the TTF, along with stims and outcomes
         yVals = (outcomes - nLower - 1)./nMid;
         stimulusVecPlot = stimulusVec;
-        stimulusVecPlot(stimulusVecPlot==0)=minStim;
+        stimulusVecPlot(stimulusVecPlot==0)=min(myQpParams.stimParamsDomainList{1});
         delete(currentOutcomesHandle);
         currentOutcomesHandle = scatter(stimulusVecPlot(1:tt),yVals,'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',.2);
         psiParamsIndex = qpListMaxArg(questData.posterior);
