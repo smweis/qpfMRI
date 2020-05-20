@@ -6,7 +6,7 @@
 #SBATCH --ntasks=1                    # Run on a single CPU
 #SBATCH --mem=8gb                     # Job memory request
 #SBATCH --time=04:00:00               # Time limit hrs:min:sec
-#SBATCH --output=sim_test_%a.log   # Standard output and error log
+#SBATCH --output=sim_test_%A.log   # Standard output and error log
 
 
 # See details of /code/qpfMRI/main/compiledSimulate.m for how to call this.
