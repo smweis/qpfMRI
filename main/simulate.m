@@ -73,6 +73,11 @@ function [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain, vara
 %                             The number of outcome bins Q+ can assign a
 %                             response to. The larger this is the slower
 %                             Q+ will be. 
+%   'noiseSD'               - 1xn vector or scalar (Default = .1)
+%                             In the absence of a simulatedPsiParam.sigma,
+%                             noiseSD will allow the specification of a
+%                             specific noise value (or selection from a
+%                             vector of values). 
 %	'stimulusDomain'        - Cell array (Default = a range of stimulus values).
 %                             All possible stimulus values that can be
 %                             assigned.
@@ -141,10 +146,10 @@ paramsDomain.semiSat = linspace(.01,1,40);
 paramsDomain.beta = 0.8:0.1:1.4; 
 paramsDomain.sigma = linspace(.3,1.5,8);
 
-stimulusDomain = {linspace(.01,1,10)};
+stimulusDomain = {linspace(.01,1,40)};
 stimulusDomainSpacing = 'lin';
 
-qpPres = false;
+qpPres = true;
 
 showPlots = true;
 
@@ -175,7 +180,7 @@ p.addRequired('paramsDomain',@isstruct);
 
 % Optional params
 p.addParameter('qpPres',false,@islogical);
-p.addParameter('simulatedPsiParams',{},@isstruct);
+p.addParameter('simulatedPsiParams',{});
 p.addParameter('headroom', 0.1, @isnumeric);
 p.addParameter('maxBOLD', 1.0, @isscalar);
 p.addParameter('maxBOLDSimulated', 1.5, @isscalar);
@@ -189,6 +194,7 @@ p.addParameter('stimulusStructDeltaT',100,@isnumeric);
 p.addParameter('baselineStimulus','');
 p.addParameter('maxBOLDStimulus','');
 p.addParameter('nOutcomes',51,@isnumeric);
+p.addParameter('noiseSD',.1,@isvector);
 p.addParameter('stimulusDomain',{},@iscell);
 p.addParameter('stimulusDomainSpacing','lin',@ischar);
 p.addParameter('questDataCopy',{},@isstruct);
@@ -229,46 +235,24 @@ catch
     warning('No questData found. Will initialize, which will take some time.');
 end
 
-%% This function contains all supported models and returns the model-specific values. 
+%% Check the model is supported and correct and return the model-specific values. 
 [paramNamesInOrder, myQpParams.qpPF, myQpParams.psiParamsDomainList] = checkModel(model,...,
     paramsDomain,'nOutcomes',myQpParams.nOutcomes,'headroom',headroom);
 
-%% Handle more inputs
-% This finds beta and sigma no matter where it is.
+%% Handle inputs
+% This finds beta and sigma no matter where they are.
 betaIndex = find(strcmp(paramNamesInOrder,'beta'));
 sigmaIndex = find(strcmp(paramNamesInOrder,'sigma'));
 
-% If seed is a keyword, pick a random seed.
+% If seed is a keyword, pick a random seed. We use shuffle so it's new
+% every time.
 if strcmp(seed,'choose')
     rngSeed = rng('shuffle'); rngSeed = rng('shuffle');
 else 
     rngSeed = rng(seed); rngSeed = rng(seed);
 end
 
-% Pick some random params to simulate if none provided (but set the neural
-% noise to .1 SD and beta = 1)
-if isempty(p.Results.simulatedPsiParams)
-    simulatedPsiParams = zeros(1,length(paramNamesInOrder));
-    for i = 1:length(paramNamesInOrder)
-        simulatedPsiParams(i) = randsample(paramsDomain.(paramNamesInOrder{i}),1);
-    end
-    % Beta is always one
-    simulatedPsiParams(betaIndex) = 1;
-    simulatedPsiParams(sigmaIndex) = .1;
-else
-    simulatedPsiParams = zeros(1,length(paramNamesInOrder));
-    for i = 1:length(paramNamesInOrder)
-        simulatedPsiParams(i) =  p.Results.simulatedPsiParams.(paramNamesInOrder{i});
-    end
-    % Beta will converge to 1 as maxBOLD gets closer and closer to the
-    % simulated maxBOLD. As a result, when simulating data, beta should always
-    % be set to 1. And, Q+ should always be able to incorporate 1 in its
-    % domain. Assert these conditions are true. 
-    assert(simulatedPsiParams(betaIndex)==1,'Simulated Beta should always be 1.');
-    assert(ismember(1,paramsDomain.beta),'The domain for beta should always include 1.');
-end
-
-% Add the stimulus domain.  
+%% Add the stimulus domain.  
 if iscell(p.Results.stimulusDomain)
     myQpParams.stimParamsDomainList = p.Results.stimulusDomain;
 elseif isvector(p.Results.stimulusDomain)
@@ -288,6 +272,46 @@ if isempty(p.Results.maxBOLDStimulus)
     maxBOLDStimulus = max(myQpParams.stimParamsDomainList{1});
 else
     maxBOLDStimulus = p.Results.maxBOLDStimulus;
+end
+
+%% Select the veridical psychometric paramteers for the function.
+% Pick some random params to simulate if none provided but set beta to 1.
+% We require the simulated parameters to result in a baseline trial = 0.
+if isempty(p.Results.simulatedPsiParams)
+    simulatedPsiParams = zeros(1,length(paramNamesInOrder));
+    stillSearching = true;
+    while stillSearching
+        for i = 1:length(paramNamesInOrder)
+            simulatedPsiParams(i) = randsample(paramsDomain.(paramNamesInOrder{i}),1);
+        end
+        
+        % Beta is always one for simulations
+        simulatedPsiParams(betaIndex) = 1;
+        
+        % simulatedPsiParams is selected from a random sample of
+        % p.Results.noiseSD
+        simulatedPsiParams(sigmaIndex) = randsample(p.Results.noiseSD,1);
+        
+        if abs(model(baselineStimulus,simulatedPsiParams)) < simulatedPsiParams(betaIndex)/10000
+            stillSearching = false;
+        end
+    end
+    
+
+else
+    simulatedPsiParams = zeros(1,length(paramNamesInOrder));
+    for i = 1:length(paramNamesInOrder)
+        simulatedPsiParams(i) =  p.Results.simulatedPsiParams.(paramNamesInOrder{i});
+    end
+    % Beta will converge to 1 as maxBOLD gets closer and closer to the
+    % simulated maxBOLD. As a result, when simulating data, beta should always
+    % be set to 1. And, Q+ should always be able to incorporate 1 in its
+    % domain. Assert these conditions are true. 
+    % Beta is always one for simulations
+    simulatedPsiParams(betaIndex) = 1;
+        
+    assert(simulatedPsiParams(betaIndex)==1,'Simulated Beta should always be 1.');
+
 end
 
 
@@ -314,6 +338,14 @@ for param = 1:length(paramNamesInOrder)
             && upperBounds(param) >= simulatedPsiParams(param),...,
             'Parameter %s is not within the bounds of the parameter domain.',paramNamesInOrder{param});
     end
+end
+
+% Make sure 1 is a member of the beta parameter domains. If it's not, add
+% it in.
+if ~ismember(1,paramsDomain.beta)
+    warning('The domain for beta should always include 1. Adding 1 to beta parameter domain. This may create non-linear spacing.');
+    paramsDomain.beta = sort(paramsDomain.beta);
+    paramsDomain.beta = [paramsDomain.beta(paramsDomain.beta<1) 1 paramsDomain.beta(paramsDomain.beta>1)];
 end
 
 
@@ -346,7 +378,7 @@ questDataUntrained = questData;
 stimulusVec = nan(1,nTrials);
 
 %% Plotting features
-
+% Select the plotting type based on stimulus domain spacing.
 if strcmpi(p.Results.stimulusDomainSpacing,'log')
     plotFunc = @semilogx;
 else
@@ -422,6 +454,15 @@ if showPlots
 end
 
 
+
+
+%% Print the simulated psychometric parameters:
+fprintf('Simulated parameters:\n'); 
+for i = 1:length(simulatedPsiParams)
+    fprintf('%s: %0.3f ',paramNamesInOrder{i},simulatedPsiParams(i));
+end
+fprintf('\n'); 
+
 %% Run simulated trials
 for tt = 1:nTrials
     fprintf('\nTrial %d\n',tt);
@@ -482,7 +523,9 @@ for tt = 1:nTrials
     for yy = 1:tt
         questData = qpUpdate(questData,stimulusVec(yy),outcomes(yy));
     end
-        % Update the plots
+    
+    %% Plot the ongoing results
+    % Update the plots
     if showPlots
         
         % Simulated BOLD fMRI time-series and fit
@@ -557,8 +600,6 @@ for yy = 1:tt
     questData = qpUpdate(questData,stimulusVec(yy),outcomes(yy));
 end
 
-
-
 %% Print some final output to the log
 fprintf('--------------------------------------------------------------\n');
 fprintf('FINAL VALUES\n');
@@ -597,6 +638,7 @@ end
 
 fprintf('\nmaxBOLD estimate: %0.3f\n',maxBOLD);
 
+%% Final plot fits
 if showPlots
     figure('Position', [10 10 figWidth figHeight]);
     hold on;

@@ -77,10 +77,10 @@ p3U = '1.4';
 p4U = '2.0';
 
 % Parameters nDivisions for domain creation
-p1n = '40';
-p2n = '40';
-p3n = '8';
-p4n = '8';
+p1N = '30';
+p2N = '30';
+p3N = '8';
+p4N = '8';
 
 % Parameters spacing for domain creations
 p1S = 'lin';
@@ -88,13 +88,18 @@ p2S = 'lin';
 p3S = 'lin';
 p4S = 'lin';
 
+% NoiseSD sampling
+noiseSDLower = '.1';
+noiseSDUpper = '.8';
+noiseSDnDivisions = '7';
 
-% Simulated values for parameters. (These are optional).
+% Q+ control
+qpPres = 'true';
 
 % Stimulus domain
 stimLower = '.01';
 stimUpper = '1';
-stimnDivisions = '10';
+stimnDivisions = '30';
 stimSpacing = 'lin';
 
 % Show plots just for verification that this works the same with simulate. 
@@ -102,14 +107,14 @@ showPlots = true;
 
 % Note, this will save a copy of questData after it is initialized. 
 [psiParamsFit,maxBOLD,questDataCopy]=compiledSimulate(modelName,...,
-'param1Lower',p1L,'param1Upper',p1U,'param1nDivisions',p1N,'param1Space',p1S,...,
-'param2Lower',p2L,'param2Upper',p2U,'param2nDivisions',p2N,'param2Space',p2S,...,
-'param3Lower',p3L,'param3Upper',p3U,'param3nDivisions',p3N,'param3Space',p3S,...,
-'param4Lower',p4L,'param4Upper',p4U,'param4nDivisions',p4N,'param4Space',p4S,...,
+'param1Lower',p1L,'param1Upper',p1U,'param1nDivisions',p1N,'param1Spacing',p1S,...,
+'param2Lower',p2L,'param2Upper',p2U,'param2nDivisions',p2N,'param2Spacing',p2S,...,
+'param3Lower',p3L,'param3Upper',p3U,'param3nDivisions',p3N,'param3Spacing',p3S,...,
+'param4Lower',p4L,'param4Upper',p4U,'param4nDivisions',p4N,'param4Spacing',p4S,...,
+'noiseSDLower',noiseSDLower,'noiseSDUpper',noiseSDUpper,'noiseSDnDivisions',noiseSDnDivisions,...,
 'stimDomainUpper',stimUpper,'stimDomainLower',stimLower,...,
-'stmiDomainnDivisions',stimnDivisions,'stimDomainSpacing',stimSpacing,...,
-'param1Simulated',p1S,'param2Simulated',p2S,'param3Simulated',p3S,...,
-'param4Simulated',p4S,'showPlots',showPlots);
+'stimDomainnDivisions',stimnDivisions,'stimDomainSpacing',stimSpacing,...,
+'showPlots',showPlots,'qpPres',qpPres);
 
 
 %}
@@ -153,6 +158,11 @@ p.addParameter('param3Simulated','',@ischar);
 p.addParameter('param4Simulated','',@ischar);
 p.addParameter('param5Simulated','',@ischar);
 
+% To provide a range for noiseSD, enter the same values:
+p.addParameter('noiseSDLower','.1',@ischar);
+p.addParameter('noiseSDUpper','.1',@ischar);
+p.addParameter('noiseSDnDivisions','1',@ischar);
+
 % The following are to assemble the stimulus domain.
 p.addParameter('stimDomainLower','',@ischar);
 p.addParameter('stimDomainnDivisions','',@ischar);
@@ -165,11 +175,10 @@ p.addParameter('nTrials','30',@ischar);
 p.addParameter('stimulusStructDeltaT','100',@ischar);
 p.addParameter('maxBOLDSimulated','1.6',@ischar);
 p.addParameter('maxBOLD','1.0',@ischar);
-p.addParameter('baselineStimulus','0',@ischar);
-p.addParameter('maxBOLDStimulus','15',@ischar);
+p.addParameter('baselineStimulus','',@ischar);
+p.addParameter('maxBOLDStimulus','',@ischar);
 p.addParameter('nOutcomes','51',@ischar);
 p.addParameter('headroom','.1',@ischar);
-p.addParameter('noiseSD','.1',@ischar);
 p.addParameter('TR','800', @ischar);
 p.addParameter('trialLength','12', @ischar);
 p.addParameter('outNum','test',@ischar);
@@ -247,6 +256,9 @@ else
     simulatedPsiParams = {};
 end
 
+% To provide a range for noiseSD, enter the same values:
+noiseSD = linspace(str2double(p.Results.noiseSDLower),...,
+    str2double(p.Results.noiseSDUpper),str2double(p.Results.noiseSDnDivisions));
 
 
 % Handle the rest of the optional arguments: 
@@ -260,11 +272,10 @@ nTrials = str2double(p.Results.nTrials);
 stimulusStructDeltaT = str2double(p.Results.stimulusStructDeltaT);
 maxBOLDSimulated = str2double(p.Results.maxBOLDSimulated);
 maxBOLD = str2double(p.Results.maxBOLD);
-baselineStimulus = str2double(p.Results.baselineStimulus);
-maxBOLDStimulus = str2double(p.Results.maxBOLDStimulus);
+baselineStimulus = p.Results.baselineStimulus;
+maxBOLDStimulus = p.Results.maxBOLDStimulus;
 nOutcomes = str2double(p.Results.nOutcomes);
 headroom = str2double(p.Results.headroom);
-noiseSD = str2double(p.Results.noiseSD);
 TR = str2double(p.Results.TR);
 trialLength = str2double(p.Results.trialLength);
 outNum = p.Results.outNum;

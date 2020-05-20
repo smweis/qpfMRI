@@ -26,10 +26,10 @@ cd /ufrc/stevenweisberg/stevenweisberg/qpfMRIResults/compiled.$d
 ./run_compiledSimulate.sh /apps/matlab/mcr/2019b/v97 \
 logistic \
 param1Lower .01 \
-param1nDivisions 40 \
+param1nDivisions 30 \
 param1Upper 1.0 \
 param2Lower .01 \
-param2nDivisions 40 \
+param2nDivisions 30 \
 param2Upper 1.0 \
 param3Lower .8 \
 param3nDivisions 7 \
@@ -37,9 +37,11 @@ param3Upper 1.4 \
 param4Lower .3 \
 param4nDivisions 10 \
 param4Upper 1.5 \
-param1Simulated .23 \
-param2Simulated .23 \
-param3Simulated 1.0 \
-param4Simulated .1 \
+stimLower .01 \
+stimUpper 1.0 \
+stimnDivisions 30 \
+noiseSDLower .1 \
+noiseSDUpper .8 \
+noiseSDnDivisions 7 \
 qpPres $1 \ 
 outNum $2
