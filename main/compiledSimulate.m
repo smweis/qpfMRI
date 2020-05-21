@@ -144,11 +144,11 @@ p.addParameter('param2Upper','',@ischar);
 p.addParameter('param3Upper','',@ischar);
 p.addParameter('param4Upper','',@ischar);
 p.addParameter('param5Upper','',@ischar);
-p.addParameter('param1Spacing','',@ischar);
-p.addParameter('param2Spacing','',@ischar);
-p.addParameter('param3Spacing','',@ischar);
-p.addParameter('param4Spacing','',@ischar);
-p.addParameter('param5Spacing','',@ischar);
+p.addParameter('param1Spacing','lin',@ischar);
+p.addParameter('param2Spacing','lin',@ischar);
+p.addParameter('param3Spacing','lin',@ischar);
+p.addParameter('param4Spacing','lin',@ischar);
+p.addParameter('param5Spacing','lin',@ischar);
 
 % The following are optional for specific simulated parameters. 
 % Otherwise parameters will be selected randomly from the parameter domain.
@@ -167,7 +167,7 @@ p.addParameter('noiseSDnDivisions','1',@ischar);
 p.addParameter('stimDomainLower','',@ischar);
 p.addParameter('stimDomainnDivisions','',@ischar);
 p.addParameter('stimDomainUpper','',@ischar);
-p.addParameter('stimDomainSpacing','',@ischar);
+p.addParameter('stimDomainSpacing','lin',@ischar);
 
 %% Optional model general parameters
 p.addParameter('qpPres','false',@ischar);

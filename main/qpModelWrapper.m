@@ -153,6 +153,9 @@ for ii = 1:length(stimulusValues)
     
 end % loop over frequencies to model
 
+% log likelihood calculations upon these proportions are unhappy
+% with zeros. We set them here instead to realmin
+predictedProportions(predictedProportions==0)=realmin;
 
 end % main function
 

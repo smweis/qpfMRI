@@ -37,9 +37,13 @@ param3Upper 1.4 \
 param4Lower .3 \
 param4nDivisions 10 \
 param4Upper 1.5 \
-stimLower .01 \
-stimUpper 1.0 \
-stimnDivisions 30 \
+param1Spacing lin \
+param2Spacing lin \
+param3Spacing lin \
+param4Spacing lin \
+stimDomainLower .01 \
+stimDomainUpper 1.0 \
+stimDomainnDivisions 30 \
 noiseSDLower .1 \
 noiseSDUpper .8 \
 noiseSDnDivisions 7 \
