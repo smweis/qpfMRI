@@ -280,7 +280,7 @@ TR = str2double(p.Results.TR);
 trialLength = str2double(p.Results.trialLength);
 outNum = p.Results.outNum;
 
-if ischar(p.Results.seed)
+if strcmpi(p.Results.seed,'choose')
     seed = p.Results.seed;
 else
     seed = str2double(p.Results.seed);
