@@ -279,7 +279,7 @@ headroom = str2double(p.Results.headroom);
 TR = str2double(p.Results.TR);
 trialLength = str2double(p.Results.trialLength);
 outNum = p.Results.outNum;
-seed = p.Results.seed;
+seed = str2double(p.Results.seed);
 
 [psiParamsFit,maxBOLD,questDataCopy] = simulate(model, paramsDomain,...,
     'simulatedPsiParams',simulatedPsiParams,'qpPres',qpPres,...,

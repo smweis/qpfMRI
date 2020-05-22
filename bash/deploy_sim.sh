@@ -19,17 +19,17 @@ ml matlab
 
 export MCR_CACHE_ROOT=$SCRATCH
 
-d=`date +%m-%d-%Y`
+d='05-19-2020'
 
 cd /ufrc/stevenweisberg/stevenweisberg/qpfMRIResults/compiled.$d
 
 ./run_compiledSimulate.sh /apps/matlab/mcr/2019b/v97 \
 logistic \
 param1Lower .01 \
-param1nDivisions 30 \
+param1nDivisions 20 \
 param1Upper 1.0 \
 param2Lower .01 \
-param2nDivisions 30 \
+param2nDivisions 20 \
 param2Upper 1.0 \
 param3Lower .8 \
 param3nDivisions 7 \
@@ -44,8 +44,5 @@ param4Spacing lin \
 stimDomainLower .01 \
 stimDomainUpper 1.0 \
 stimDomainnDivisions 30 \
-noiseSDLower .1 \
-noiseSDUpper .8 \
-noiseSDnDivisions 7 \
 qpPres $1 \ 
 outNum $2

@@ -72,13 +72,13 @@ randomParams = [b.mean_slope b.mean_semiSat b.mean_beta b.mean_sigma];
 
 % Plot the average results
 figure
-stimDomain = linspace(.01,1,20);
+stimDomain = linspace(.01,1,30);
 predictedRelativeResponse = model(stimDomain,sampleSimulatedParams) - ...
         model(0.01,sampleSimulatedParams);
 predictedQpRelativeResponse = model(stimDomain,qpParams) - ...
         model(0.01,qpParams);
 predictedRandomRelativeResponse = model(stimDomain,randomParams) - ...
-        model(0,randomParams);
+        model(0.01,randomParams);
 
 plot(stimDomain,predictedRelativeResponse,'-k','LineWidth',2);
 hold on
@@ -90,54 +90,54 @@ legend('Veridical','Q+','Random','Location','Northwest');
 title(horzcat('Average across all from: ', dirName));
 
 
-data.slopeBias = (data.slope - data.slopeSim)./data.slopeSim;
-data.semiSatBias = (data.semiSat - data.semiSatSim)./data.semiSatSim;
-data.betaBias = (data.beta - data.betaSim)./data.betaSim;
-data.sigmaBias = (data.sigma - data.sigmaSim)./data.sigmaSim;
+data.slopeSigned = data.slope - data.slopeSim;
+data.semiSatSigned = data.semiSat - data.semiSatSim;
+data.betaSigned = data.beta - data.betaSim;
+data.sigmaSigned = data.sigma - data.sigmaSim;
 
 
-data.slopeNoise = abs(data.slope - data.slopeSim)./data.slopeSim;
-data.semiSatNoise = abs(data.semiSat - data.semiSatSim)./data.semiSatSim;
-data.betaNoise = abs(data.beta - data.betaSim)./data.betaSim;
-data.sigmaNoise = abs(data.sigma - data.sigmaSim)./data.sigmaSim;
+data.slopeUnsigned = abs(data.slope - data.slopeSim);
+data.semiSatUnsigned = abs(data.semiSat - data.semiSatSim);
+data.betaUnsigned = abs(data.beta - data.betaSim);
+data.sigmaUnsigned = abs(data.sigma - data.sigmaSim);
 
 
-biasResults = varfun(@mean,data,'InputVariables',{'slopeBias','semiSatBias','betaBias','sigmaBias'},...
+SignedResults = varfun(@mean,data,'InputVariables',{'slopeSigned','semiSatSigned','betaSigned','sigmaSigned'},...
        'GroupingVariables','qpPres')
 
    
-noiseResults = varfun(@mean,data,'InputVariables',{'slopeNoise','semiSatNoise','betaNoise','sigmaNoise'},...
+UnsignedResults = varfun(@mean,data,'InputVariables',{'slopeUnsigned','semiSatUnsigned','betaUnsigned','sigmaUnsigned'},...
        'GroupingVariables','qpPres')
 
    
 function plotOneRun(data,row)
 
-figure;
-stimDomain = linspace(.01,1,100);
-
-qpParams = [data.slope(row) data.semiSat(row) data.beta(row)];
-sampleSimulatedParams = [data.slopeSim(row) data.semiSatSim(row) data.betaSim(row)];
-
-predictedRelativeResponse = logistic(stimDomain,sampleSimulatedParams) - ...
+    figure;
+    stimDomain = linspace(.01,1,100);
+    
+    qpParams = [data.slope(row) data.semiSat(row) data.beta(row)];
+    sampleSimulatedParams = [data.slopeSim(row) data.semiSatSim(row) data.betaSim(row)];
+    
+    predictedRelativeResponse = logistic(stimDomain,sampleSimulatedParams) - ...
         logistic(0.01,sampleSimulatedParams);
-predictedQpRelativeResponse = logistic(stimDomain,qpParams) - ...
+    predictedQpRelativeResponse = logistic(stimDomain,qpParams) - ...
         logistic(0.01,qpParams);
-
-plot(stimDomain,predictedRelativeResponse,'-k','LineWidth',2);
-hold on;
-plot(stimDomain,predictedQpRelativeResponse,'-r','LineWidth',2);
-
-if contains(data.simID(row),'true')
-    qpPres = 'Q+ stimulus selection';
-else
-    qpPres = 'Random stimulus selection';
-end
-
-legend('Veridical',qpPres,'Location','Northwest');
-
-titleTxt = strcat('Single simulation: ',qpPres,' data row: ', num2str(row));
-title(titleTxt);
-hold off;
+    
+    plot(stimDomain,predictedRelativeResponse,'-k','LineWidth',2);
+    hold on;
+    plot(stimDomain,predictedQpRelativeResponse,'-r','LineWidth',2);
+    
+    if contains(data.simID(row),'true')
+        qpPres = 'Q+ stimulus selection';
+    else
+        qpPres = 'Random stimulus selection';
+    end
+    
+    legend('Veridical',qpPres,'Location','Northwest');
+    
+    titleTxt = strcat('Single simulation: ',qpPres,' data row: ', num2str(row));
+    title(titleTxt);
+    hold off;
 
 end
 

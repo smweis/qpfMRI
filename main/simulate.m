@@ -141,22 +141,22 @@ Example 2: Logistic Model
 model = @logistic;
 
 paramsDomain = struct;
-paramsDomain.slope = linspace(.01,1,40);
-paramsDomain.semiSat = linspace(.01,1,40);
+paramsDomain.slope = linspace(.01,1,20);
+paramsDomain.semiSat = linspace(.01,1,20);
 paramsDomain.beta = 0.8:0.1:1.4; 
 paramsDomain.sigma = linspace(.3,1.5,8);
 
-stimulusDomain = {linspace(.01,1,40)};
+stimulusDomain = {linspace(.01,1,30)};
 stimulusDomainSpacing = 'lin';
 
-qpPres = true;
+qpPres = false;
 
 showPlots = true;
 
 % Note, this will save a copy of questData after it is initialized. 
 [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain,...,
 'qpPres',qpPres, 'showPlots',showPlots,'stimulusDomain',stimulusDomain,...,
-'stimulusDomainSpacing',stimulusDomainSpacing);
+'stimulusDomainSpacing',stimulusDomainSpacing, 'noiseSD',.4);
 ---------------------------------------------------------------------------
 Time saver for debugging: After running one of the above examples, keep
 everything in memory and run the line below. Especially useful if the
@@ -249,7 +249,9 @@ sigmaIndex = find(strcmp(paramNamesInOrder,'sigma'));
 if strcmp(seed,'choose')
     rngSeed = rng('shuffle'); rngSeed = rng('shuffle');
 else 
+    fprintf('Initial random call %.04f',rand);
     rngSeed = rng(seed); rngSeed = rng(seed);
+    fprintf('Random call after seed %.04f',rand);
 end
 
 %% Add the stimulus domain.  
