@@ -1,4 +1,6 @@
-function [data] = loadSimulatedData(dirName,dataLines)
+function [data] = loadSimulatedData(dirName,model, dataLines)
+
+paramNamesInOrder = checkModel(model);
 
 % CAUTION CAUTION CAUTION: TEMPORARY LOADER! BUGS ABOUND
 paramDir = [dirName filesep 'params'];
@@ -15,18 +17,18 @@ if nargin < 2
 end
 
 %% Setup the Import Options and import the data
-opts = delimitedTextImportOptions("NumVariables", 6);
+opts = delimitedTextImportOptions("NumVariables", length(paramNamesInOrder)+1);
 
 % Specify range and delimiter
 opts.DataLines = dataLines;
 opts.Delimiter = ",";
 
 % Specify column names and types
-optsResults.VariableNames = ["Sr", "k1", "k2", "beta", "sigma", "maxBOLD", "qpPres","simID"];
-optsResults.VariableTypes = ["double", "double", "double", "double", "double", "double", "string", "string"];
+optsResults.VariableNames = ["slope", "semiSat", "beta", "sigma", "maxBOLD","simID"];
+optsResults.VariableTypes = ["double", "double", "double", "double", "double", "string"];
 
-optsParams.VariableNames = ["SrSim","k1Sim","k2Sim","betaSim","sigmaSim","maxBOLDSim","simID"];
-optsParams.VariableTypes = ["double", "double", "double", "double", "double", "double", "string"];
+optsParams.VariableNames = ["slopeSim","semiSatSim","betaSim","sigmaSim","maxBOLDSim","simIDSim"];
+optsParams.VariableTypes = ["double", "double", "double", "double", "double", "string"];
 
 paramsData = table('Size',[length(resultsDirFiles),length(optsParams.VariableNames)],...
     'VariableTypes',optsParams.VariableTypes,'VariableNames',optsParams.VariableNames);
@@ -41,69 +43,105 @@ opts.EmptyLineRule = "read";
 
 for i = 1:length(resultsDirFiles)
     temp = strsplit(resultsDirFiles(i).name,{'_','.'});
-    paramsData.simID(i) = [temp{1} '_' temp{2}];
+    paramsData.simIDSim(i) = [temp{1} '_' temp{3}];
     resultsData.qpPres(i) = temp(1);
-    resultsData.simID(i) = [temp{1} '_' temp{2}];
-    resultsData(i,1:6) = readtable(fullfile(resultsDirFiles(i).folder,resultsDirFiles(i).name));
-    paramsData(i,1:6) = readtable(fullfile(paramDirFiles(i).folder,paramDirFiles(i).name));
+    resultsData.simID(i) = [temp{1} '_' temp{3}];
+    resultsData(i,1:length(paramNamesInOrder)+1) = readtable(fullfile(resultsDirFiles(i).folder,resultsDirFiles(i).name));
+    paramsData(i,1:length(paramNamesInOrder)+1) = readtable(fullfile(paramDirFiles(i).folder,paramDirFiles(i).name));
 end
 
-data = join(resultsData,paramsData);
+sortrows(resultsData,'simID');
+sortrows(paramsData,'simIDSim');
+data = [resultsData paramsData];
 
-avgResults = varfun(@mean,data,'InputVariables',{'Sr','k1','k2','beta','sigma'},...
+avgResults = varfun(@mean,data,'InputVariables',paramNamesInOrder,...
        'GroupingVariables','qpPres')
 
    
 
 % If params are all the same, we can use this: 
-sampleSimulatedParams = [data.SrSim(1) data.k1Sim(1) data.k2Sim(1) data.betaSim(1),data.sigmaSim(1)];
+sampleSimulatedParams = [data.slopeSim(1) data.semiSatSim(1) data.betaSim(1),data.sigmaSim(1)]
 
 idx = avgResults.qpPres=="true";
 a = avgResults(idx,:);
-qpParams = [a.mean_Sr a.mean_k1 a.mean_k2 a.mean_beta a.mean_sigma];
+qpParams = [a.mean_slope a.mean_semiSat a.mean_beta a.mean_sigma];
 idx = avgResults.qpPres=="false";
 b = avgResults(idx,:);
-randomParams = [b.mean_Sr b.mean_k1 b.mean_k2 b.mean_beta b.mean_sigma];
+randomParams = [b.mean_slope b.mean_semiSat b.mean_beta b.mean_sigma];
 
 
 % Plot the average results
 figure
-freqDomain = logspace(log10(.01),log10(100),100);
-predictedRelativeResponse = doeTemporalModel(freqDomain,sampleSimulatedParams) - ...
-        doeTemporalModel(0,sampleSimulatedParams);
-predictedQpRelativeResponse = doeTemporalModel(freqDomain,qpParams) - ...
-        doeTemporalModel(0,qpParams);
-predictedRandomRelativeResponse = doeTemporalModel(freqDomain,randomParams) - ...
-        doeTemporalModel(0,randomParams);
+stimDomain = linspace(.01,1,20);
+predictedRelativeResponse = model(stimDomain,sampleSimulatedParams) - ...
+        model(0.01,sampleSimulatedParams);
+predictedQpRelativeResponse = model(stimDomain,qpParams) - ...
+        model(0.01,qpParams);
+predictedRandomRelativeResponse = model(stimDomain,randomParams) - ...
+        model(0,randomParams);
 
-semilogx(freqDomain,predictedRelativeResponse,'-k','LineWidth',2);
+plot(stimDomain,predictedRelativeResponse,'-k','LineWidth',2);
 hold on
-semilogx(freqDomain,predictedQpRelativeResponse,'-r','LineWidth',2);
-semilogx(freqDomain,predictedRandomRelativeResponse,'-b','LineWidth',2);
+plot(stimDomain,predictedQpRelativeResponse,'-r','LineWidth',2);
+plot(stimDomain,predictedRandomRelativeResponse,'-b','LineWidth',2);
 
-set(gca,'XScale', 'log')
+set(gca,'XScale', 'lin')
 legend('Veridical','Q+','Random','Location','Northwest');
+title(horzcat('Average across all from: ', dirName));
 
 
-
-data.SrBias = (data.Sr - data.SrSim)./data.SrSim;
-data.k1Bias = (data.k1 - data.k1Sim)./data.k1Sim;
-data.k2Bias = (data.k2 - data.k2Sim)./data.k2Sim;
+data.slopeBias = (data.slope - data.slopeSim)./data.slopeSim;
+data.semiSatBias = (data.semiSat - data.semiSatSim)./data.semiSatSim;
 data.betaBias = (data.beta - data.betaSim)./data.betaSim;
 data.sigmaBias = (data.sigma - data.sigmaSim)./data.sigmaSim;
 
 
-data.SrNoise = abs(data.Sr - data.SrSim)./data.SrSim;
-data.k1Noise = abs(data.k1 - data.k1Sim)./data.k1Sim;
-data.k2Noise = abs(data.k2 - data.k2Sim)./data.k2Sim;
+data.slopeNoise = abs(data.slope - data.slopeSim)./data.slopeSim;
+data.semiSatNoise = abs(data.semiSat - data.semiSatSim)./data.semiSatSim;
 data.betaNoise = abs(data.beta - data.betaSim)./data.betaSim;
 data.sigmaNoise = abs(data.sigma - data.sigmaSim)./data.sigmaSim;
 
 
-biasResults = varfun(@mean,data,'InputVariables',{'SrBias','k1Bias','k2Bias','betaBias','sigmaBias'},...
+biasResults = varfun(@mean,data,'InputVariables',{'slopeBias','semiSatBias','betaBias','sigmaBias'},...
        'GroupingVariables','qpPres')
 
    
-noiseResults = varfun(@mean,data,'InputVariables',{'SrNoise','k1Noise','k2Noise','betaNoise','sigmaNoise'},...
+noiseResults = varfun(@mean,data,'InputVariables',{'slopeNoise','semiSatNoise','betaNoise','sigmaNoise'},...
        'GroupingVariables','qpPres')
 
+   
+function plotOneRun(data,row)
+
+figure;
+stimDomain = linspace(.01,1,100);
+
+qpParams = [data.slope(row) data.semiSat(row) data.beta(row)];
+sampleSimulatedParams = [data.slopeSim(row) data.semiSatSim(row) data.betaSim(row)];
+
+predictedRelativeResponse = logistic(stimDomain,sampleSimulatedParams) - ...
+        logistic(0.01,sampleSimulatedParams);
+predictedQpRelativeResponse = logistic(stimDomain,qpParams) - ...
+        logistic(0.01,qpParams);
+
+plot(stimDomain,predictedRelativeResponse,'-k','LineWidth',2);
+hold on;
+plot(stimDomain,predictedQpRelativeResponse,'-r','LineWidth',2);
+
+if contains(data.simID(row),'true')
+    qpPres = 'Q+ stimulus selection';
+else
+    qpPres = 'Random stimulus selection';
+end
+
+legend('Veridical',qpPres,'Location','Northwest');
+
+titleTxt = strcat('Single simulation: ',qpPres,' data row: ', num2str(row));
+title(titleTxt);
+hold off;
+
+end
+
+
+plotOneRun(data,1);
+
+end   
