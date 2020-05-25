@@ -43,9 +43,9 @@ opts.EmptyLineRule = "read";
 
 for i = 1:length(resultsDirFiles)
     temp = strsplit(resultsDirFiles(i).name,{'_','.'});
-    paramsData.simIDSim(i) = [temp{1} '_' temp{3}];
+    paramsData.simIDSim(i) = [temp{1} '_' temp{2}];
     resultsData.qpPres(i) = temp(1);
-    resultsData.simID(i) = [temp{1} '_' temp{3}];
+    resultsData.simID(i) = [temp{1} '_' temp{2}];
     resultsData(i,1:length(paramNamesInOrder)+1) = readtable(fullfile(resultsDirFiles(i).folder,resultsDirFiles(i).name));
     paramsData(i,1:length(paramNamesInOrder)+1) = readtable(fullfile(paramDirFiles(i).folder,paramDirFiles(i).name));
 end
@@ -53,95 +53,4 @@ end
 sortrows(resultsData,'simID');
 sortrows(paramsData,'simIDSim');
 data = [resultsData paramsData];
-
-avgResults = varfun(@mean,data,'InputVariables',paramNamesInOrder,...
-       'GroupingVariables','qpPres')
-
-   
-
-% If params are all the same, we can use this: 
-sampleSimulatedParams = [data.slopeSim(1) data.semiSatSim(1) data.betaSim(1),data.sigmaSim(1)]
-
-idx = avgResults.qpPres=="true";
-a = avgResults(idx,:);
-qpParams = [a.mean_slope a.mean_semiSat a.mean_beta a.mean_sigma];
-idx = avgResults.qpPres=="false";
-b = avgResults(idx,:);
-randomParams = [b.mean_slope b.mean_semiSat b.mean_beta b.mean_sigma];
-
-
-% Plot the average results
-figure
-stimDomain = linspace(.01,1,30);
-predictedRelativeResponse = model(stimDomain,sampleSimulatedParams) - ...
-        model(0.01,sampleSimulatedParams);
-predictedQpRelativeResponse = model(stimDomain,qpParams) - ...
-        model(0.01,qpParams);
-predictedRandomRelativeResponse = model(stimDomain,randomParams) - ...
-        model(0.01,randomParams);
-
-plot(stimDomain,predictedRelativeResponse,'-k','LineWidth',2);
-hold on
-plot(stimDomain,predictedQpRelativeResponse,'-r','LineWidth',2);
-plot(stimDomain,predictedRandomRelativeResponse,'-b','LineWidth',2);
-
-set(gca,'XScale', 'lin')
-legend('Veridical','Q+','Random','Location','Northwest');
-title(horzcat('Average across all from: ', dirName));
-
-
-data.slopeSigned = data.slope - data.slopeSim;
-data.semiSatSigned = data.semiSat - data.semiSatSim;
-data.betaSigned = data.beta - data.betaSim;
-data.sigmaSigned = data.sigma - data.sigmaSim;
-
-
-data.slopeUnsigned = abs(data.slope - data.slopeSim);
-data.semiSatUnsigned = abs(data.semiSat - data.semiSatSim);
-data.betaUnsigned = abs(data.beta - data.betaSim);
-data.sigmaUnsigned = abs(data.sigma - data.sigmaSim);
-
-
-SignedResults = varfun(@mean,data,'InputVariables',{'slopeSigned','semiSatSigned','betaSigned','sigmaSigned'},...
-       'GroupingVariables','qpPres')
-
-   
-UnsignedResults = varfun(@mean,data,'InputVariables',{'slopeUnsigned','semiSatUnsigned','betaUnsigned','sigmaUnsigned'},...
-       'GroupingVariables','qpPres')
-
-   
-function plotOneRun(data,row)
-
-    figure;
-    stimDomain = linspace(.01,1,100);
-    
-    qpParams = [data.slope(row) data.semiSat(row) data.beta(row)];
-    sampleSimulatedParams = [data.slopeSim(row) data.semiSatSim(row) data.betaSim(row)];
-    
-    predictedRelativeResponse = logistic(stimDomain,sampleSimulatedParams) - ...
-        logistic(0.01,sampleSimulatedParams);
-    predictedQpRelativeResponse = logistic(stimDomain,qpParams) - ...
-        logistic(0.01,qpParams);
-    
-    plot(stimDomain,predictedRelativeResponse,'-k','LineWidth',2);
-    hold on;
-    plot(stimDomain,predictedQpRelativeResponse,'-r','LineWidth',2);
-    
-    if contains(data.simID(row),'true')
-        qpPres = 'Q+ stimulus selection';
-    else
-        qpPres = 'Random stimulus selection';
-    end
-    
-    legend('Veridical',qpPres,'Location','Northwest');
-    
-    titleTxt = strcat('Single simulation: ',qpPres,' data row: ', num2str(row));
-    title(titleTxt);
-    hold off;
-
-end
-
-
-plotOneRun(data,1);
-
-end   
+ 
