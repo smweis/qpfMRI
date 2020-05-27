@@ -130,7 +130,7 @@ p.addRequired('baselineStimulus',@isscalar);
 
 % Optional params used in fitting
 p.addParameter('headroom', 0.1, @isnumeric);
-p.addParameter('maxBOLD', 1.0, @isscalar);
+p.addParameter('maxBOLD', 1.5, @isscalar);
 
 % Optional params used in simulation
 p.addParameter('maxBOLDSimulated', 1.0, @isscalar);

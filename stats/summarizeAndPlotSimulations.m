@@ -10,8 +10,8 @@ paramNamesInOrder = checkModel(model);
 
 % If 'data' not in memory, run the function to extract the data from the directory
 
-if ~exist('data','var')
-    [data] = loadSimulatedData('LogisticThreeNoiseLevels',model,[1,2]);
+if ~exist('data','var') || size(data,1) == 0
+    [data] = loadSimulatedData('logisticResultsParamSet2',model,[1,2]);
 end
 
 % We want to check for duplicate values in our fit parameters. These should
@@ -83,8 +83,8 @@ for i = 1:length(ind)
         plot(stimDomain,randomResponse,'-','Color',lightRandColor,'LineWidth',.2,'HandleVisibility','off');
     end
     % Plot veridical and average parameter fits
-    plot(stimDomain,averageRandomResponse,'--','Color',darkRandColor,'LineWidth',4);
     plot(stimDomain,averageQPResponse,':','Color',darkQPColor,'LineWidth',4);
+    plot(stimDomain,averageRandomResponse,'--','Color',darkRandColor,'LineWidth',4);
     plot(stimDomain,predictedRelativeResponse,'--','Color',veridicalColor,'LineWidth',6);
     %Plot formatting
     ylim([0 1]);
@@ -137,7 +137,7 @@ for i = 1:length(ind)
     b = bar(binRange,[hcx;hcy]','BarWidth',1.5);
     b(1).FaceColor = darkQPColor;
     b(2).FaceColor = darkRandColor;
-    plot([1.5 1.5],ylim,'Color',veridicalColor,'LineWidth',2)
+    plot([data.maxBOLDSim(1) data.maxBOLDSim(1)],ylim,'Color',veridicalColor,'LineWidth',2)
     legend('Q+','Random','Veridical');
     xlabel('Maximum BOLD Value');
     ylabel('Number of Simulations');
@@ -166,6 +166,8 @@ data.semiSatUnsigned = abs(data.semiSat - data.semiSatSim);
 data.betaUnsigned = abs(data.beta - data.betaSim);
 data.sigmaUnsigned = abs(data.sigma - data.sigmaSim);
 data.maxBOLDUnsigned = abs(data.maxBOLD - data.maxBOLDSim);
+
+%data.slopeRelToMaxBOLD = (data.slope * data.maxBOLD) ./ data.maxBOLDSim;
 
 SignedResults = varfun(@mean,data,'InputVariables',{'slopeSigned','semiSatSigned','betaSigned','sigmaSigned','maxBOLDSigned'},...
     'GroupingVariables',{'qpPres','sigmaSim'});

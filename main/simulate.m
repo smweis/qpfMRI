@@ -149,6 +149,8 @@ paramsDomain.sigma = linspace(.3,1.5,8);
 stimulusDomain = {linspace(.01,1,30)};
 stimulusDomainSpacing = 'lin';
 
+nTrials = 6;
+
 qpPres = false;
 
 showPlots = true;
@@ -156,7 +158,7 @@ showPlots = true;
 % Note, this will save a copy of questData after it is initialized. 
 [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain,...,
 'qpPres',qpPres, 'showPlots',showPlots,'stimulusDomain',stimulusDomain,...,
-'stimulusDomainSpacing',stimulusDomainSpacing, 'noiseSD',.4);
+'stimulusDomainSpacing',stimulusDomainSpacing, 'noiseSD',.05,'nTrials',nTrials);
 ---------------------------------------------------------------------------
 Time saver for debugging: After running one of the above examples, keep
 everything in memory and run the line below. Especially useful if the
@@ -166,7 +168,8 @@ paramsDomain is large or multi-dimensional.
 questDataCopy as an optional argument to save the initialization step.
 [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain,...,
 'qpPres',qpPres,'simulatedPsiParams', simulatedPsiParams,'showPlots',showPlots,...,
-'questDataCopy',questDataCopy,'stimulusDomain',stimulusDomain);
+'questDataCopy',questDataCopy,'stimulusDomain',stimulusDomain,...,
+'noiseSD',.05,'nTrials',nTrials);
 
 
 %}
@@ -582,7 +585,7 @@ betaGuess = psiParamsQuest(betaIndex);
 
 % Divide maxBOLD by our beta estimate: (beta / beta) = 1, so
 % new maxBOLD = maxBOLD/beta 
-maxBOLD = maxBOLD.*betaGuess;
+maxBOLD = maxBOLD./betaGuess;
 
 % Now run through the fitting steps again with the new maxBOLD
 thePacket = createPacket('nTrials',tt,...,

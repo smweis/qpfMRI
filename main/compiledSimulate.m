@@ -173,7 +173,7 @@ p.addParameter('stimDomainSpacing','lin',@ischar);
 p.addParameter('qpPres','false',@ischar);
 p.addParameter('nTrials','30',@ischar);
 p.addParameter('stimulusStructDeltaT','100',@ischar);
-p.addParameter('maxBOLDSimulated','1.6',@ischar);
+p.addParameter('maxBOLDSimulated','1.5',@ischar);
 p.addParameter('maxBOLD','1.0',@ischar);
 p.addParameter('baselineStimulus','',@ischar);
 p.addParameter('maxBOLDStimulus','',@ischar);
