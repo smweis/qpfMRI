@@ -144,7 +144,7 @@ paramsDomain = struct;
 paramsDomain.slope = linspace(.01,1,20);
 paramsDomain.semiSat = linspace(.01,1,20);
 paramsDomain.beta = linspace(.6,1.4,15); 
-paramsDomain.sigma = linspace(.3,1.5,8);
+paramsDomain.sigma = linspace(.1,1.5,8);
 
 stimulusDomain = {linspace(.01,1,30)};
 stimulusDomainSpacing = 'lin';
@@ -482,7 +482,7 @@ fprintf('\n');
 for tt = 1:nTrials
     fprintf('\nTrial %d\n',tt);
     % If it is the first three trials we force a baseline or maxBOLD event
-    if tt<=10
+    if tt<=4
         if mod(tt,2) > 0
             stimulusVec(tt) = baselineStimulus;
             fprintf('STIMULUS (Initial baseline): %0.3f\n',stimulusVec(tt));
@@ -518,10 +518,16 @@ for tt = 1:nTrials
         
         maxBOLD = maxBOLD.*psiParamsFit(betaIndex);
         
-        fprintf('maxBOLD estimate = %0.3f\n',maxBOLD);
+        fprintf('BADS parameters\n');
         for i = 1:length(psiParamsFit)
             fprintf('%s: %0.3f ',paramNamesInOrder{i},psiParamsFit(i));
         end
+        fprintf('\nQ+ parameters\n');
+        for i = 1:length(psiParamsQuest)
+            fprintf('%s: %0.3f ',paramNamesInOrder{i},psiParamsQuest(i));
+        end
+        
+        fprintf('\nmaxBOLD estimate = %0.3f\n',maxBOLD);
         fprintf('\n');
     end
 
@@ -599,11 +605,17 @@ end
 % Grab our current beta estimate is: 
 psiParamsIndex = qpListMaxArg(questData.posterior);
 psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
-betaGuess = psiParamsQuest(betaIndex);
+
+        
+psiParamsFit = qpFitBads(questData.trialData,questData.qpPF,psiParamsQuest,questData.nOutcomes,...
+    'lowerBounds', lowerBounds,'upperBounds',upperBounds,...
+    'plausibleLowerBounds',lowerBounds,'plausibleUpperBounds',upperBounds);
+
+maxBOLD = maxBOLD.*psiParamsFit(betaIndex);
 
 % Divide maxBOLD by our beta estimate: (beta / beta) = 1, so
 % new maxBOLD = maxBOLD/beta 
-maxBOLD = maxBOLD.*betaGuess;
+
 
 % Now run through the fitting steps again with the new maxBOLD
 thePacket = createPacket('nTrials',tt,...,
