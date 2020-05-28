@@ -143,22 +143,29 @@ model = @logistic;
 paramsDomain = struct;
 paramsDomain.slope = linspace(.01,1,20);
 paramsDomain.semiSat = linspace(.01,1,20);
-paramsDomain.beta = 0.8:0.1:1.4; 
+paramsDomain.beta = linspace(.6,1.4,15); 
 paramsDomain.sigma = linspace(.3,1.5,8);
 
 stimulusDomain = {linspace(.01,1,30)};
 stimulusDomainSpacing = 'lin';
 
-nTrials = 6;
+nTrials = 20;
 
-qpPres = false;
+qpPres = true;
 
 showPlots = true;
+
+c = struct;
+simulatedPsiParams.slope = .23;
+simulatedPsiParams.semiSat = .49;
+simulatedPsiParams.beta = 1.0;
+simulatedPsiParams.sigma = .05;
 
 % Note, this will save a copy of questData after it is initialized. 
 [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain,...,
 'qpPres',qpPres, 'showPlots',showPlots,'stimulusDomain',stimulusDomain,...,
-'stimulusDomainSpacing',stimulusDomainSpacing, 'noiseSD',.05,'nTrials',nTrials);
+'stimulusDomainSpacing',stimulusDomainSpacing,...,
+'simulatedPsiParams',simulatedPsiParams,'nTrials',nTrials);
 ---------------------------------------------------------------------------
 Time saver for debugging: After running one of the above examples, keep
 everything in memory and run the line below. Especially useful if the
@@ -167,9 +174,10 @@ paramsDomain is large or multi-dimensional.
 % If paramsDomain is not changed, the following line can be run with
 questDataCopy as an optional argument to save the initialization step.
 [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain,...,
-'qpPres',qpPres,'simulatedPsiParams', simulatedPsiParams,'showPlots',showPlots,...,
-'questDataCopy',questDataCopy,'stimulusDomain',stimulusDomain,...,
-'noiseSD',.05,'nTrials',nTrials);
+'qpPres',qpPres, 'showPlots',showPlots,'stimulusDomain',stimulusDomain,...,
+'stimulusDomainSpacing',stimulusDomainSpacing,...,
+'questDataCopy',questDataCopy,'simulatedPsiParams',simulatedPsiParams,'nTrials',nTrials);
+
 
 
 %}
@@ -331,8 +339,10 @@ for i = 1:length(paramNamesInOrder)
 end
 
 % Constrain bounds on beta to be very tight around 1.
-lowerBounds(betaIndex) = .999;
-upperBounds(betaIndex) = 1.001;
+lowerBoundsConstrained = lowerBounds;
+upperBoundsConstrained = upperBounds;
+lowerBoundsConstrained(betaIndex) = .999;
+upperBoundsConstrained(betaIndex) = 1.001;
 
 
 % We also want to make sure that the veridical values are actually within
@@ -472,8 +482,8 @@ fprintf('\n');
 for tt = 1:nTrials
     fprintf('\nTrial %d\n',tt);
     % If it is the first three trials we force a baseline or maxBOLD event
-    if tt<=3
-        if tt == 1 || tt == 3
+    if tt<=10
+        if mod(tt,2) > 0
             stimulusVec(tt) = baselineStimulus;
             fprintf('STIMULUS (Initial baseline): %0.3f\n',stimulusVec(tt));
         else
@@ -497,12 +507,20 @@ for tt = 1:nTrials
     % stimulus), which is the beta value of the model
     % Only update maxBOLD after we've had at least one maxBOLD trial
     if tt > 2
+        
         psiParamsIndex = qpListMaxArg(questData.posterior);
         psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
-        maxBOLD = maxBOLD.*psiParamsQuest(betaIndex);
+        
+        
+        psiParamsFit = qpFitBads(questData.trialData,questData.qpPF,psiParamsQuest,questData.nOutcomes,...
+            'lowerBounds', lowerBounds,'upperBounds',upperBounds,...
+            'plausibleLowerBounds',lowerBounds,'plausibleUpperBounds',upperBounds);
+        
+        maxBOLD = maxBOLD.*psiParamsFit(betaIndex);
+        
         fprintf('maxBOLD estimate = %0.3f\n',maxBOLD);
-        for i = 1:length(psiParamsQuest)
-            fprintf('%s: %0.3f ',paramNamesInOrder{i},psiParamsQuest(i));
+        for i = 1:length(psiParamsFit)
+            fprintf('%s: %0.3f ',paramNamesInOrder{i},psiParamsFit(i));
         end
         fprintf('\n');
     end
@@ -585,7 +603,7 @@ betaGuess = psiParamsQuest(betaIndex);
 
 % Divide maxBOLD by our beta estimate: (beta / beta) = 1, so
 % new maxBOLD = maxBOLD/beta 
-maxBOLD = maxBOLD./betaGuess;
+maxBOLD = maxBOLD.*betaGuess;
 
 % Now run through the fitting steps again with the new maxBOLD
 thePacket = createPacket('nTrials',tt,...,
@@ -632,8 +650,8 @@ psiParamsBads(betaIndex) = 1;
 % parameter for the search, and impose as parameter bounds the range
 % provided to QUEST+.
 psiParamsFit = qpFitBads(questData.trialData,questData.qpPF,psiParamsBads,questData.nOutcomes,...
-    'lowerBounds', lowerBounds,'upperBounds',upperBounds,...
-    'plausibleLowerBounds',lowerBounds,'plausibleUpperBounds',upperBounds);
+    'lowerBounds', lowerBoundsConstrained,'upperBounds',upperBoundsConstrained,...
+    'plausibleLowerBounds',lowerBoundsConstrained,'plausibleUpperBounds',upperBoundsConstrained);
 
 
 fprintf('\nMax BADS parameters:               '); 

@@ -11,7 +11,7 @@ paramNamesInOrder = checkModel(model);
 % If 'data' not in memory, run the function to extract the data from the directory
 
 if ~exist('data','var') || size(data,1) == 0
-    [data] = loadSimulatedData('logisticResultsParamSet2',model,[1,2]);
+    [data] = loadSimulatedData('LogisticResultsParamSet2',model,[1,2]);
 end
 
 % We want to check for duplicate values in our fit parameters. These should
@@ -24,10 +24,15 @@ if ~isempty(duplicate_ind)
 end
 
 %% Print averages by Q+ and noise level
-avgResults = varfun(@mean,data,'InputVariables',paramNamesInOrder,...
+
+% Scale slope to maxBOLD
+%warning('danger, variable slope rescaled');
+%data.slope = (data.slope .* data.maxBOLD) ./ data.maxBOLDSim;  
+
+
+avgResults = varfun(@mean,data,'InputVariables',[paramNamesInOrder 'maxBOLD'],...
        'GroupingVariables',{'sigmaSim','qpPres'})
 
-  
 
 % If params are all the same, we can use this: 
 if sameParams
@@ -96,7 +101,7 @@ for i = 1:length(ind)
     hold off;
     
     % Plot histogram for slope
-    binRange = linspace(0,1,50);
+    binRange = linspace(0,1,100);
     hcx = histcounts(qpRows.slope,[binRange Inf]);
     hcy = histcounts(randRows.slope,[binRange Inf]);
     subplot(322);
@@ -112,7 +117,7 @@ for i = 1:length(ind)
     hold off;
     % Plot histogram for semiSat
     % Plot histogram for slope
-    binRange = linspace(0,1,50);
+    binRange = linspace(0,1,100);
     hcx = histcounts(qpRows.semiSat,[binRange Inf]);
     hcy = histcounts(randRows.semiSat,[binRange Inf]);
     subplot(324);
@@ -129,7 +134,7 @@ for i = 1:length(ind)
     
 
 
-    binRange = linspace(0,2.5,50);
+    binRange = linspace(0,2.5,100);
     subplot(326);
     hcx = histcounts(qpRows.maxBOLD,[binRange Inf]);
     hcy = histcounts(randRows.maxBOLD,[binRange Inf]);
@@ -167,10 +172,9 @@ data.betaUnsigned = abs(data.beta - data.betaSim);
 data.sigmaUnsigned = abs(data.sigma - data.sigmaSim);
 data.maxBOLDUnsigned = abs(data.maxBOLD - data.maxBOLDSim);
 
-%data.slopeRelToMaxBOLD = (data.slope * data.maxBOLD) ./ data.maxBOLDSim;
 
 SignedResults = varfun(@mean,data,'InputVariables',{'slopeSigned','semiSatSigned','betaSigned','sigmaSigned','maxBOLDSigned'},...
-    'GroupingVariables',{'qpPres','sigmaSim'});
+    'GroupingVariables',{'qpPres','sigmaSim'})
  
 SignedResultsStd = varfun(@std,data,'InputVariables',{'slopeSigned','semiSatSigned','betaSigned','sigmaSigned','maxBOLDSigned'},...
      'GroupingVariables',{'qpPres','sigmaSim'});
@@ -250,7 +254,7 @@ pos = get(unsignedFig,'Position');
 set(unsignedFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(unsignedFig,'./SEM_Unsigned_Error.pdf','-dpdf','-r0')
 
-%% Make cool plot
+%% Useful sub-functions
    
 function [qpParams,randomParams] = oneNoiseLevel(avgResults,noiseLevel)
 % Extract average qpParams and randomParams for one noise level
