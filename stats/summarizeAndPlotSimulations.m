@@ -5,13 +5,14 @@ model = @logistic;
 sameParams = true; % Are the veridical params the same for all parameters?
 stimDomain = linspace(.01,1,30); % What's the stimDomain?
 baseline = .01;
+reloadData = true;
 %% Check model, grab parameter names, load and sanity check data
 paramNamesInOrder = checkModel(model);
 
 % If 'data' not in memory, run the function to extract the data from the directory
 
-if ~exist('data','var') || size(data,1) == 0
-    [data] = loadSimulatedData('LogisticResultsParamSet2',model,[1,2]);
+if reloadData
+    [data] = loadSimulatedData('LogisticThreeNoiseLevels',model,[1,2]);
 end
 
 % We want to check for duplicate values in our fit parameters. These should
@@ -154,6 +155,20 @@ for i = 1:length(ind)
     pos = get(mainFig,'Position');
     set(mainFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
     print(mainFig,horzcat('./',func2str(model),'_',num2str(noiseLevel),'.pdf'),'-dpdf','-r0')
+    
+    figure;
+    scatter(qpRows.slope,qpRows.maxBOLD,'MarkerFaceColor',darkQPColor);
+    hold on;
+    scatter(randRows.slope,randRows.maxBOLD,'MarkerFaceColor',darkRandColor);
+    xlabel('Slope Estimate');
+    ylabel('maxBOLD Estimate');
+    title(['Noise Level: ',num2str(noiseLevel)]);
+    qpCorrSlopeMaxBOLD = corr(qpRows.slope,qpRows.maxBOLD);
+    randCorrSlopeMaxBOLD = corr(randRows.slope,randRows.maxBOLD);
+    fprintf(['Noise Level: ',num2str(noiseLevel),'\n']);
+    legend({'Q+','Random'});
+    fprintf('QP correlation maxBOLD/Slope = %.03f\n',qpCorrSlopeMaxBOLD);
+    fprintf('Rand correlation maxBOLD/Slope = %.03f\n',randCorrSlopeMaxBOLD);
 
     
 end
@@ -253,6 +268,8 @@ set(unsignedFig,'Units','Inches');
 pos = get(unsignedFig,'Position');
 set(unsignedFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(unsignedFig,'./SEM_Unsigned_Error.pdf','-dpdf','-r0')
+
+
 
 %% Useful sub-functions
    
