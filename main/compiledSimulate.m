@@ -67,25 +67,25 @@ modelName = 'logistic';
 % Parameters lower bounds on domains
 p1L = '.01'; 
 p2L = '.01';
-p3L = '.8';
+p3L = '.5';
 p4L = '.3';
 
 % Parameters upper bounds on domains
 p1U = '1';
 p2U = '1';
-p3U = '1.4';
+p3U = '1.5';
 p4U = '2.0';
 
 % Parameters nDivisions for domain creation
-p1N = '30';
-p2N = '30';
-p3N = '8';
+p1N = '20';
+p2N = '20';
+p3N = '21';
 p4N = '8';
 
 % Parameters spacing for domain creations
 p1S = 'lin';
 p2S = 'lin';
-p3S = 'lin';
+p3S = 'zeno';
 p4S = 'lin';
 
 % NoiseSD sampling
@@ -144,6 +144,11 @@ p.addParameter('param2Upper','',@ischar);
 p.addParameter('param3Upper','',@ischar);
 p.addParameter('param4Upper','',@ischar);
 p.addParameter('param5Upper','',@ischar);
+
+% Spacing can be 'log', 'lin', or 'zeno' for the beta parameter. 
+% Zeno will asymptotically approach the midpoint of upper and lower with
+% (nDivisions-1)/2 for each side.
+% Note, nDivisions for zeno-spaced parameters must be odd.
 p.addParameter('param1Spacing','lin',@ischar);
 p.addParameter('param2Spacing','lin',@ischar);
 p.addParameter('param3Spacing','lin',@ischar);
@@ -215,6 +220,24 @@ for name = 1:length(paramNamesInOrder)
         paramsDomain.(paramNamesInOrder{name}) = linspace(lower,upper,nDivision);
     elseif contains(p.Results.(['param' num2str(name) 'Spacing']),'log')
         paramsDomain.(paramNamesInOrder{name}) = logspace(lower,upper,nDivision);
+    elseif contains(p.Results.(['param' num2str(name) 'Spacing']),'zeno')
+        paramsDomain.(paramNamesInOrder{name}) = zeros(1,nDivision);
+        midpoint = ((upper - lower)./2) + lower;
+        assert(mod(nDivision,2)==1,'Spacing for %s specified as Zeno, but nDivisions must be odd.',paramNamesInOrder{name});
+        
+        % This will assign the zeno spaced parameters
+        for i = 1:(nDivision-1)/2
+            if i == 1
+                thisLowerValue = lower;
+                thisUpperValue = upper;
+            else
+                thisLowerValue = thisLowerValue + ((midpoint - lower)/2^(i-1));
+                thisUpperValue = thisUpperValue + ((midpoint - upper)/2^(i-1));
+            end
+            paramsDomain.(paramNamesInOrder{name})(i) = thisLowerValue;
+            paramsDomain.(paramNamesInOrder{name})(end + 1 - i) = thisUpperValue;
+        end
+        paramsDomain.(paramNamesInOrder{name})((nDivision+1)/2) = midpoint;
     else
         error('Improper spacing key for %s. Log or linear spacing supported',paramNamesInOrder{name});
     end

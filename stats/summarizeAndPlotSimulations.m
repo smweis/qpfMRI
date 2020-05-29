@@ -13,11 +13,11 @@ paramNamesInOrder = checkModel(model);
 
 if reloadData
     % Parameter set 1: .23 .42; 200 sims
-    [data] = loadSimulatedData('logisticResultsParamSet1/LogisticThreeNoiseLevels',model,[1,2]);
+    %[data] = loadSimulatedData('logisticResultsParamSet1/LogisticThreeNoiseLevels',model,[1,2]);
     % Parameter set 2: .42, .79; 100 sims
     %[data] = loadSimulatedData('logisticResultsParamSet2',model,[1,2]);
     % Parameter set 3: .23 .42; 100 sims, changed maxBOLD fit
-    %[data] = loadSimulatedData('logisticResultsParamSet3/Results',model,[1,2]);
+    [data] = loadSimulatedData('logisticResultsParamSet3/Results',model,[1,2]);
 end
 
 % We want to check for duplicate values in our fit parameters. These should
@@ -86,6 +86,7 @@ for i = 1:length(ind)
         params = table2array(qpRows(j,1:length(paramNamesInOrder)));
         qpResponse = makePredicted(model, stimDomain, params, min(stimDomain));
         plot(stimDomain,qpResponse,'-','Color' ,lightQPColor,'LineWidth',.2,'HandleVisibility','off');
+        %ADD ALPHA TO PLOTS LINES
     end
     
     for j = 1:size(randRows,1)
@@ -162,19 +163,26 @@ for i = 1:length(ind)
     print(mainFig,horzcat('./',func2str(model),'_',num2str(noiseLevel),'.pdf'),'-dpdf','-r0')
     
     figure;
-    scatter(qpRows.slope,qpRows.maxBOLD,'MarkerFaceColor',darkQPColor);
+    scatter(qpRows.maxBOLD,qpRows.slope,'MarkerFaceColor',darkQPColor);
     hold on;
-    scatter(randRows.slope,randRows.maxBOLD,'MarkerFaceColor',darkRandColor);
-    xlabel('Slope Estimate');
-    ylabel('maxBOLD Estimate');
+    scatter(randRows.maxBOLD,randRows.slope,'MarkerFaceColor',darkRandColor);
+    xlabel('maxBOLD Estimate');
+    ylabel('Slope Estimate');
     title(['Noise Level: ',num2str(noiseLevel)]);
-    qpCorrSlopeMaxBOLD = corr(qpRows.slope,qpRows.maxBOLD);
-    randCorrSlopeMaxBOLD = corr(randRows.slope,randRows.maxBOLD);
     fprintf(['Noise Level: ',num2str(noiseLevel),'\n']);
     legend({'Q+','Random'});
-    fprintf('QP correlation maxBOLD/Slope = %.03f\n',qpCorrSlopeMaxBOLD);
-    fprintf('Rand correlation maxBOLD/Slope = %.03f\n',randCorrSlopeMaxBOLD);
-
+    
+    
+    figure;
+    scatter(qpRows.maxBOLD,qpRows.semiSat,'MarkerFaceColor',darkQPColor);
+    hold on;
+    scatter(randRows.maxBOLD,randRows.semiSat,'MarkerFaceColor',darkRandColor);
+    xlabel('maxBOLD Estimate');
+    ylabel('SemiSat Estimate');
+    title(['Noise Level: ',num2str(noiseLevel)]);
+        fprintf(['Noise Level: ',num2str(noiseLevel),'\n']);
+    legend({'Q+','Random'});
+    
     
 end
 
