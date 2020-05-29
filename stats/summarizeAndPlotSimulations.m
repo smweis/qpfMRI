@@ -12,7 +12,12 @@ paramNamesInOrder = checkModel(model);
 % If 'data' not in memory, run the function to extract the data from the directory
 
 if reloadData
-    [data] = loadSimulatedData('LogisticThreeNoiseLevels',model,[1,2]);
+    % Parameter set 1: .23 .42; 200 sims
+    [data] = loadSimulatedData('logisticResultsParamSet1/LogisticThreeNoiseLevels',model,[1,2]);
+    % Parameter set 2: .42, .79; 100 sims
+    %[data] = loadSimulatedData('logisticResultsParamSet2',model,[1,2]);
+    % Parameter set 3: .23 .42; 100 sims, changed maxBOLD fit
+    %[data] = loadSimulatedData('logisticResultsParamSet3/Results',model,[1,2]);
 end
 
 % We want to check for duplicate values in our fit parameters. These should
@@ -270,6 +275,21 @@ set(unsignedFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[po
 print(unsignedFig,'./SEM_Unsigned_Error.pdf','-dpdf','-r0')
 
 
+
+yVeridical = logistic(stimDomain,[sampleSimulatedParams(1) sampleSimulatedParams(2) sampleSimulatedParams(3)]);
+
+yQPLowNoise = logistic(stimDomain,[avgResults.mean_slope(1) avgResults.mean_semiSat(1) 1]);
+yRandomLowNoise = logistic(stimDomain,[avgResults.mean_slope(2) avgResults.mean_semiSat(2) 1]);
+
+yQPMedNoise = logistic(stimDomain,[avgResults.mean_slope(3) avgResults.mean_semiSat(3) 1]);
+yRandomMedNoise = logistic(stimDomain,[avgResults.mean_slope(4) avgResults.mean_semiSat(4) 1]);
+
+yQPHighNoise = logistic(stimDomain,[avgResults.mean_slope(5) avgResults.mean_semiSat(5) 1]);
+yRandomHighNoise = logistic(stimDomain,[avgResults.mean_slope(6) avgResults.mean_semiSat(6) 1]);
+
+fprintf('\n Low Noise  QP: %.04f | Random %.04f',corr(yQPLowNoise',yVeridical'),corr(yRandomLowNoise',yVeridical'));
+fprintf('\n Med Noise  QP: %.04f | Random %.04f',corr(yQPMedNoise',yVeridical'),corr(yRandomMedNoise',yVeridical'));
+fprintf('\n High Noise QP: %.04f | Random %.04f',corr(yQPHighNoise',yVeridical'),corr(yRandomHighNoise',yVeridical'));
 
 %% Useful sub-functions
    
