@@ -5,7 +5,7 @@ model = @logistic;
 sameParams = true; % Are the veridical params the same for all parameters?
 stimDomain = linspace(.01,1,30); % What's the stimDomain?
 baseline = .01;
-reloadData = true;
+reloadData = false;
 %% Check model, grab parameter names, load and sanity check data
 paramNamesInOrder = checkModel(model);
 
@@ -17,7 +17,9 @@ if reloadData
     % Parameter set 2: .42, .79; 100 sims
     %[data] = loadSimulatedData('logisticResultsParamSet2',model,[1,2]);
     % Parameter set 3: .23 .42; 100 sims, changed maxBOLD fit
-    [data] = loadSimulatedData('logisticResultsParamSet3/Results',model,[1,2]);
+    %[data] = loadSimulatedData('logisticResultsParamSet3/Results',model,[1,2]);
+    %[data] = loadSimulatedData('logisticResultsParamSet4/Results',model,[1,2]);
+    [data] = loadSimulatedData('logisticResultsParamSet5/Results',model,[1,2]);    
 end
 
 % We want to check for duplicate values in our fit parameters. These should
@@ -80,30 +82,76 @@ for i = 1:length(ind)
     % Create a new figure for each noise level
     mainFig = figure;
     set(gcf,'Position',[50 50 1200 700]);
-    subplot(3,2,[1 3 5]);
+    subplot(3,3,[1 4 7]);
     hold on;
     for j = 1:size(qpRows,1)
         params = table2array(qpRows(j,1:length(paramNamesInOrder)));
         qpResponse = makePredicted(model, stimDomain, params, min(stimDomain));
-        plot(stimDomain,qpResponse,'-','Color' ,lightQPColor,'LineWidth',.2,'HandleVisibility','off');
-        %ADD ALPHA TO PLOTS LINES
+        plot1 = plot(stimDomain,qpResponse,'-','Color' ,lightQPColor,'LineWidth',.8,'HandleVisibility','off');
+        plot1.Color(4) = 0.3;
     end
     
+    vPlusSlope = sprintf('Veridical: %.03f\n',sampleSimulatedParams(1));
+    annotation('textbox',[.9 .8 .1 .1],'String',vPlusSlope,'EdgeColor','none');
+    vPlusSemiSat = sprintf('Veridical: %.03f\n',sampleSimulatedParams(2));
+    annotation('textbox',[.9 .5 .1 .1],'String',vPlusSemiSat,'EdgeColor','none');
+    vPlusmaxBOLD = sprintf('Veridical: %.03f\n',data.maxBOLDSim(1));
+    annotation('textbox',[.9 .2 .1 .1],'String',vPlusmaxBOLD,'EdgeColor','none');
+    
+    
+    qPlusSlope = sprintf('Q+ M(SD)\n%.03f(%.02f)',mean(qpRows.slope),std(qpRows.slope));
+    annotation('textbox',[.9 .775 .1 .1],'String',qPlusSlope,'EdgeColor','none');
+    
+    qPlusSemiSat = sprintf('Q+ M(SD)\n%.03f(%.02f)',mean(qpRows.semiSat),std(qpRows.semiSat));
+    annotation('textbox',[.9 .475 .1 .1],'String',qPlusSemiSat,'EdgeColor','none');
+    
+    qPlusmaxBOLD = sprintf('Q+ M(SD)\n%.03f(%.02f)',mean(qpRows.maxBOLD),std(qpRows.maxBOLD));
+    annotation('textbox',[.9 .175 .1 .1],'String',qPlusmaxBOLD,'EdgeColor','none');
+    
+
+    plot(stimDomain,averageQPResponse,':','Color',darkQPColor,'LineWidth',4);
+    plotV = plot(stimDomain,predictedRelativeResponse,'-','Color',veridicalColor,'LineWidth',6);
+    plotV.Color(4) = .5;
+    ylim([0 1]);
+    set(gca,'XScale', 'lin');
+    xlabel('Contrast');
+    ylabel('Predicted Response, Normalized 0-1');
+    legend('Q+','Veridical','Location','Northwest');
+    title(horzcat(func2str(model), ' Curves at Noise: ',num2str(noiseLevel), ' SD'));
+    hold off;
+    
+    
+    hold off;
+    subplot(3,3,[2 5 8]);
+    hold on;
     for j = 1:size(randRows,1)
         params = table2array(randRows(j,1:length(paramNamesInOrder)));
         randomResponse = makePredicted(model, stimDomain, params, min(stimDomain));
-        plot(stimDomain,randomResponse,'-','Color',lightRandColor,'LineWidth',.2,'HandleVisibility','off');
+        plot2 = plot(stimDomain,randomResponse,'-','Color',lightRandColor,'LineWidth',.8,'HandleVisibility','off');
+        plot2.Color(4) = 0.3;
     end
     % Plot veridical and average parameter fits
-    plot(stimDomain,averageQPResponse,':','Color',darkQPColor,'LineWidth',4);
-    plot(stimDomain,averageRandomResponse,'--','Color',darkRandColor,'LineWidth',4);
-    plot(stimDomain,predictedRelativeResponse,'--','Color',veridicalColor,'LineWidth',6);
+    plot(stimDomain,averageRandomResponse,':','Color',darkRandColor,'LineWidth',4);
+    plotV = plot(stimDomain,predictedRelativeResponse,'-','Color',veridicalColor,'LineWidth',6);
+    plotV.Color(4) = .5;
+    
+    
+    randSlopeString = sprintf('Random M(SD)\n%.03f(%.02f)',mean(randRows.slope),std(randRows.slope));
+    annotation('textbox',[.9 .7 .1 .1],'String',randSlopeString,'EdgeColor','none')
+    
+    randSemiSatString = sprintf('Random M(SD)\n%.03f(%.02f)',mean(randRows.semiSat),std(randRows.semiSat));
+    annotation('textbox',[.9 .4 .1 .1],'String',randSemiSatString,'EdgeColor','none')
+    
+    randmaxBOLDString = sprintf('Random M(SD)\n%.03f(%.02f)',mean(randRows.maxBOLD),std(randRows.maxBOLD));
+    annotation('textbox',[.9 .1 .1 .1],'String',randmaxBOLDString,'EdgeColor','none')
+    
+
     %Plot formatting
     ylim([0 1]);
     set(gca,'XScale', 'lin');
     xlabel('Contrast');
     ylabel('Predicted Response, Normalized 0-1');
-    legend('Q+','Random','Veridical','Location','Northwest');
+    legend('Random','Veridical','Location','Northwest');
     title(horzcat(func2str(model), ' Curves at Noise: ',num2str(noiseLevel), ' SD'));
     hold off;
     
@@ -111,7 +159,7 @@ for i = 1:length(ind)
     binRange = linspace(0,1,100);
     hcx = histcounts(qpRows.slope,[binRange Inf]);
     hcy = histcounts(randRows.slope,[binRange Inf]);
-    subplot(322);
+    subplot(333);
     b = bar(binRange,[hcx;hcy]','BarWidth',1.5);
     b(1).FaceColor = darkQPColor;
     b(2).FaceColor = darkRandColor;
@@ -127,7 +175,7 @@ for i = 1:length(ind)
     binRange = linspace(0,1,100);
     hcx = histcounts(qpRows.semiSat,[binRange Inf]);
     hcy = histcounts(randRows.semiSat,[binRange Inf]);
-    subplot(324);
+    subplot(336);
     hold on;
     b = bar(binRange,[hcx;hcy]','BarWidth',1.5);
     b(1).FaceColor = darkQPColor;
@@ -142,7 +190,7 @@ for i = 1:length(ind)
 
 
     binRange = linspace(0,2.5,100);
-    subplot(326);
+    subplot(339);
     hcx = histcounts(qpRows.maxBOLD,[binRange Inf]);
     hcy = histcounts(randRows.maxBOLD,[binRange Inf]);
     hold on;
@@ -179,8 +227,6 @@ for i = 1:length(ind)
     scatter(randRows.maxBOLD,randRows.semiSat,'MarkerFaceColor',darkRandColor);
     xlabel('maxBOLD Estimate');
     ylabel('SemiSat Estimate');
-    title(['Noise Level: ',num2str(noiseLevel)]);
-        fprintf(['Noise Level: ',num2str(noiseLevel),'\n']);
     legend({'Q+','Random'});
     
     
@@ -233,7 +279,7 @@ semUnsigned(:,3) = UnsignedResultsStd.std_maxBOLDUnsigned ./ sqrt(UnsignedResult
 % Grab the data for easier plotting
 signedToPlot = SignedResults{1:6, [4:5 8]};
 unsignedToPlot = UnsignedResults{1:6, [4:5 8]};
-
+%{
 signedFig = figure; 
 set(gcf,'Position',[50 50 1200 700]);
 bar(signedToPlot, 'grouped');
@@ -282,7 +328,7 @@ pos = get(unsignedFig,'Position');
 set(unsignedFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(unsignedFig,'./SEM_Unsigned_Error.pdf','-dpdf','-r0')
 
-
+%}
 
 yVeridical = logistic(stimDomain,[sampleSimulatedParams(1) sampleSimulatedParams(2) sampleSimulatedParams(3)]);
 
@@ -297,7 +343,7 @@ yRandomHighNoise = logistic(stimDomain,[avgResults.mean_slope(6) avgResults.mean
 
 fprintf('\n Low Noise  QP: %.04f | Random %.04f',corr(yQPLowNoise',yVeridical'),corr(yRandomLowNoise',yVeridical'));
 fprintf('\n Med Noise  QP: %.04f | Random %.04f',corr(yQPMedNoise',yVeridical'),corr(yRandomMedNoise',yVeridical'));
-fprintf('\n High Noise QP: %.04f | Random %.04f',corr(yQPHighNoise',yVeridical'),corr(yRandomHighNoise',yVeridical'));
+fprintf('\n High Noise QP: %.04f | Random %.04f\n',corr(yQPHighNoise',yVeridical'),corr(yRandomHighNoise',yVeridical'));
 
 %% Useful sub-functions
    

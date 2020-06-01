@@ -142,24 +142,46 @@ model = @logistic;
 
 paramsDomain = struct;
 paramsDomain.slope = linspace(.01,1,20);
-paramsDomain.semiSat = linspace(.01,1,20);
-paramsDomain.beta = linspace(.6,1.4,15);   % [.5 .75 .875 .9  1 .9 .92 .94 .95
-paramsDomain.sigma = linspace(.1,1.5,8);
+paramsDomain.semiSat = linspace(.01,1,10);
+paramsDomain.sigma = linspace(.1,1.5,6);
 
-stimulusDomain = {linspace(.01,1,30)};
+
+% For beta, do zeno's spacing
+lower = .75;
+upper = 1.25;
+midpoint = ((upper - lower)./2) + lower;
+nDivision = 11;
+
+paramsDomain.beta = zeros(1,nDivision);
+for i = 1:(nDivision-1)/2
+    if i == 1
+        thisLowerValue = lower;
+        thisUpperValue = upper;
+    else
+        thisLowerValue = thisLowerValue + ((midpoint - lower)/2^(i-1));
+        thisUpperValue = thisUpperValue + ((midpoint - upper)/2^(i-1));
+    end
+    paramsDomain.beta(i) = thisLowerValue;
+    paramsDomain.beta(end + 1 - i) = thisUpperValue;
+end
+paramsDomain.beta((nDivision+1)/2) = midpoint;
+
+
+stimulusDomain = {linspace(.01,1,25)};
 stimulusDomainSpacing = 'lin';
 
-nTrials = 30;
+nTrials = 20;
 
 qpPres = true;
 
 showPlots = true;
 
-c = struct;
-simulatedPsiParams.slope = .23;
+simulatedPsiParams = struct;
+simulatedPsiParams.slope = .218;
 simulatedPsiParams.semiSat = .49;
 simulatedPsiParams.beta = 1.0;
-simulatedPsiParams.sigma = .05;
+simulatedPsiParams.sigma = .025;
+
 
 % Note, this will save a copy of questData after it is initialized. 
 [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain,...,
@@ -344,6 +366,16 @@ upperBoundsConstrained = upperBounds;
 lowerBoundsConstrained(betaIndex) = .999;
 upperBoundsConstrained(betaIndex) = 1.001;
 
+% Make sure 1 is a member of the beta parameter domains. If it's not, add
+% it in.
+if ~ismember(1,paramsDomain.beta)
+    warning('The domain for beta should always include 1. Adding 1 to beta parameter domain. This may create non-linear spacing.');
+    paramsDomain.beta = sort(paramsDomain.beta);
+    paramsDomain.beta = [paramsDomain.beta(paramsDomain.beta<1) 1 paramsDomain.beta(paramsDomain.beta>1)];
+end
+
+
+
 
 % We also want to make sure that the veridical values are actually within
 % the domain bounds. Don't do this for sigma. 
@@ -353,14 +385,6 @@ for param = 1:length(paramNamesInOrder)
             && upperBounds(param) >= simulatedPsiParams(param),...,
             'Parameter %s is not within the bounds of the parameter domain.',paramNamesInOrder{param});
     end
-end
-
-% Make sure 1 is a member of the beta parameter domains. If it's not, add
-% it in.
-if ~ismember(1,paramsDomain.beta)
-    warning('The domain for beta should always include 1. Adding 1 to beta parameter domain. This may create non-linear spacing.');
-    paramsDomain.beta = sort(paramsDomain.beta);
-    paramsDomain.beta = [paramsDomain.beta(paramsDomain.beta<1) 1 paramsDomain.beta(paramsDomain.beta>1)];
 end
 
 

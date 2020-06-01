@@ -65,13 +65,13 @@ showPlots = true;
 modelName = 'logistic';
 
 % Parameters lower bounds on domains
-p1L = '.01'; 
+p1L = '-2'; 
 p2L = '.01';
 p3L = '.5';
 p4L = '.3';
 
 % Parameters upper bounds on domains
-p1U = '1';
+p1U = '0';
 p2U = '1';
 p3U = '1.5';
 p4U = '2.0';
@@ -83,7 +83,7 @@ p3N = '21';
 p4N = '8';
 
 % Parameters spacing for domain creations
-p1S = 'lin';
+p1S = 'log';
 p2S = 'lin';
 p3S = 'zeno';
 p4S = 'lin';
