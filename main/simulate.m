@@ -141,9 +141,10 @@ Example 2: Logistic Model
 model = @logistic;
 
 paramsDomain = struct;
-paramsDomain.slope = linspace(.01,1,20);
+paramsDomain.slope = logspace(-1.2,-.2,10);
 paramsDomain.semiSat = linspace(.01,1,10);
-paramsDomain.sigma = linspace(.1,1.5,6);
+paramsDomain.sigma = linspace(.05,1.5,10);
+
 
 
 % For beta, do zeno's spacing
@@ -167,27 +168,30 @@ end
 paramsDomain.beta((nDivision+1)/2) = midpoint;
 
 
-stimulusDomain = {linspace(.01,1,25)};
+stimulusDomain = {linspace(.01,1,20)};
 stimulusDomainSpacing = 'lin';
 
-nTrials = 20;
+nTrials = 30;
 
 qpPres = true;
 
 showPlots = true;
 
 simulatedPsiParams = struct;
-simulatedPsiParams.slope = .218;
+simulatedPsiParams.slope = .19;
 simulatedPsiParams.semiSat = .49;
 simulatedPsiParams.beta = 1.0;
-simulatedPsiParams.sigma = .025;
+simulatedPsiParams.sigma = .2;
 
+maxBOLDSimulated = 3;
+nOutcomes = 13;
 
 % Note, this will save a copy of questData after it is initialized. 
 [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain,...,
 'qpPres',qpPres, 'showPlots',showPlots,'stimulusDomain',stimulusDomain,...,
 'stimulusDomainSpacing',stimulusDomainSpacing,...,
-'simulatedPsiParams',simulatedPsiParams,'nTrials',nTrials);
+'simulatedPsiParams',simulatedPsiParams,'nTrials',nTrials,...,
+'nOutcomes',nOutcomes,'maxBOLDSimulated',maxBOLDSimulated);
 ---------------------------------------------------------------------------
 Time saver for debugging: After running one of the above examples, keep
 everything in memory and run the line below. Especially useful if the
@@ -724,6 +728,8 @@ writetable(resultsOut,[resultsFolderName filesep resultsFileName]);
 
 simulatedParamsOut = array2table(simulatedPsiParams,'VariableNames',paramNamesInOrder);
 simulatedParamsOut.maxBOLDSimulated = maxBOLDSimulated;
+simulatedParamsOut.nOutcomes = nOutcomes;
+
 paramsFileName = [outNum 'Params.csv'];
 paramsFolderName = ['.' filesep p.Results.outFolder filesep 'params'];
 

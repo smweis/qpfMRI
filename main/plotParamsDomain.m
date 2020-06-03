@@ -202,7 +202,7 @@ for c = 1:nAllCombos
         yVals = model(stimulusDomain,allParameterCombos(c,:));
         plotFunc(stimulusDomain,yVals,'Color',colorMap(color,:));
         plotTitle = sprintf('%s: %.03f',paramNamesInOrder{plotTitleParam},...,
-            paramVectors{p.Results.yParam,1}(plotColumn));
+            paramVectors{plotTitleParam,1}(plotColumn));
         title(plotTitle); 
         hold on;
 
@@ -230,7 +230,7 @@ for c = 1:nAllCombos
     
     if plotRow == 1
         plotTitle = sprintf('%s: %.03f',paramNamesInOrder{plotTitleParam},...,
-            paramVectors{p.Results.yParam,1}(plotColumn));
+            paramVectors{plotTitleParam,1}(plotColumn));
         title(plotTitle); 
     end
 

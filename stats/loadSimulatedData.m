@@ -41,11 +41,17 @@ opts.ExtraColumnsRule = "ignore";
 opts.EmptyLineRule = "read";
 
 
+
 for i = 1:length(resultsDirFiles)
     temp = strsplit(resultsDirFiles(i).name,{'_','.'});
     paramsData.simIDSim(i) = [temp{1} '_' temp{2}];
     resultsData.qpPres(i) = temp(1);
     resultsData.simID(i) = [temp{1} '_' temp{2}];
+    
+    if contains(resultsDirFiles(i).name,'nOutcomes')
+        resultsData.nOutcomes(i) = str2double(temp{4});
+    end
+    
     resultsData(i,1:length(paramNamesInOrder)+1) = readtable(fullfile(resultsDirFiles(i).folder,resultsDirFiles(i).name));
     paramsData(i,1:length(paramNamesInOrder)+1) = readtable(fullfile(paramDirFiles(i).folder,paramDirFiles(i).name));
 end
