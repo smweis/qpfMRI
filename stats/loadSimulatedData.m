@@ -59,4 +59,16 @@ end
 sortrows(resultsData,'simID');
 sortrows(paramsData,'simIDSim');
 data = [resultsData paramsData];
+
+
+%% Check the loaded data for duplicate values. 
+% We want to check for duplicate values in our fit parameters. These should
+% almost NEVER result in identical parameters; otherwise, we suspect
+% something went wrong with setting the random seed. 
+[~, dupeInd] = unique(data(:,1:length(paramNamesInOrder)+1), 'rows');
+duplicate_ind = setdiff(1:size(data, 1:length(paramNamesInOrder)+1), dupeInd);
+if ~isempty(duplicate_ind)
+    warning('Duplicate values detected. Inspect data and logs to ensure unique simulations.');
+end
+
  

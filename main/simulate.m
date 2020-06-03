@@ -1,5 +1,5 @@
 function [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain, varargin)
-%% simulate
+%% [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain, varargin)
 % A script that will simulate fMRI BOLD data and fit a model with or
 % without Q+ control
 %
@@ -74,6 +74,7 @@ function [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain, vara
 %                             response to. The larger this is the slower
 %                             Q+ will be. 
 %   'noiseSD'               - 1xn vector or scalar (Default = .1)
+%                             Must be relative to maxBOLDSimulated. 
 %                             In the absence of a simulatedPsiParam.sigma,
 %                             noiseSD will allow the specification of a
 %                             specific noise value (or selection from a
@@ -141,38 +142,15 @@ Example 2: Logistic Model
 model = @logistic;
 
 paramsDomain = struct;
-paramsDomain.slope = logspace(-1.2,-.2,10);
-paramsDomain.semiSat = linspace(.01,1,10);
-paramsDomain.sigma = linspace(.05,1.5,10);
+paramsDomain.slope = makeDomain(-1.2,-.2,10,'spacing','log');
+paramsDomain.semiSat = makeDomain(.01,1,10);
+paramsDomain.beta = makeDomain(.75,1.25,11,'spacing','zeno');
+paramsDomain.sigma = makeDomain(.05,2,10);
 
-
-
-% For beta, do zeno's spacing
-lower = .75;
-upper = 1.25;
-midpoint = ((upper - lower)./2) + lower;
-nDivision = 11;
-
-paramsDomain.beta = zeros(1,nDivision);
-for i = 1:(nDivision-1)/2
-    if i == 1
-        thisLowerValue = lower;
-        thisUpperValue = upper;
-    else
-        thisLowerValue = thisLowerValue + ((midpoint - lower)/2^(i-1));
-        thisUpperValue = thisUpperValue + ((midpoint - upper)/2^(i-1));
-    end
-    paramsDomain.beta(i) = thisLowerValue;
-    paramsDomain.beta(end + 1 - i) = thisUpperValue;
-end
-paramsDomain.beta((nDivision+1)/2) = midpoint;
-
-
-stimulusDomain = {linspace(.01,1,20)};
+stimulusDomain = {makeDomain(.01,1,20)};
 stimulusDomainSpacing = 'lin';
-
 nTrials = 30;
-
+headroom = .2;
 qpPres = true;
 
 showPlots = true;
@@ -181,17 +159,13 @@ simulatedPsiParams = struct;
 simulatedPsiParams.slope = .19;
 simulatedPsiParams.semiSat = .49;
 simulatedPsiParams.beta = 1.0;
-simulatedPsiParams.sigma = .2;
-
-maxBOLDSimulated = 3;
-nOutcomes = 13;
+simulatedPsiParams.sigma = .8;
 
 % Note, this will save a copy of questData after it is initialized. 
 [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain,...,
 'qpPres',qpPres, 'showPlots',showPlots,'stimulusDomain',stimulusDomain,...,
 'stimulusDomainSpacing',stimulusDomainSpacing,...,
-'simulatedPsiParams',simulatedPsiParams,'nTrials',nTrials,...,
-'nOutcomes',nOutcomes,'maxBOLDSimulated',maxBOLDSimulated);
+'simulatedPsiParams',simulatedPsiParams,'nTrials',nTrials,'headroom',headroom);
 ---------------------------------------------------------------------------
 Time saver for debugging: After running one of the above examples, keep
 everything in memory and run the line below. Especially useful if the
@@ -261,7 +235,14 @@ nTrials = p.Results.nTrials;
 stimulusStructDeltaT = p.Results.stimulusStructDeltaT; 
 baselineStimulus = p.Results.baselineStimulus;
 maxBOLDStimulus = p.Results.maxBOLDStimulus;
+
+% Changing nOutcomes has unpredictable effects on the search for sigma
+if p.Results.nOutcomes ~= 51
+    warning('51 bins (nOutcomes) are recommended. If you change this, be sure to alter the parameter domain for sigma.');
+end
+
 myQpParams.nOutcomes = p.Results.nOutcomes;
+
 showPlots = p.Results.showPlots;
 figWidth = p.Results.figWidth;
 figHeight = p.Results.figHeight;
@@ -286,9 +267,9 @@ sigmaIndex = find(strcmp(paramNamesInOrder,'sigma'));
 if strcmp(seed,'choose')
     rngSeed = rng('shuffle'); rngSeed = rng('shuffle');
 else 
-    fprintf('Initial random call %.04f',rand);
+    fprintf('Initial random call %.04f\n',rand);
     rngSeed = rng(seed); rngSeed = rng(seed);
-    fprintf('Random call after seed %.04f',rand);
+    fprintf('Random call after seed %.04f\n',rand);
 end
 
 %% Add the stimulus domain.  
@@ -350,7 +331,7 @@ else
     simulatedPsiParams(betaIndex) = 1;
         
     assert(simulatedPsiParams(betaIndex)==1,'Simulated Beta should always be 1.');
-
+    
 end
 
 
@@ -564,7 +545,8 @@ for tt = 1:nTrials
         'rngSeed',rngSeed,...,
         'maxBOLD',maxBOLD,...,
         'TRmsecs', TR,...,
-        'noiseSD',simulatedPsiParams(sigmaIndex));
+        'noiseSD',simulatedPsiParams(sigmaIndex),...,
+        'headroom',headroom);
 
     % Grab a naive copy of questData
     questData = questDataUntrained;

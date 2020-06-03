@@ -214,33 +214,8 @@ for name = 1:length(paramNamesInOrder)
     lower = str2double(p.Results.(['param' num2str(name) 'Lower']));
     nDivision = str2double(p.Results.(['param' num2str(name) 'nDivisions']));
     upper = str2double(p.Results.(['param' num2str(name) 'Upper']));
-    % Make the sure the parameter domain can be properly specified.
-    assert(lower<upper,'Improper parameter domain %s',paramNamesInOrder{name});
-    if contains(p.Results.(['param' num2str(name) 'Spacing']),'lin')
-        paramsDomain.(paramNamesInOrder{name}) = linspace(lower,upper,nDivision);
-    elseif contains(p.Results.(['param' num2str(name) 'Spacing']),'log')
-        paramsDomain.(paramNamesInOrder{name}) = logspace(lower,upper,nDivision);
-    elseif contains(p.Results.(['param' num2str(name) 'Spacing']),'zeno')
-        paramsDomain.(paramNamesInOrder{name}) = zeros(1,nDivision);
-        midpoint = ((upper - lower)./2) + lower;
-        assert(mod(nDivision,2)==1,'Spacing for %s specified as Zeno, but nDivisions must be odd.',paramNamesInOrder{name});
-        
-        % This will assign the zeno spaced parameters
-        for i = 1:(nDivision-1)/2
-            if i == 1
-                thisLowerValue = lower;
-                thisUpperValue = upper;
-            else
-                thisLowerValue = thisLowerValue + ((midpoint - lower)/2^(i-1));
-                thisUpperValue = thisUpperValue + ((midpoint - upper)/2^(i-1));
-            end
-            paramsDomain.(paramNamesInOrder{name})(i) = thisLowerValue;
-            paramsDomain.(paramNamesInOrder{name})(end + 1 - i) = thisUpperValue;
-        end
-        paramsDomain.(paramNamesInOrder{name})((nDivision+1)/2) = midpoint;
-    else
-        error('Improper spacing key for %s. Log or linear spacing supported',paramNamesInOrder{name});
-    end
+    % Call the function to make the parameterDomain space
+    paramsDomain.(paramNamesInOrder{name}) = makeDomain(lower,upper,nDivision,'spacing',p.Results.(['param' num2str(name) 'Spacing']));
 end
 
 %% Build stimulus domain
@@ -253,15 +228,7 @@ if ~isempty(p.Results.stimDomainLower)
     nDivision = str2double(p.Results.stimDomainnDivisions);
     upper = str2double(p.Results.stimDomainUpper);
     % Make the sure the parameter domain can be properly specified.
-    assert(lower<upper,'Improper parameter domain %s',paramNamesInOrder{name});
-    if contains(p.Results.stimDomainSpacing,'lin')
-        stimulusDomain = {linspace(lower,upper,nDivision)};
-    elseif contains(p.Results.stimDomainSpacing,'log')
-        stimulusDomain = {logspace(lower,upper,nDivision)};
-    else
-        error('Improper spacing key for stimulus domain. Log or linear spacing supported');
-    end
-
+    stimulusDomain = {makeDomain(lower,upper,nDivision,'spacing',p.Results.stimDomainSpacing)};
 end
 
 
