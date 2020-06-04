@@ -1,15 +1,14 @@
-function summarizeAndPlotSimulations(model,sameParams,stimDomain,baseline,reloadData,dirName,factorName,paramNamesToPlot,paramDomains,nParamsForHist)
-%% summarizeAndPlotSimulations(model,sameParams,stimDomain,baseline,reloadData,dirName,factorName,paramNamesToPlot,paramDomains,nParamsForHist)
+function [data]= summarizeAndPlotSimulations(model,paramsDomain,factorName,sameParams,stimDomain,baseline,dirName,varargin)
+%% [data]= summarizeAndPlotSimulations(model,paramsDomain,factorName,sameParams,stimDomain,baseline,dirName,varargin)
 
 % Plot and print some summary statistics for simulations results
 
 
 % Syntax:
-%  [psiParamsFit]=simulate(model, paramsDomain, varargin)
+%  [data]= summarizeAndPlotSimulations(model,paramsDomain,factorName,sameParams,stimDomain,baseline,dirName,varargin)
 %
 % Description:
-%	Takes in a model and a possible set of parameters and whether or not Q+ 
-%   is in control of things flag. 
+%	Plots summary statistics for a set of simulations.
 %
 % Inputs:
 %   model                 - A function handle. This should be the
@@ -18,157 +17,128 @@ function summarizeAndPlotSimulations(model,sameParams,stimDomain,baseline,reload
 %                           code block. Currently supported:
 %                             @doeTemporalModel
 %                             @watsonTemporalModel
-%   paramsDomain          - Struct consisting of upper bounds, lower
-%                           bounds, and intervals for all necessary
-%                           parameters. All models should have beta and
-%                           sigma as parameters.
-%                             DoE    (n=5): Sr, k1, k2, beta, sigma
-%                             Watson (n=5): tau, kappa, zeta, beta, sigma
-%
-% Optional key/value pairs:
-%
-%   'qpPres'                -  Logical: (Default = false)
-%                              true  - run simulation with Q+ stimulus choice
-%                              false - run simulation with random stimulus
-%                                      choice.
-%   'simulatedPsiParams'    - Struct: (Default = randomly selected values
-%                             from paramsDomain). The veridical parameters
-%                             that are used for the forward model. Beta must
-%                             be 1. 
-%	'headroom'              - Scalar: (Default = 0.1)
-%                             The proportion of the nOutcomes from qpParams 
-%                             that will be used as extra on top and bottom.
-%   'maxBOLD'               - Scalar: (Default = 1.0)
-%                             The initial guess for the maximum BOLD value
-%                             with respect to the baseline stimulus. 
-%   'maxBOLDSimulated'      - Scalar: (Default = 1.5)
-%                             The value (in % change units) of the
-%                             maximum expected response to a stimulus w.r.t.
-%                             the response to the baseline stimulus.
-%	'seed'                  - No check (Default = 'choose')
-%                             The value to initialize the rng. If 'choose'
-%                             it will randomly initialize the seed using
-%                             'shuffle'. 
-%	'TR'                    - Integer: (Default = 800)
-%                             Length of the time to repetition (TR) in
-%                             milliseconds. 
-%	'trialLength'           - Integer: (Default = 12)
-%                             Length of one trial in seconds.
-%	'outNum'                - String: (Default = 'test')
-%                             Name of the output file (e.g., 'test.csv')
-%	'outFolder'             - String: (Default = 'Results')
-%                             Name of the output file (e.g., './Results')
-%	'nTrials'               - Integer (Default = 10) 
-%                             Number of trials to simulate. 
-%	'stimulusStructDeltaT'  - Integer (Default = 100)
-%                             Resolution of the stimulus struct in milliseconds
-%                             (e.g., a value will be created every 100 ms).
-%	'baselineStimulus'      - No check (Default = 0)
-%                             tfeUpdate requires a baseline stimulus for
-%                             which every value will be referenced. 
-%	'maxBOLDStimulus'       - No check (Default = 15)
-%                             It may help maxBOLD to require an early trial
-%                             be a value we expect would result in a large
-%                             BOLD response. 
-%	'nOutcomes'             - Integer (Default = 51)
-%                             The number of outcome bins Q+ can assign a
-%                             response to. The larger this is the slower
-%                             Q+ will be. 
-%   'noiseSD'               - 1xn vector or scalar (Default = .1)
-%                             Must be relative to maxBOLDSimulated. 
-%                             In the absence of a simulatedPsiParam.sigma,
-%                             noiseSD will allow the specification of a
-%                             specific noise value (or selection from a
-%                             vector of values). 
-%	'stimulusDomain'        - Cell array (Default = a range of stimulus values).
-%                             All possible stimulus values that can be
-%                             assigned.
-%   'stimulusDomainSpacing  - Default = 'lin'. 
-%                             Whether the stimulusDomain is spaced linear
-%                             or log.
-%	'questDataCopy'         - Struct (Default is empty)
-%                             If it is not necessary to reinitialize Q+
-%                             (questData untrained is in memory), you can
-%                             pass the initialized questDataCopy to
-%                             simulate to save the time initializing. Note,
-%                             any change to paramsDomain requires
-%                             re-initialization. Be cautious changes other
-%                             options without re-initializing. 
-% Optional key/value pairs (used in plotting):
-%   'showPlots'             - Logical: (Default = false)
-%                             Whether to show plots.
-%   'figWidth'              - Integer (Default = 900)
-%                             Width of figure window size.
-%   'figHeight'             - Integer (Default = 900)
-%                             Height of figure window size.
-
-% Outputs:
-%   psiParamsFit          - 1xn vector returning the BADS best fit for the
-%                           parameters
-%   maxBOLD               - Scalar. Best estimate at the maximum BOLD
-%                           value.
-%   questDataCopy         - Struct. Copy of initialized questData.
-
-%Example: 
+%                             @logistic
+%   paramsDomain          - Struct. Domains for all parameters to plot.
+%   factorName            - String. Name of value that varied (will create
+%                           separate plots for each value.)
+%   sameParams            - Boolean. Were all simulations using the same
+%                           parameter values (with the exception of factorName)?
+%   stimDomain            - Vector. Values that the stimulus were drawn
+%                           from.
+%   baseline              - Numeric. Value to be used for the baseline
+%                           trial.
+%   dirName               - String. Full name of the directory to find the
+%                           data. 
+% Optional positional input
+%   data                  - Table. The loaded-in data. This is the high
+%                           time-cost of this function, so if you'd like to 
+%                           re-load the data, add it as the last optional argument.
+% Optional key/value pairs   
+%   'avgFunc'              - Function handle. Default (@median). Function
+%                            to use to evaluate the average parameters.
+%   'posterMode'           - Boolean. Default = false. Will alter some
+%                            formatting if we're plotting for posters. 
 %{
 ---------------------------------------------------------------------------
 % Example 1:
 
 model = @logistic;
-sameParams = true; % Are the veridical model params the same for all parameters?
-stimDomain = linspace(.01,1,25); % What's the stimDomain?
-baseline = .01;
-reloadData = true; % Do we need to reload the data into memory?
-dirStem = pwd;
-dirName = fullfile(dirStem,'logisticResultsParamSet1');
 
-% What factor do you want to look at? 
+% Here, only include parameters to plot.
+paramsDomain = struct;
+paramsDomain.slope = makeDomain(.01,1,100);
+paramsDomain.semiSat = makeDomain(.01,1,100);
+%paramsDomain.maxBOLD = makeDomain(0,2.5,100);
+%paramsDomain.sigma = makeDomain(0,9,100);
 factorName = 'sigmaSim';
-%factorName = 'nOutcomes';
+sameParams = true; 
+stimDomain = makeDomain(.01,1,25);
+baseline = .01;
+posterMode = true;
+dirStem = pwd;
+dirName = fullfile(dirStem,'logisticResultsParamSet9');
 
-% How many parameters to look at in the main figure?
-paramNamesToPlot = {'slope','semiSat','maxBOLD','sigma'};
-paramDomains = {linspace(0,1,100),linspace(0,1,100),linspace(0,2.5,100),linspace(.1,9,100)};
-nParamsForHist = length(paramNamesToPlot);
+data = summarizeAndPlotSimulations(model,paramsDomain,factorName,...,
+    sameParams,stimDomain,baseline,dirName,'posterMode',posterMode);
 
+
+% Run again without re-loading data
+data = summarizeAndPlotSimulations(model,paramsDomain,factorName,...,
+    sameParams,stimDomain,baseline,dirName,data,'posterMode',posterMode);
+---------------------------------------------------------------------------
 % Example 2: Make figures for all parameter sets: 
 
-
 model = @logistic;
-sameParams = true; % Are the veridical model params the same for all parameters?
-stimDomain = linspace(.01,1,25); % What's the stimDomain?
-baseline = .01;
-reloadData = true; % Do we need to reload the data into memory?
 
-% What factor do you want to look at? 
+% Here, only include parameters to plot.
+paramsDomain = struct;
+paramsDomain.slope = makeDomain(.01,1,100);
+paramsDomain.semiSat = makeDomain(.01,1,100);
+paramsDomain.maxBOLD = makeDomain(0,2.5,100);
+
 factorName = 'sigmaSim';
-%factorName = 'nOutcomes';
-
-% How many parameters to look at in the main figure?
-paramNamesToPlot = {'slope','semiSat','maxBOLD','sigma'};
-paramDomains = {linspace(0,1,100),linspace(0,1,100),linspace(0,2.5,100),linspace(.1,9,100)};
-nParamsForHist = length(paramNamesToPlot);
+sameParams = true; 
+stimDomain = makeDomain(.01,1,25);
+baseline = .01;
 
 
 a = dir('logistic*');
 
 for name = 1:length(a) 
-    summarizeAndPlotSimulations(model,sameParams,stimDomain,baseline,reloadData,...,
-    a(name).name,factorName,paramNamesToPlot,paramDomains,nParamsForHist)
+    data = summarizeAndPlotSimulations(model,paramsDomain,factorName,...,
+    sameParams,stimDomain,baseline,a(name).name);
 end
 %}
 
-%% Check model, grab parameter names, load and sanity check data
+%% Handle initial inputs
+p = inputParser;
+
+% Required input
+p.addRequired('model',@(x) isa(x,'function_handle'));
+p.addRequired('paramsDomain',@isstruct);
+p.addRequired('factorName',@isstr);
+p.addRequired('sameParams',@islogical);
+p.addRequired('stimDomain',@isvector);
+p.addRequired('baseline',@isnumeric);
+p.addRequired('dirName',@isstr);
+
+% Optional params
+p.addOptional('data',table,@istable);
+p.addParameter('avgFunc',@median,@(x) isa(x,'function_handle'));
+p.addParameter('posterMode',false,@islogical);
+% Parse
+
+p.parse(model,paramsDomain,factorName,sameParams,stimDomain,baseline,dirName,varargin{:});
+
+%% Check model, grab parameter names, load and sanity check da\ta
 paramNamesInOrder = checkModel(model);
 
+
+%% Some formatting for poster mode
+
+posterFormat = struct;
+posterFormat.posterMode = p.Results.posterMode;
+posterFormat.lightRandColor = '#3D92C9';
+posterFormat.darkRandColor = '#165172';
+posterFormat.lightQPColor = '#F99C16';
+posterFormat.darkQPColor = '#FA4515';
+posterFormat.veridicalColor = '#000000';
+
+
 % If 'data' not in memory, run the function to extract the data from the directory
-if reloadData
+if isempty(p.Results.data)
+    fprintf('Data being re-loaded from %s',dirName)
     fullDirName = fullfile(dirName,'Results');
     [data] = loadSimulatedData(fullDirName,model,[1,2]);
+else
+    fprintf('Data being re-analyzed.');
+    data = p.Results.data;
 end
 
-%% Print averages by Q+ selection and a factor of your choice
 
+%% Print averages by Q+ selection and a factor of your choice
+paramNamesToPlot = fieldnames(paramsDomain);
+nParamsForHist = length(paramNamesToPlot);
 % If params are all the same, we can use this: 
 if sameParams
     sampleSimulatedParams = struct;
@@ -187,19 +157,14 @@ else
     error('multiple params not handled at this point');
 end
 
+
 % Print the average result for Q+/random and the given factor. 
-avgResults = varfun(@mean,data,'InputVariables',[paramNamesInOrder 'maxBOLD'],...
+avgResults = varfun(p.Results.avgFunc,data,'InputVariables',[paramNamesInOrder 'maxBOLD'],...
        'GroupingVariables',{factorName,'qpPres'})
 
-
+avgFuncName = func2str(p.Results.avgFunc);
 
 %% Plotting colors
-% Enter Colors for plot
-lightRandColor = '#3D92C9';
-darkRandColor = '#165172';
-lightQPColor = '#F99C16';
-darkQPColor = '#FA4515';
-veridicalColor = '#000000';
 
 
 
@@ -225,7 +190,7 @@ for i = 1:length(ind)
     % Grab the next unique level
     level = data.(factorName)(ind(i));
     % Average the parameters for that level
-    [qpAverageParams(i,:),randomAverageParams(i,:),qpAvBOLD,randAvBOLD] = oneNoiseLevel(avgResults,factorName,level);
+    [qpAverageParams(i,:),randomAverageParams(i,:),qpAvBOLD,randAvBOLD] = oneNoiseLevel(avgResults,factorName,level,avgFuncName);
     
     % Select all rows belonging to that level. 
     qpRows = (data.qpPres=="qpControl" & data.(factorName)==level);
@@ -236,19 +201,10 @@ for i = 1:length(ind)
     % Get the average for qp and random for that level
     averageQPResponse = makePredicted(model, stimDomain, qpAverageParams(i,:), min(stimDomain),qpAvBOLD);
     averageRandomResponse = makePredicted(model, stimDomain, randomAverageParams(i,:), min(stimDomain),randAvBOLD);
-    
-    % Print the level and the values for the sigma/bold/nOutcomes constant
-    % for each level.
-    %fprintf('------------------------------------------------------------\n');
-    %fprintf('%s: %s\n',factorName,num2str(level));
-    %fprintf('maxBOLD / sigma\n');
-    %fprintf('Q+ sigma-bold-nOutcomes value =     %.03f\n', mean(qpRows.sbnConstant));
-    %fprintf('Random sigma-bold-nOutcomes value = %.03f\n', mean(randRows.sbnConstant));
 
     
     % Create a new figure for each level
-    mainFig = figure;
-    set(gcf,'Position',[50 50 1200 700]);
+    mainFig = figure('Position', get(0, 'Screensize'));
     
     subplot(nParamsForHist,3,qPlusPanels);
     
@@ -256,21 +212,27 @@ for i = 1:length(ind)
     for j = 1:size(qpRows,1)
         params = table2array(qpRows(j,1:length(paramNamesInOrder)));
         qpResponse = makePredicted(model, stimDomain, params, min(stimDomain),qpRows.maxBOLD(j));
-        plot1 = plot(stimDomain,qpResponse,'-','Color' ,darkQPColor,'LineWidth',2,'HandleVisibility','off');
+        plot1 = plot(stimDomain,qpResponse,'-','Color' ,posterFormat.darkQPColor,'LineWidth',2,'HandleVisibility','off');
         plot1.Color(4) = 0.1;
     end
     
-    plotV = plot(stimDomain,predictedRelativeResponse,'-','Color',veridicalColor,'LineWidth',6);
+    plotV = plot(stimDomain,predictedRelativeResponse,'-','Color',posterFormat.veridicalColor,'LineWidth',6);
     plotV.Color(4) = .75;
-    plot(stimDomain,averageQPResponse,'--','Color',darkQPColor,'LineWidth',3);
+    plot(stimDomain,averageQPResponse,'--','Color',posterFormat.darkQPColor,'LineWidth',3);
     
-    %ylim([0 max([qpRows.maxBOLD; randRows.maxBOLD])]);
     ylim([0 1]);
+    ax = gca;
+    ax.FontSize = 25;
     set(gca,'XScale', 'lin');
-    xlabel('Contrast');
-    ylabel('Predicted Response, Normalized 0-1');
-    legend('Veridical','Q+','Location','Northwest');
-    title(horzcat(func2str(model), ' curves for ',factorName,': ',num2str(level)));
+    xlabel('Contrast','FontSize',30);
+    ylabel('Normalized Predicted Response','FontSize',30);
+    %legend('Veridical','Q+','Location','Northwest');
+    modelName = func2str(model);
+    modelName(1) = upper(modelName(1));
+    if strcmpi(factorName,'sigmaSim')
+        plotFactorName = 'Noise';
+    end
+    sgtitle(sprintf('%s Model Fits for %s = %s(SD)',modelName,plotFactorName,num2str(level)),'FontSize',45);
     hold off;
     
     
@@ -281,38 +243,39 @@ for i = 1:length(ind)
     for j = 1:size(randRows,1)
         params = table2array(randRows(j,1:length(paramNamesInOrder)));
         randomResponse = makePredicted(model, stimDomain, params, min(stimDomain),randRows.maxBOLD(j));
-        plot2 = plot(stimDomain,randomResponse,'-','Color',darkRandColor,'LineWidth',2,'HandleVisibility','off');
+        plot2 = plot(stimDomain,randomResponse,'-','Color',posterFormat.darkRandColor,'LineWidth',2,'HandleVisibility','off');
         plot2.Color(4) = 0.1;
     end
     
     % Plot veridical and average parameter fits
-    plotV = plot(stimDomain,predictedRelativeResponse,'-','Color',veridicalColor,'LineWidth',6);
+    plotV = plot(stimDomain,predictedRelativeResponse,'-','Color',posterFormat.veridicalColor,'LineWidth',6);
     plotV.Color(4) = .75;
-    plot(stimDomain,averageRandomResponse,'--','Color',lightRandColor,'LineWidth',3);
+    plot(stimDomain,averageRandomResponse,'--','Color',posterFormat.lightRandColor,'LineWidth',3);
     
     %Formatting
-%    ylim([0 max([qpRows.maxBOLD; randRows.maxBOLD])]);
     ylim([0 1]);
+    ax = gca;
+    ax.FontSize = 25;
     set(gca,'XScale', 'lin');
-    xlabel('Contrast');
-    ylabel('Predicted Response, Normalized 0-1');
-    legend('Veridical','Random','Location','Northwest');
-    title(horzcat(func2str(model), ' curves for ',factorName,': ',num2str(level)));
+    xlabel('Contrast','FontSize',30);
+    
+    %legend('Veridical','Random','Location','Northwest');
+    
     hold off;
     
     %% Third panel histograms
     
     for j = 1:nParamsForHist
         panel = j*3;
-        binRange = paramDomains{j};
+        binRange = paramsDomain.(paramNamesToPlot{j});
         sampleSimulatedToPlot = qpRows.(strcat(paramNamesToPlot{j},'Sim'))(1);
         histogramPanel(paramNamesToPlot{j},nParamsForHist,panel,...,
-            binRange,qpRows,randRows,darkQPColor,darkRandColor,veridicalColor,...,
-            sampleSimulatedToPlot);
+            binRange,qpRows,randRows,sampleSimulatedToPlot,p.Results.avgFunc,posterFormat);
         
     end
    
     % Save main figure.
+
     set(mainFig,'Units','Inches');
     pos = get(mainFig,'Position');
     set(mainFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
@@ -339,13 +302,13 @@ data.sigmaUnsigned = abs(data.sigma - data.sigmaSim);
 data.maxBOLDUnsigned = abs(data.maxBOLD - data.maxBOLDSim);
 
 
-SignedResults = varfun(@mean,data,'InputVariables',{'slopeSigned','semiSatSigned','betaSigned','sigmaSigned','maxBOLDSigned'},...
+SignedResults = varfun(p.Results.avgFunc,data,'InputVariables',{'slopeSigned','semiSatSigned','betaSigned','sigmaSigned','maxBOLDSigned'},...
     'GroupingVariables',{'qpPres','sigmaSim'})
  
 SignedResultsStd = varfun(@std,data,'InputVariables',{'slopeSigned','semiSatSigned','betaSigned','sigmaSigned','maxBOLDSigned'},...
      'GroupingVariables',{'qpPres','sigmaSim'});
 
-UnsignedResults = varfun(@mean,data,'InputVariables',{'slopeUnsigned','semiSatUnsigned','betaUnsigned','sigmaUnsigned','maxBOLDUnsigned'},...
+UnsignedResults = varfun(p.Results.avgFunc,data,'InputVariables',{'slopeUnsigned','semiSatUnsigned','betaUnsigned','sigmaUnsigned','maxBOLDUnsigned'},...
     'GroupingVariables',{'qpPres','sigmaSim'})
 
 UnsignedResultsStd = varfun(@std,data,'InputVariables',{'slopeUnsigned','semiSatUnsigned','betaUnsigned','sigmaUnsigned','maxBOLDUnsigned'},...
@@ -424,14 +387,14 @@ print(unsignedFig,'./SEM_Unsigned_Error.pdf','-dpdf','-r0')
 
 yVeridical = logistic(stimDomain,[sampleSimulatedParams(1) sampleSimulatedParams(2) sampleSimulatedParams(3)]);
 
-yQPLowNoise = logistic(stimDomain,[avgResults.mean_slope(1) avgResults.mean_semiSat(1) 1]);
-yRandomLowNoise = logistic(stimDomain,[avgResults.mean_slope(2) avgResults.mean_semiSat(2) 1]);
+yQPLowNoise = logistic(stimDomain,[avgResults.(strcat(avgFuncName,'_slope))(1) avgResults.(strcat(avgFuncName,'_semiSat(1) 1]);
+yRandomLowNoise = logistic(stimDomain,[avgResults.(strcat(avgFuncName,'_slope(2) avgResults.(strcat(avgFuncName,'_semiSat(2) 1]);
 
-yQPMedNoise = logistic(stimDomain,[avgResults.mean_slope(3) avgResults.mean_semiSat(3) 1]);
-yRandomMedNoise = logistic(stimDomain,[avgResults.mean_slope(4) avgResults.mean_semiSat(4) 1]);
+yQPMedNoise = logistic(stimDomain,[avgResults.(strcat(avgFuncName,'_slope(3) avgResults.(strcat(avgFuncName,'_semiSat(3) 1]);
+yRandomMedNoise = logistic(stimDomain,[avgResults.(strcat(avgFuncName,'_slope(4) avgResults.(strcat(avgFuncName,'_semiSat(4) 1]);
 
-yQPHighNoise = logistic(stimDomain,[avgResults.mean_slope(5) avgResults.mean_semiSat(5) 1]);
-yRandomHighNoise = logistic(stimDomain,[avgResults.mean_slope(6) avgResults.mean_semiSat(6) 1]);
+yQPHighNoise = logistic(stimDomain,[avgResults.(strcat(avgFuncName,'_slope(5) avgResults.(strcat(avgFuncName,'_semiSat(5) 1]);
+yRandomHighNoise = logistic(stimDomain,[avgResults.(strcat(avgFuncName,'_slope(6) avgResults.(strcat(avgFuncName,'_semiSat(6) 1]);
 
 fprintf('\n Low Noise  QP: %.04f | Random %.04f',corr(yQPLowNoise',yVeridical'),corr(yRandomLowNoise',yVeridical'));
 fprintf('\n Med Noise  QP: %.04f | Random %.04f',corr(yQPMedNoise',yVeridical'),corr(yRandomMedNoise',yVeridical'));
@@ -441,17 +404,17 @@ fprintf('\n High Noise QP: %.04f | Random %.04f\n',corr(yQPHighNoise',yVeridical
 
 %% Useful sub-functions
    
-function [qpParams,randomParams,qpAvBOLD,randAvBOLD] = oneNoiseLevel(avgResults,factorName,level)
+function [qpParams,randomParams,qpAvBOLD,randAvBOLD] = oneNoiseLevel(avgResults,factorName,level,avgFuncName)
 % Extract average qpParams and randomParams for one factor level
 qpRows = (avgResults.qpPres=="qpControl" & avgResults.(factorName)==level);
 a = avgResults(qpRows,:);
-qpParams = [a.mean_slope a.mean_semiSat a.mean_beta a.mean_sigma];
-qpAvBOLD = a.mean_maxBOLD;
+qpParams = [a.(strcat(avgFuncName,'_slope')) a.(strcat(avgFuncName,'_semiSat')) a.(strcat(avgFuncName,'_beta')) a.(strcat(avgFuncName,'_sigma'))];
+qpAvBOLD = a.(strcat(avgFuncName,'_maxBOLD'));
 
 randRows = (avgResults.qpPres=="random" & avgResults.(factorName)==level);
 b = avgResults(randRows,:);
-randomParams = [b.mean_slope b.mean_semiSat b.mean_beta b.mean_sigma];
-randAvBOLD = b.mean_maxBOLD;
+randomParams = [b.(strcat(avgFuncName,'_slope')) b.(strcat(avgFuncName,'_semiSat')) b.(strcat(avgFuncName,'_beta')) b.(strcat(avgFuncName,'_sigma'))];
+randAvBOLD = b.(strcat(avgFuncName,'_maxBOLD'));
 
 end
 
@@ -460,37 +423,37 @@ predictedResponse = model(stimDomain,params) - model(baseline,params);
 %predictedResponse = predictedResponse .* maxBOLD;
 end
 
-function histogramPanel(paramName,nParamsForHist,panel,binRange,qpRows,randRows,darkQPColor,darkRandColor,veridicalColor,sampleSimulatedParam)
+function histogramPanel(paramName,nParamsForHist,panel,binRange,qpRows,randRows,sampleSimulatedParam,avgFunc,posterFormat)
     
     hcx = histcounts(qpRows.(paramName),[binRange Inf]);
     hcy = histcounts(randRows.(paramName),[binRange Inf]);
     subplot(nParamsForHist,3,panel);
-    plotV = plot([sampleSimulatedParam sampleSimulatedParam],[0 1.25*max([hcx hcy])],'Color',veridicalColor,'LineWidth',4);
-    plotV.Color(4) = .75;
+    plotV = plot([sampleSimulatedParam sampleSimulatedParam],[0 1.25*max([hcx hcy])],'Color',posterFormat.veridicalColor,'LineWidth',4);
+    plotV.Color(4) = .4;
     hold on;
     b = bar(binRange,[hcx;hcy]','BarWidth',3);
-    b(1).FaceColor = darkQPColor;
-    b(2).FaceColor = darkRandColor;
+    b(1).FaceColor = posterFormat.darkQPColor;
+    b(2).FaceColor = posterFormat.darkRandColor;
     b(1).FaceAlpha = .8;
     b(2).FaceAlpha = .8;
     ylim([0 1.25*max([hcx hcy])]);
-    if panel == 3
-        legend('Veridical','Q+','Random');
+    if panel == 3 && ~posterFormat.posterMode
+        legend('Veridical','Q+','Random','FontSize',12,'Orientation','horizontal');
     end
-    xlabel(sprintf('%s Value',paramName));
-    ylabel('Number of Simulations');
-    title(sprintf('%s parameter estimates',paramName));
+    xlabel('');
+    ylabel('# of Simulations','FontSize',12);
+    title(sprintf('%s: Veridical = %.02f',paramName,sampleSimulatedParam),'FontSize',25);
 
+    set(gca,'box','off');
     ax = gca;
+    ax.FontSize = 15;
     xLoc = ax.Position(1) + .22;
-    yLoc = ax.Position(2)+.05;
-    
-    vParam = sprintf('Veridical: %.03f\n',sampleSimulatedParam);
-    annotation('textbox',[xLoc yLoc .1 .1],'String',vParam,'EdgeColor','none');
-    qPlusParam = sprintf('Q+ M(SD)\n%.03f(%.02f)',mean(qpRows.(paramName)),std(qpRows.(paramName)));
-    annotation('textbox',[xLoc yLoc-.04 .1 .1],'String',qPlusParam,'EdgeColor','none');
-    randParam = sprintf('Random M(SD)\n%.03f(%.02f)',mean(randRows.(paramName)),std(randRows.(paramName)));
-    annotation('textbox',[xLoc yLoc-.1 .1 .1],'String',randParam,'EdgeColor','none');
+    yLoc = ax.Position(2)+.075;
+
+    qPlusParam = sprintf('%s(SD)\n%.02f(%.02f)',func2str(avgFunc),avgFunc(qpRows.(paramName)),std(qpRows.(paramName)));
+    annotation('textbox',[xLoc yLoc .1 .1],'String',qPlusParam,'EdgeColor','none','FontSize',15,'Color',posterFormat.darkQPColor);
+    randParam = sprintf('%s(SD)\n%.02f(%.02f)',func2str(avgFunc),avgFunc(randRows.(paramName)),std(randRows.(paramName)));
+    annotation('textbox',[xLoc yLoc-.1 .1 .1],'String',randParam,'EdgeColor','none','FontSize',15,'Color',posterFormat.darkRandColor);
     
     hold off;
 end

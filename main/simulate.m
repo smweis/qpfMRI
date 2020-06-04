@@ -147,10 +147,9 @@ paramsDomain.semiSat = makeDomain(.01,1,10);
 paramsDomain.beta = makeDomain(.75,1.25,11,'spacing','zeno');
 paramsDomain.sigma = makeDomain(.05,2,10);
 
-stimulusDomain = {makeDomain(.01,1,20)};
+stimulusDomain = {makeDomain(.01,1,25)};
 stimulusDomainSpacing = 'lin';
 nTrials = 30;
-headroom = .2;
 qpPres = true;
 
 showPlots = true;
@@ -159,13 +158,13 @@ simulatedPsiParams = struct;
 simulatedPsiParams.slope = .19;
 simulatedPsiParams.semiSat = .49;
 simulatedPsiParams.beta = 1.0;
-simulatedPsiParams.sigma = .8;
+simulatedPsiParams.sigma = .2;
 
 % Note, this will save a copy of questData after it is initialized. 
 [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain,...,
 'qpPres',qpPres, 'showPlots',showPlots,'stimulusDomain',stimulusDomain,...,
 'stimulusDomainSpacing',stimulusDomainSpacing,...,
-'simulatedPsiParams',simulatedPsiParams,'nTrials',nTrials,'headroom',headroom);
+'simulatedPsiParams',simulatedPsiParams,'nTrials',nTrials);
 ---------------------------------------------------------------------------
 Time saver for debugging: After running one of the above examples, keep
 everything in memory and run the line below. Especially useful if the
@@ -710,7 +709,7 @@ writetable(resultsOut,[resultsFolderName filesep resultsFileName]);
 
 simulatedParamsOut = array2table(simulatedPsiParams,'VariableNames',paramNamesInOrder);
 simulatedParamsOut.maxBOLDSimulated = maxBOLDSimulated;
-simulatedParamsOut.nOutcomes = nOutcomes;
+simulatedParamsOut.nOutcomes = p.Results.nOutcomes;
 
 paramsFileName = [outNum 'Params.csv'];
 paramsFolderName = ['.' filesep p.Results.outFolder filesep 'params'];
