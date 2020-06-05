@@ -56,7 +56,7 @@ stimDomain = makeDomain(.01,1,25);
 baseline = .01;
 posterMode = true;
 dirStem = pwd;
-dirName = fullfile(dirStem,'logisticResultsParamSet9');
+dirName = fullfile(dirStem,'logisticResultsParamSet6');
 
 data = summarizeAndPlotSimulations(model,paramsDomain,factorName,...,
     sameParams,stimDomain,baseline,dirName,'posterMode',posterMode);
@@ -421,6 +421,7 @@ end
 function predictedResponse = makePredicted(model, stimDomain, params, baseline, maxBOLD)
 predictedResponse = model(stimDomain,params) - model(baseline,params);
 %predictedResponse = predictedResponse .* maxBOLD;
+%predictedResponse = model(stimDomain,params);
 end
 
 function histogramPanel(paramName,nParamsForHist,panel,binRange,qpRows,randRows,sampleSimulatedParam,avgFunc,posterFormat)
@@ -448,12 +449,22 @@ function histogramPanel(paramName,nParamsForHist,panel,binRange,qpRows,randRows,
     ax = gca;
     ax.FontSize = 15;
     xLoc = ax.Position(1) + .22;
-    yLoc = ax.Position(2)+.075;
-
+    
+    if nParamsForHist == 2
+        yLoc1 = ax.Position(2) + .1;
+        yLoc2 = yLoc1 - .07;
+    elseif nParamsForHist == 3
+        yLoc1 = ax.Position(2) + .05;
+        yLoc2 = yLoc1 - .07;
+    else
+        yLoc1 = ax.Position(2);
+        yLoc2 = yLoc1 - .07;
+    end
+    
     qPlusParam = sprintf('%s(SD)\n%.02f(%.02f)',func2str(avgFunc),avgFunc(qpRows.(paramName)),std(qpRows.(paramName)));
-    annotation('textbox',[xLoc yLoc .1 .1],'String',qPlusParam,'EdgeColor','none','FontSize',15,'Color',posterFormat.darkQPColor);
+    annotation('textbox',[xLoc yLoc1 .1 .1],'String',qPlusParam,'EdgeColor','none','FontSize',15,'Color',posterFormat.darkQPColor);
     randParam = sprintf('%s(SD)\n%.02f(%.02f)',func2str(avgFunc),avgFunc(randRows.(paramName)),std(randRows.(paramName)));
-    annotation('textbox',[xLoc yLoc-.1 .1 .1],'String',randParam,'EdgeColor','none','FontSize',15,'Color',posterFormat.darkRandColor);
+    annotation('textbox',[xLoc yLoc2 .1 .1],'String',randParam,'EdgeColor','none','FontSize',15,'Color',posterFormat.darkRandColor);
     
     hold off;
 end

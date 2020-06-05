@@ -150,21 +150,23 @@ paramsDomain.sigma = makeDomain(.05,2,10);
 stimulusDomain = {makeDomain(.01,1,25)};
 stimulusDomainSpacing = 'lin';
 nTrials = 30;
-qpPres = true;
+qpPres = false;
 
 showPlots = true;
 
 simulatedPsiParams = struct;
-simulatedPsiParams.slope = .19;
+simulatedPsiParams.slope = .12;
 simulatedPsiParams.semiSat = .49;
 simulatedPsiParams.beta = 1.0;
 simulatedPsiParams.sigma = .4;
+
+trialLength = 12;
 
 % Note, this will save a copy of questData after it is initialized. 
 [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain,...,
 'qpPres',qpPres, 'showPlots',showPlots,'stimulusDomain',stimulusDomain,...,
 'stimulusDomainSpacing',stimulusDomainSpacing,...,
-'simulatedPsiParams',simulatedPsiParams,'nTrials',nTrials);
+'simulatedPsiParams',simulatedPsiParams,'nTrials',nTrials,'trialLength',trialLength);
 ---------------------------------------------------------------------------
 Time saver for debugging: After running one of the above examples, keep
 everything in memory and run the line below. Especially useful if the
@@ -313,6 +315,8 @@ if isempty(p.Results.simulatedPsiParams)
         
         if abs(model(baselineStimulus,simulatedPsiParams)) < simulatedPsiParams(betaIndex)/10000
             stillSearching = false;
+        elseif abs(model(maxBOLDStimulus,simulatedPsiParams)) < 1
+            stillSearching = false;
         end
     end
     
@@ -330,7 +334,13 @@ else
     simulatedPsiParams(betaIndex) = 1;
         
     assert(simulatedPsiParams(betaIndex)==1,'Simulated Beta should always be 1.');
-    
+    if abs(model(baselineStimulus,simulatedPsiParams)) < simulatedPsiParams(betaIndex)/10000
+        warning('Simulated psychometric parameters will result in minimum values below 0.\nMin possible value = %.02f',abs(model(baselineStimulus,simulatedPsiParams)));
+    elseif abs(model(baselineStimulus,simulatedPsiParams)) > .01
+        warning('Simulated psychometric parameters will result in minimum values greater than 0.\nMin possible value = %.02f',abs(model(baselineStimulus,simulatedPsiParams)));
+    elseif abs(model(maxBOLDStimulus,simulatedPsiParams)) < .99
+        warning('Simulated psychometric parameters will result in maximum BOLD values below 1.\nMax possible value = %.02f',model(maxBOLDStimulus,simulatedPsiParams));
+    end
 end
 
 

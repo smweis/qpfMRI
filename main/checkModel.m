@@ -15,6 +15,7 @@ function [paramNamesInOrder, varargout] = checkModel(model, varargin)
 %                            sigma as parameters.
 %                              DoE    (n=5): Sr, k1, k2, beta, sigma
 %                              Watson (n=5): tau, kappa, zeta, beta, sigma
+%                              Logistic (n=4): slope, semiSat, beta, sigma
 % Optional key/value pairs:
 %   'headroom'              - Scalar: (Default = 0.1)
 %                             The proportion of the nOutcomes from qpParams 
@@ -33,8 +34,7 @@ function [paramNamesInOrder, varargout] = checkModel(model, varargin)
 %   
 %   psiParamsDomain         - function handle. The model for use with Q+.
 %                             This can only be returned if paramsDomain
-%                             is passed as an optional positional argument.
-                           
+%                             is passed as an optional positional argument.                           
 %Example
 %{
 
@@ -65,6 +65,7 @@ p.addOptional('paramsDomain',{},@isstruct);
 % Optional params
 p.addParameter('headroom', 0.1, @isnumeric);
 p.addParameter('nOutcomes',51,@isnumeric);
+
 
 % Parse
 p.parse( model, varargin{:});
@@ -100,16 +101,11 @@ modelParamNames.logistic = {'slope','semiSat','beta','sigma'};
 s = functions(model);
 assert(any(strcmp(modelNames,s.function)==1),'Model not defined');
 
-
-
 % Grab the right parameter names and qpPF function
 paramNamesInOrder = modelParamNames.(s.function);
 
-
 % Return the qpPF handle
 varargout{1} = @(f,p) qpModelWrapper(model,f,p,nOutcomes,headroom);
-
-
 
 % If there's only one input argument but more than 2 output arguments, give
 % a warning.
@@ -131,7 +127,7 @@ if createPsiParams
     % Step through each parameter, making sure all fields are accounted
     % for, then assign them to the cell.
     for i = 1:length(paramNamesInOrder)
-        assert(isfield(paramsDomain,paramNamesInOrder{i}),'Parameter missing or misnamed for Watson model.');
+        assert(isfield(paramsDomain,paramNamesInOrder{i}),'Parameter missing or misnamed for model.');
         varargout{2}{i} = paramsDomain.(paramNamesInOrder{i});
     end
     
