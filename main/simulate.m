@@ -158,7 +158,7 @@ simulatedPsiParams = struct;
 simulatedPsiParams.slope = .19;
 simulatedPsiParams.semiSat = .49;
 simulatedPsiParams.beta = 1.0;
-simulatedPsiParams.sigma = .2;
+simulatedPsiParams.sigma = .4;
 
 % Note, this will save a copy of questData after it is initialized. 
 [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain,...,
@@ -211,8 +211,8 @@ p.addParameter('questDataCopy',{},@isstruct);
 
 % Optional params for plotting
 p.addParameter('showPlots',false,@islogical);
-p.addParameter('figWidth',900,@isnumeric);
-p.addParameter('figHeight',900,@isnumeric);
+p.addParameter('figWidth',1100,@isnumeric);
+p.addParameter('figHeight',1100,@isnumeric);
 
 % Parse
 p.parse( model, paramsDomain, varargin{:});
@@ -418,10 +418,11 @@ if showPlots
             max(myQpParams.stimParamsDomainList{1}),100);
     end
     % First, we'll plot the parameter domains
-    plotParamsDomain(model, paramsDomain, stimulusDomainFine,...,
+    [paramsFig] = plotParamsDomain(model, paramsDomain, stimulusDomainFine,...,
         'nOutcomes',myQpParams.nOutcomes,'headroom',headroom,...,
         'stimulusDomainSpacing',p.Results.stimulusDomainSpacing,...,
         'figHeight',figHeight,'figWidth',figWidth);
+    set(gcf,'color','w');
     
     hold off;
     
@@ -431,19 +432,24 @@ if showPlots
         'stimulusStructDeltaT',stimulusStructDeltaT);
     
     % Initialize the figure
-    figure('Position',[10 10 figWidth figHeight]);
+    mainFig = figure('Position',[10 10 figWidth figHeight]);
+    set(gcf,'color','w');
     hold on;
     
     % Set up the BOLD fMRI response and model fit
     subplot(3,1,1)
-    currentBOLDHandleData = plot(thePacket.stimulus.timebase,zeros(size(thePacket.stimulus.timebase)),'-k');
+    currentBOLDHandleData = plot(thePacket.stimulus.timebase./1000,zeros(size(thePacket.stimulus.timebase)),'-k');
     hold on
-    currentBOLDHandleFit = plot(thePacket.stimulus.timebase,zeros(size(thePacket.stimulus.timebase)),'-r');
-    xlim([min(thePacket.stimulus.timebase) max(thePacket.stimulus.timebase)]);
-    ylim([-2 2]);
-    xlabel('time [msecs]');
-    ylabel('BOLD fMRI % change');
-    title('BOLD fMRI data');
+    currentBOLDHandleFit = plot(thePacket.stimulus.timebase./1000,zeros(size(thePacket.stimulus.timebase)),'-r');
+    xlim([min(thePacket.stimulus.timebase./1000) max(thePacket.stimulus.timebase)./1000]);
+    yMax = maxBOLDSimulated + maxBOLDSimulated*simulatedPsiParams(sigmaIndex)*2;
+    ylim([-yMax yMax]);
+    xlabel('time [seconds]','FontSize',20);
+    ylabel('BOLD fMRI [% change]','FontSize',20);
+    title('Simulated BOLD fMRI data','FontSize',20);
+    set(gca,'box','off');
+    ax = gca;
+    ax.FontSize = 15;
     
     % Set up the TTF figure
     subplot(3,1,2)
@@ -474,6 +480,8 @@ if showPlots
     title('Model entropy by trial number');
     xlabel('Trial number');
     ylabel('Entropy');
+    
+    
 end
 
 
@@ -494,23 +502,24 @@ for tt = 1:nTrials
     if tt<=6
         if mod(tt,2) > 0
             stimulusVec(tt) = baselineStimulus;
-            fprintf('STIMULUS (Initial baseline): %0.3f\n',stimulusVec(tt));
+            string = sprintf('Stimulus (Initial baseline): %0.3f\n',stimulusVec(tt));
         else
             stimulusVec(tt) = maxBOLDStimulus;
-            fprintf('STIMULUS (Initial maxBOLD): %0.3f\n',stimulusVec(tt));
+            string = sprintf('Stimulus (Initial maxBOLD): %0.3f\n',stimulusVec(tt));
         end
     % Require a maxBOLD and a baseline every X trials (SAVE FOR LATER)
     else
         if ~qpPres
             % get random stimulus
             stimulusVec(tt) = questData.stimParamsDomain(randi(questData.nStimParamsDomain));
-            fprintf('STIMULUS (Random): %0.3f\n',stimulusVec(tt));
+            string = sprintf('Stimulus (Random): %0.3f\n',stimulusVec(tt));
         else
             % get next stimulus from Q+
             stimulusVec(tt) = qpQuery(questData);
-            fprintf('STIMULUS (Q+): %0.3f\n',stimulusVec(tt));
+            string = sprintf('Stimulus (Q+): %0.3f\n',stimulusVec(tt));
         end
     end
+    fprintf(string);
     
     % Update maxBOLD with our best guess at the maximum BOLD fMRI response
     % that could be evoked by a stimulus (relative to the baseline
@@ -558,13 +567,14 @@ for tt = 1:nTrials
     %% Plot the ongoing results
     % Update the plots
     if showPlots
-        
+        % Delete all previous annotations.
+        delete(findall(gcf,'type','annotation'));
         % Simulated BOLD fMRI time-series and fit
         subplot(3,1,1)
         delete(currentBOLDHandleData)
         delete(currentBOLDHandleFit)
-        currentBOLDHandleData = plot(thePacketOut.response.timebase,thePacketOut.response.values,'.k');
-        currentBOLDHandleFit = plot(modelResponseStruct.timebase,modelResponseStruct.values,'-r');
+        currentBOLDHandleData = plot(thePacketOut.response.timebase./1000,thePacketOut.response.values,'.k');
+        currentBOLDHandleFit = plot(modelResponseStruct.timebase./1000,modelResponseStruct.values,'-r');
         drawnow        
         % TTF figure
         subplot(3,1,2)
@@ -579,6 +589,10 @@ for tt = 1:nTrials
         predictedQuestRelativeResponse = model(stimulusDomainFine,psiParamsQuest) - ...
             model(baselineStimulus,psiParamsQuest);
         delete(currentTTFHandle)
+        ax = gca;
+        xLoc = ax.Position(1);
+        yLoc = ax.Position(2);
+        annotation('textbox',[xLoc+.6 yLoc+.3 .4 .2],'String',sprintf('Trial #%d\n%s',tt,string),'EdgeColor','none','FontSize',15);
         
         % MAY WANT TO FIX TO ALLOW LOG PLOTS
         currentTTFHandle = plot(stimulusDomainFine,predictedQuestRelativeResponse,'-r');
@@ -595,6 +609,13 @@ for tt = 1:nTrials
         ylabel('Entropy');
         drawnow
         
+        % Requires gif package from fileexchange.
+        if tt == 1
+            % Requires gif package from fileexchange.
+            gif('simulate.gif','DelayTime',1,'frame',gcf,'nodither');
+        else
+            gif;
+        end
     end
     
     
@@ -674,27 +695,44 @@ fprintf('\nmaxBOLD estimate: %0.3f\n',maxBOLD);
 
 %% Final plot fits
 if showPlots
-    figure('Position', [10 10 figWidth figHeight]);
+    finalFig = figure('Position', [10 10 figWidth figHeight]);
     hold on;
-    predictedQuestRelativeResponse = model(stimulusDomainFine,psiParamsQuest) - ...
-        model(baselineStimulus,psiParamsQuest);
     predictedBADSRelativeResponse = model(stimulusDomainFine,psiParamsFit) - ...
         model(baselineStimulus,psiParamsFit);
-    plotFunc(stimulusDomainFine,predictedRelativeResponse,'-k');
-    plotFunc(stimulusDomainFine,predictedQuestRelativeResponse,'-r');
-    plotFunc(stimulusDomainFine,predictedBADSRelativeResponse,'-b');
+    plotFunc(stimulusDomainFine,predictedRelativeResponse,'-k','LineWidth',6);
+    plotFunc(stimulusDomainFine,predictedBADSRelativeResponse,'-','Color','#FA4515','LineWidth',6);
     if strcmpi(p.Results.stimulusDomainSpacing,'log')
         set(gca,'XScale', 'log');
     end
-    xlabel('Stimulus Values');
-    ylabel('Relative response amplitude');
-    legend('Veridical model','Best Fit from Q+','Best Fit from BADS','Location','northwest');
+    xlabel('Contrast');
+    ylabel('Normalized Predicted Response');
+    legend('Veridical Model','Final Model Fit','Location','northwest');
 end
+
 
 %% Output
 % Two files will be created for each run. 
 % [outnum]Results.csv contains the BADS results of the simulation. 
 % [outnum]Params.csv contains the simulated parameters.
+
+% Save figures
+if showPlots
+    delete(findall(gcf,'type','annotation'));
+    set(mainFig,'Units','Inches');
+    pos = get(mainFig,'Position');
+    set(mainFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)]);
+    print(mainFig,'simulate2.pdf','-dpdf','-r0');
+    
+    set(paramsFig,'Units','Inches');
+    pos = get(paramsFig,'Position');
+    set(paramsFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)]);
+    print(paramsFig,'paramsFigs2.pdf','-dpdf','-r0');
+    
+    set(finalFig,'Units','Inches');
+    pos = get(finalFig,'Position');
+    set(finalFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)]);
+    print(finalFig,'finalFig2.pdf','-dpdf','-r0');
+end
 
 resultsOut = array2table(psiParamsFit,'VariableNames',paramNamesInOrder);
 resultsOut.maxBOLD = maxBOLD;

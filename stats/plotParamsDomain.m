@@ -1,4 +1,4 @@
-function plotParamsDomain(model, paramsDomain, stimulusDomain, varargin)
+function [fig] = plotParamsDomain(model, paramsDomain, stimulusDomain, varargin)
 %% Plot all possible combos of a parameter domain. 
 % Plots all possible combinations of a parameter domain across a range of
 % stimulus values.
