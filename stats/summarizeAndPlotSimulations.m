@@ -43,53 +43,57 @@ function [data]= summarizeAndPlotSimulations(model,paramsDomain,factorName,sameP
 % Example 1:
 
 model = @logistic;
-
-% Here, only include parameters to plot.
 paramsDomain = struct;
-paramsDomain.slope = makeDomain(.01,1,100);
-paramsDomain.semiSat = makeDomain(.01,1,100);
-%paramsDomain.maxBOLD = makeDomain(0,2.5,100);
-%paramsDomain.sigma = makeDomain(0,9,100);
+paramsDomain.slope = makeDomain(-1.5,0,20,'spacing','log');
+paramsDomain.semiSat = makeDomain(.01,1,10);
+paramsDomain.maxBOLD = makeDomain(0,2.5,100);
+paramsDomain.sigma = makeDomain(0,9,100);
+nParamsForHist = 0;
+paramNamesToPlot = {};
 factorName = 'sigmaSim';
 sameParams = true; 
 stimDomain = makeDomain(.01,1,25);
 baseline = .01;
 posterMode = true;
 dirStem = pwd;
-dirName = fullfile(dirStem,'logisticResultsParamSet6');
+dirName = fullfile(dirStem,'logisticResultsParamSet9');
 
 data = summarizeAndPlotSimulations(model,paramsDomain,factorName,...,
-    sameParams,stimDomain,baseline,dirName,'posterMode',posterMode);
+    sameParams,stimDomain,baseline,dirName,'posterMode',posterMode,...,
+    'nParamsForHist',nParamsForHist,'paramNamesToPlot',paramNamesToPlot);
 
 
 % Run again without re-loading data
 data = summarizeAndPlotSimulations(model,paramsDomain,factorName,...,
-    sameParams,stimDomain,baseline,dirName,data,'posterMode',posterMode);
+    sameParams,stimDomain,baseline,dirName,data,'posterMode',posterMode,...,
+    'nParamsForHist',nParamsForHist,'paramNamesToPlot',paramNamesToPlot);
+
 ---------------------------------------------------------------------------
 % Example 2: Make figures for all parameter sets: 
-
 model = @logistic;
-
-% Here, only include parameters to plot.
 paramsDomain = struct;
-paramsDomain.slope = makeDomain(.01,1,100);
-paramsDomain.semiSat = makeDomain(.01,1,100);
+paramsDomain.slope = makeDomain(-1.5,0,20,'spacing','log');
+paramsDomain.semiSat = makeDomain(.01,1,10);
 paramsDomain.maxBOLD = makeDomain(0,2.5,100);
-
+paramsDomain.sigma = makeDomain(0,9,100);
+nParamsForHist = 0;
+paramNamesToPlot = {};
 factorName = 'sigmaSim';
 sameParams = true; 
 stimDomain = makeDomain(.01,1,25);
 baseline = .01;
-
+posterMode = true;
 
 a = dir('logistic*');
 
 for name = 1:length(a) 
     data = summarizeAndPlotSimulations(model,paramsDomain,factorName,...,
-    sameParams,stimDomain,baseline,a(name).name);
+    sameParams,stimDomain,baseline,a(name).name,'posterMode',posterMode,...,
+    'nParamsForHist',nParamsForHist,'paramNamesToPlot',paramNamesToPlot);
+    close all; 
 end
-%}
 
+%}
 %% Handle initial inputs
 p = inputParser;
 
@@ -106,8 +110,10 @@ p.addRequired('dirName',@isstr);
 p.addOptional('data',table,@istable);
 p.addParameter('avgFunc',@median,@(x) isa(x,'function_handle'));
 p.addParameter('posterMode',false,@islogical);
-% Parse
+p.addParameter('nParamsForHist',0,@isnumeric);
+p.addParameter('paramNamesToPlot',{},@iscell);
 
+% Parse
 p.parse(model,paramsDomain,factorName,sameParams,stimDomain,baseline,dirName,varargin{:});
 
 %% Check model, grab parameter names, load and sanity check da\ta
@@ -137,21 +143,22 @@ end
 
 
 %% Print averages by Q+ selection and a factor of your choice
-paramNamesToPlot = fieldnames(paramsDomain);
-nParamsForHist = length(paramNamesToPlot);
+assert(length(p.Results.paramNamesToPlot) == p.Results.nParamsForHist,'paramsDomain should only include the parameters you want to see plotted as histograms');
+    
 % If params are all the same, we can use this: 
 if sameParams
     sampleSimulatedParams = struct;
     sampleSimulatedParamsVec = zeros(1,length(paramNamesInOrder));
-    fprintf('One veridical parameter set is used:\n');
-    for j = 1:nParamsForHist
-        sampleSimulatedParams.(paramNamesToPlot{j}) = data.(strcat(paramNamesToPlot{j},'Sim'))(1);
-        fprintf('Simulated parameter "%s" = %.03f\n',paramNamesToPlot{j},data.(strcat(paramNamesToPlot{j},'Sim'))(1));
+    fprintf('\nOne veridical parameter set is used:\n');
+    for j = 1:p.Results.nParamsForHist
+        sampleSimulatedParams.(p.Results.paramNamesToPlot{j}) = data.(strcat(p.Results.paramNamesToPlot{j},'Sim'))(1);
+        fprintf('Simulated parameter "%s" = %.03f\n',p.Results.paramNamesToPlot{j},data.(strcat(p.Results.paramNamesToPlot{j},'Sim'))(1));
     end
     for j = 1:length(paramNamesInOrder)
         sampleSimulatedParamsVec(j) = data.(strcat(paramNamesInOrder{j},'Sim'))(1);
         sampleMaxBOLD = data.maxBOLDSim(1);
     end
+    modelResponseNoCorrection = model(stimDomain,sampleSimulatedParamsVec);
     predictedRelativeResponse = makePredicted(model, stimDomain, sampleSimulatedParamsVec, baseline, sampleMaxBOLD);
 else
     error('multiple params not handled at this point');
@@ -176,12 +183,20 @@ randomAverageParams = zeros(length(ind),length(paramNamesInOrder));
 % Finding the relation between sigma, maxBOLD, and nOutcomes
 %data.sbnConstant = (data.maxBOLD ./ data.sigma);
 
-
-qPlusPanels = zeros(nParamsForHist,1);
-randPanels = zeros(nParamsForHist,1);
-for i = 1:nParamsForHist
-    qPlusPanels(i) = 3*(i-1) + 1; 
-    randPanels(i) = 3*(i-1) + 2;
+if p.Results.nParamsForHist > 0
+    subPlotRows = p.Results.nParamsForHist;
+    subPlotCols = 3;
+    qPlusPanels = zeros(p.Results.nParamsForHist,1);
+    randPanels = zeros(p.Results.nParamsForHist,1);
+    for i = 1:p.Results.nParamsForHist
+        qPlusPanels(i) = 3*(i-1) + 1; 
+        randPanels(i) = 3*(i-1) + 2;
+    end
+else
+    subPlotRows = 2;
+    subPlotCols = 2;
+    qPlusPanels = [1 3];
+    randPanels = [2 4];
 end
 
 %% Main plot loop through each level of factorName
@@ -205,13 +220,16 @@ for i = 1:length(ind)
     
     % Create a new figure for each level
     mainFig = figure('Position', get(0, 'Screensize'));
+    set(gcf,'color','w');
+    subplot(subPlotRows,subPlotCols,qPlusPanels);
     
-    subplot(nParamsForHist,3,qPlusPanels);
-    
+        
     hold on;
     for j = 1:size(qpRows,1)
         params = table2array(qpRows(j,1:length(paramNamesInOrder)));
         qpResponse = makePredicted(model, stimDomain, params, min(stimDomain),qpRows.maxBOLD(j));
+        simResponse = model(stimDomain,params);
+        qpRows.rSquared(j) = corr(modelResponseNoCorrection',simResponse')^2;
         plot1 = plot(stimDomain,qpResponse,'-','Color' ,posterFormat.darkQPColor,'LineWidth',2,'HandleVisibility','off');
         plot1.Color(4) = 0.1;
     end
@@ -224,6 +242,7 @@ for i = 1:length(ind)
     ax = gca;
     ax.FontSize = 25;
     set(gca,'XScale', 'lin');
+    
     xlabel('Contrast','FontSize',30);
     ylabel('Normalized Predicted Response','FontSize',30);
     %legend('Veridical','Q+','Location','Northwest');
@@ -237,12 +256,14 @@ for i = 1:length(ind)
     
     
     %% Plot the random fits in the middle panel
-    subplot(nParamsForHist,3,randPanels);
+    subplot(subPlotRows,subPlotCols,randPanels);
     hold on;
     
     for j = 1:size(randRows,1)
         params = table2array(randRows(j,1:length(paramNamesInOrder)));
         randomResponse = makePredicted(model, stimDomain, params, min(stimDomain),randRows.maxBOLD(j));
+        simResponse = model(stimDomain,params);
+        randRows.rSquared(j) = corr(modelResponseNoCorrection',simResponse')^2;
         plot2 = plot(stimDomain,randomResponse,'-','Color',posterFormat.darkRandColor,'LineWidth',2,'HandleVisibility','off');
         plot2.Color(4) = 0.1;
     end
@@ -265,15 +286,21 @@ for i = 1:length(ind)
     
     %% Third panel histograms
     
-    for j = 1:nParamsForHist
+    for j = 1:p.Results.nParamsForHist
         panel = j*3;
-        binRange = paramsDomain.(paramNamesToPlot{j});
-        sampleSimulatedToPlot = qpRows.(strcat(paramNamesToPlot{j},'Sim'))(1);
-        histogramPanel(paramNamesToPlot{j},nParamsForHist,panel,...,
+        binRange = paramsDomain.(p.Results.paramNamesToPlot{j});
+        sampleSimulatedToPlot = qpRows.(strcat(p.Results.paramNamesToPlot{j},'Sim'))(1);
+        histogramPanel(p.Results.paramNamesToPlot{j},p.Results.nParamsForHist,panel,...,
             binRange,qpRows,randRows,sampleSimulatedToPlot,p.Results.avgFunc,posterFormat);
         
     end
-   
+    paramString = '';
+    for m = 1:length(paramNamesInOrder)-2
+        paramString = [paramString newline sprintf('%s = %.02f',paramNamesInOrder{m},sampleSimulatedParamsVec(m))];
+    end
+    simParamString = sprintf('Simulated Parameters:\n%s',paramString);
+    annotation('textbox',[.2 .7 .1 .1],'String',simParamString,'EdgeColor','none','FontSize',15);
+    
     % Save main figure.
 
     set(mainFig,'Units','Inches');
@@ -282,124 +309,64 @@ for i = 1:length(ind)
     print(mainFig,horzcat(dirName,'/',func2str(model),'_',num2str(level),'.pdf'),'-dpdf','-r0')
 
     
+    screen = get(0, 'Screensize');
+    screen(3) = screen(3) - 400;
+    rFig = figure('Position',screen);
+    set(gcf,'color','w');
+    hold on;
+    hcx = histcounts(qpRows.rSquared,[linspace(.8,1,40) Inf]);
+    hcy = histcounts(randRows.rSquared,[linspace(.8,1,40) Inf]);
+    b = bar(linspace(.8,1,40),[hcx;hcy]','BarWidth',3);
+    b(1).FaceColor = posterFormat.darkQPColor;
+    b(2).FaceColor = posterFormat.darkRandColor;
+    b(1).FaceAlpha = .8;
+    b(2).FaceAlpha = .8;
+    [h,pVal,~,stats] = ttest2(qpRows.rSquared,randRows.rSquared);
+    ax = gca;
+    ax.FontSize = 40;
+    xlabel('R^2 Values','FontSize',60);
+    ylabel('Number of Simulations','FontSize',60);
+    %title(sprintf('R^2 %s Level = %s',plotFactorName,num2str(level)),'FontSize',45);
+    
+    xLoc = ax.Position(1) + .1;
+    yLoc = ax.Position(2) + .4;
+    
+    if h == 0
+        ttestString = sprintf('No Significant Difference\n t(%d) = %.02f, p = %.05f\nQ+ Median = %.03f(%.03f)\nRand Median = %.03f(%.03f)',...,
+            stats.df,stats.tstat,pVal,median(qpRows.rSquared),std(qpRows.rSquared),median(randRows.rSquared),std(randRows.rSquared));
+    else
+        ttestString = sprintf('t(%d) = %.02f, p = %.05f\nQ+ Median = %.03f(%.03f)\nRand Median = %.03f(%.03f)',...,
+            stats.df,stats.tstat,pVal,median(qpRows.rSquared),std(qpRows.rSquared),median(randRows.rSquared),std(randRows.rSquared));
+    end
+    annotation('textbox',[xLoc yLoc .1 .1],'String',ttestString,'EdgeColor','none','FontSize',15);
     
 
+    annotation('textbox',[xLoc yLoc - .2 .1 .1],'String',simParamString,'EdgeColor','none','FontSize',15);
+    
+    set(rFig,'Units','Inches');
+    pos = get(rFig,'Position');
+    set(rFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+    print(rFig,horzcat(dirName,'/',func2str(model),'_',num2str(level),'rSquared.pdf'),'-dpdf','-r0')
+
+    hold off;
+
 end
 
-%{
 
-%% Assemble signed and unsigned errors
-data.slopeSigned = data.slope - data.slopeSim;
-data.semiSatSigned = data.semiSat - data.semiSatSim;
-data.betaSigned = data.beta - data.betaSim;
-data.sigmaSigned = data.sigma - data.sigmaSim;
-data.maxBOLDSigned = data.maxBOLD - data.maxBOLDSim;
-
-data.slopeUnsigned = abs(data.slope - data.slopeSim);
-data.semiSatUnsigned = abs(data.semiSat - data.semiSatSim);
-data.betaUnsigned = abs(data.beta - data.betaSim);
-data.sigmaUnsigned = abs(data.sigma - data.sigmaSim);
-data.maxBOLDUnsigned = abs(data.maxBOLD - data.maxBOLDSim);
-
-
-SignedResults = varfun(p.Results.avgFunc,data,'InputVariables',{'slopeSigned','semiSatSigned','betaSigned','sigmaSigned','maxBOLDSigned'},...
-    'GroupingVariables',{'qpPres','sigmaSim'})
- 
-SignedResultsStd = varfun(@std,data,'InputVariables',{'slopeSigned','semiSatSigned','betaSigned','sigmaSigned','maxBOLDSigned'},...
-     'GroupingVariables',{'qpPres','sigmaSim'});
-
-UnsignedResults = varfun(p.Results.avgFunc,data,'InputVariables',{'slopeUnsigned','semiSatUnsigned','betaUnsigned','sigmaUnsigned','maxBOLDUnsigned'},...
-    'GroupingVariables',{'qpPres','sigmaSim'})
-
-UnsignedResultsStd = varfun(@std,data,'InputVariables',{'slopeUnsigned','semiSatUnsigned','betaUnsigned','sigmaUnsigned','maxBOLDUnsigned'},...
-     'GroupingVariables',{'qpPres','sigmaSim'});
-
-for i = 1:size(SignedResults,1)
-    SignedResults.Level(i) = strcat(SignedResults.qpPres(i),' Noise: ',num2str(SignedResults.sigmaSim(i)));
-    UnsignedResults.Level(i) = strcat(UnsignedResults.qpPres(i),' Noise: ',num2str(UnsignedResults.sigmaSim(i)));
+permTests = 1000;
+permResults = zeros(1,permTests);
+randParams = zeros(1,length(paramNamesInOrder)-1);
+for i = 1:permTests
+    for j = 1:length(paramNamesInOrder)-2
+        randParams(j) = randsample(paramsDomain.(paramNamesInOrder{j}),1);
+    end
+    randParams(end) = 1;
+    randResponse = model(stimDomain,randParams);
+    permResults(i) = corr(randResponse',modelResponseNoCorrection')^2;
 end
 
-%Calculate SEM
-semSigned = zeros(6,3);
-semSigned(:,1) = SignedResultsStd.std_slopeSigned ./ sqrt(SignedResults.GroupCount);
-semSigned(:,2) = SignedResultsStd.std_semiSatSigned ./ sqrt(SignedResults.GroupCount);
-semSigned(:,3) = SignedResultsStd.std_maxBOLDSigned ./ sqrt(SignedResults.GroupCount);
-%Calculate SEM
-semUnsigned = zeros(6,3);
-semUnsigned(:,1) = UnsignedResultsStd.std_slopeUnsigned ./ sqrt(UnsignedResultsStd.GroupCount);
-semUnsigned(:,2) = UnsignedResultsStd.std_semiSatUnsigned ./ sqrt(UnsignedResultsStd.GroupCount);
-semUnsigned(:,3) = UnsignedResultsStd.std_maxBOLDUnsigned ./ sqrt(UnsignedResultsStd.GroupCount);
 
 
-% Grab the data for easier plotting
-signedToPlot = SignedResults{1:6, [4:5 8]};
-unsignedToPlot = UnsignedResults{1:6, [4:5 8]};
-
-signedFig = figure; 
-set(gcf,'Position',[50 50 1200 700]);
-bar(signedToPlot, 'grouped');
-hold on;
-% Find the number of groups and the number of bars in each group
-ngroups = size(signedToPlot, 1);
-nbars = size(signedToPlot, 2);
-% Calculate the width for each bar group
-groupwidth = min(0.8, nbars/(nbars + 1.5));
-% Set the position of each error bar in the centre of the main bar
-% Based on barweb.m by Bolu Ajiboye from MATLAB File Exchange
-for i = 1:nbars
-    % Calculate center of each bar
-    x = (1:ngroups) - groupwidth/2 + (2*i-1) * groupwidth / (2*nbars);
-    errorbar(x, signedToPlot(:,i), semSigned(:,i), 'k', 'linestyle', 'none');
-end
-
-legend({'Slope','Semi-Sat','maxBOLD'});
-xticklabels(SignedResults{:,9});
-ylabel('Signed error (SEM)');
-title('Signed Error');
-
-set(signedFig,'Units','Inches');
-pos = get(signedFig,'Position');
-set(signedFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(signedFig,'./SEM_Signed_Error.pdf','-dpdf','-r0')
-
-
-
-unsignedFig = figure; 
-set(gcf,'Position',[50 50 1200 700]);
-bar(unsignedToPlot, 'grouped');
-hold on;
-for i = 1:nbars
-    % Calculate center of each bar
-    x = (1:ngroups) - groupwidth/2 + (2*i-1) * groupwidth / (2*nbars);
-    errorbar(x, unsignedToPlot(:,i), semUnsigned(:,i), 'k', 'linestyle', 'none');
-end
-
-legend({'Slope','Semi-Sat','maxBOLD'});
-xticklabels(UnsignedResults{:,9});
-ylabel('Unsigned error (SEM)');
-title('Unsigned Error');
-set(unsignedFig,'Units','Inches');
-pos = get(unsignedFig,'Position');
-set(unsignedFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(unsignedFig,'./SEM_Unsigned_Error.pdf','-dpdf','-r0')
-
-
-
-yVeridical = logistic(stimDomain,[sampleSimulatedParams(1) sampleSimulatedParams(2) sampleSimulatedParams(3)]);
-
-yQPLowNoise = logistic(stimDomain,[avgResults.(strcat(avgFuncName,'_slope))(1) avgResults.(strcat(avgFuncName,'_semiSat(1) 1]);
-yRandomLowNoise = logistic(stimDomain,[avgResults.(strcat(avgFuncName,'_slope(2) avgResults.(strcat(avgFuncName,'_semiSat(2) 1]);
-
-yQPMedNoise = logistic(stimDomain,[avgResults.(strcat(avgFuncName,'_slope(3) avgResults.(strcat(avgFuncName,'_semiSat(3) 1]);
-yRandomMedNoise = logistic(stimDomain,[avgResults.(strcat(avgFuncName,'_slope(4) avgResults.(strcat(avgFuncName,'_semiSat(4) 1]);
-
-yQPHighNoise = logistic(stimDomain,[avgResults.(strcat(avgFuncName,'_slope(5) avgResults.(strcat(avgFuncName,'_semiSat(5) 1]);
-yRandomHighNoise = logistic(stimDomain,[avgResults.(strcat(avgFuncName,'_slope(6) avgResults.(strcat(avgFuncName,'_semiSat(6) 1]);
-
-fprintf('\n Low Noise  QP: %.04f | Random %.04f',corr(yQPLowNoise',yVeridical'),corr(yRandomLowNoise',yVeridical'));
-fprintf('\n Med Noise  QP: %.04f | Random %.04f',corr(yQPMedNoise',yVeridical'),corr(yRandomMedNoise',yVeridical'));
-fprintf('\n High Noise QP: %.04f | Random %.04f\n',corr(yQPHighNoise',yVeridical'),corr(yRandomHighNoise',yVeridical'));
-%}
 
 
 %% Useful sub-functions

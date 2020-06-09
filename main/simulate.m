@@ -399,6 +399,11 @@ else
     toc
 end
 
+    
+% Calculate the lower headroom bin offset. We'll use this later
+nLower = round(headroom*myQpParams.nOutcomes);
+nUpper = round(headroom*myQpParams.nOutcomes);
+nMid = myQpParams.nOutcomes - nLower - nUpper;
 
 
 % Tack on a continuous output simulated observer to myQpParams
@@ -446,8 +451,10 @@ if showPlots
     set(gcf,'color','w');
     hold on;
     
+    
+    
     % Set up the BOLD fMRI response and model fit
-    subplot(3,1,1)
+    subplot(3,4,[9 10 11 12])
     currentBOLDHandleData = plot(thePacket.stimulus.timebase./1000,zeros(size(thePacket.stimulus.timebase)),'-k');
     hold on
     currentBOLDHandleFit = plot(thePacket.stimulus.timebase./1000,zeros(size(thePacket.stimulus.timebase)),'-r');
@@ -462,7 +469,7 @@ if showPlots
     ax.FontSize = 15;
     
     % Set up the TTF figure
-    subplot(3,1,2)
+    subplot(3,4,[1 2 5 6])
     % MIGHT WANT TO FIX THIS DOWN THE ROAD??
     predictedRelativeResponse = model(stimulusDomainFine,simulatedPsiParams) - ...
         model(baselineStimulus,simulatedPsiParams);
@@ -476,22 +483,16 @@ if showPlots
     hold on
     currentOutcomesHandle = scatter(nan,nan);
     currentTTFHandle = plot(stimulusDomainFine,model(stimulusDomainFine,simulatedPsiParams),'-k');
-    
-    % Calculate the lower headroom bin offset. We'll use this later
-    nLower = round(headroom*myQpParams.nOutcomes);
-    nUpper = round(headroom*myQpParams.nOutcomes);
-    nMid = myQpParams.nOutcomes - nLower - nUpper;
-        
+  
     % Set up the entropy x trial figure
-    subplot(3,1,3)
+    h = subplot(3,4,[3 4 7 8]);
     entropyAfterTrial = nan(1,nTrials);
     currentEntropyHandle = plot(1:nTrials,entropyAfterTrial,'*k');
     xlim([1 nTrials]);
+    set(gca,'box','off');
     title('Model entropy by trial number');
     xlabel('Trial number');
     ylabel('Entropy');
-    
-    
 end
 
 
@@ -574,42 +575,53 @@ for tt = 1:nTrials
         questData = qpUpdate(questData,stimulusVec(yy),outcomes(yy));
     end
     
+    % Get the yValues out of the outcome bins.
+    yVals = (outcomes - nLower - 1)./nMid;
+    psiParamsIndex = qpListMaxArg(questData.posterior);
+    psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
+    yVals = (yVals*psiParamsQuest(betaIndex))*maxBOLD;
+    
     %% Plot the ongoing results
     % Update the plots
     if showPlots
         % Delete all previous annotations.
         delete(findall(gcf,'type','annotation'));
         % Simulated BOLD fMRI time-series and fit
-        subplot(3,1,1)
+        subplot(3,4,[9 10 11 12]);
         delete(currentBOLDHandleData)
         delete(currentBOLDHandleFit)
         currentBOLDHandleData = plot(thePacketOut.response.timebase./1000,thePacketOut.response.values,'.k');
         currentBOLDHandleFit = plot(modelResponseStruct.timebase./1000,modelResponseStruct.values,'-r');
-        drawnow        
+        
+        linePlot = plot([(tt-1)*trialLength tt*trialLength],[yVals(tt) yVals(tt)],'Color','b','LineWidth',4);
+        linePlot.Color(4) = .2;
+        drawnow
+        
+        
         % TTF figure
-        subplot(3,1,2)
+        subplot(3,4,[1 2 5 6])
         % Current guess at the TTF, along with stims and outcomes
-        yVals = (outcomes - nLower - 1)./nMid;
+
         stimulusVecPlot = stimulusVec;
         stimulusVecPlot(stimulusVecPlot==0)=min(myQpParams.stimParamsDomainList{1});
         delete(currentOutcomesHandle);
         currentOutcomesHandle = scatter(stimulusVecPlot(1:tt),yVals,'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',.2);
-        psiParamsIndex = qpListMaxArg(questData.posterior);
-        psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
+       
         predictedQuestRelativeResponse = model(stimulusDomainFine,psiParamsQuest) - ...
             model(baselineStimulus,psiParamsQuest);
-        delete(currentTTFHandle)
         ax = gca;
         xLoc = ax.Position(1);
         yLoc = ax.Position(2);
-        annotation('textbox',[xLoc+.6 yLoc+.3 .4 .2],'String',sprintf('Trial #%d\n%s',tt,string),'EdgeColor','none','FontSize',15);
-        
+        annotation('textbox',[xLoc+.6 yLoc-.3 .4 .2],'String',sprintf('Trial #%d\n%s',tt,string),'EdgeColor','none','FontSize',15);
         % MAY WANT TO FIX TO ALLOW LOG PLOTS
+        delete(currentTTFHandle)
         currentTTFHandle = plot(stimulusDomainFine,predictedQuestRelativeResponse,'-r');
-        legend('Veridical model','Stimulus Outcomes','Best Fit from Q+','Location','northwest');
+        legend('Veridical model','Stimulus outcome bins','Best-fit model','Location','northwest');
         drawnow
+        
+        
         % Entropy by trial
-        subplot(3,1,3)
+        h = subplot(3,4,[3 4 7 8]);
         delete(currentEntropyHandle)
         entropyAfterTrial(1:tt)=questData.entropyAfterTrial;
         plot(1:nTrials,entropyAfterTrial,'*k');
@@ -618,6 +630,7 @@ for tt = 1:nTrials
         xlabel('Trial number');
         ylabel('Entropy');
         drawnow
+        
         
         % Requires gif package from fileexchange.
         if tt == 1
