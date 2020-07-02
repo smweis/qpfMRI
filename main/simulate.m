@@ -100,7 +100,8 @@ function [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain, vara
 %                             Width of figure window size.
 %   'figHeight'             - Integer (Default = 900)
 %                             Height of figure window size.
-
+%   'saveGif'               - Logical (Default = false)
+%                             Whether to save the animated plot as a gif.
 % Outputs:
 %   psiParamsFit          - 1xn vector returning the BADS best fit for the
 %                           parameters

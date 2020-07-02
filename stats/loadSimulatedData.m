@@ -53,7 +53,7 @@ for i = 1:length(resultsDirFiles)
     end
     
     resultsData(i,1:length(paramNamesInOrder)+1) = readtable(fullfile(resultsDirFiles(i).folder,resultsDirFiles(i).name));
-    paramsData(i,1:length(paramNamesInOrder)+1) = readtable(fullfile(paramDirFiles(i).folder,paramDirFiles(i).name));
+    paramsData(i,1:length(paramNamesInOrder)+2) = readtable(fullfile(paramDirFiles(i).folder,paramDirFiles(i).name));
 end
 
 sortrows(resultsData,'simID');
