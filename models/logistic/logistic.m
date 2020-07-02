@@ -46,6 +46,5 @@ beta = params(3);
 
 % Calculate the amplitudes
 y = beta.*(1-1./(1+exp(slope.*(100.*(stimulusValue-semiSat)))));
-
 end % main function
 

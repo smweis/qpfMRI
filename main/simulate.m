@@ -111,73 +111,65 @@ function [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain, vara
 %Example: 
 %{
 ---------------------------------------------------------------------------
-% Example 1: DoE Temporal Model - a somewhat poorly behaved model.
-model = @doeTemporalModel;
+Example 1: Logistic Model
 
-paramsDomain = struct;
-paramsDomain.Sr = 0.899:0.025:1.099;
-paramsDomain.k1 = 0.01:0.04:0.4;
-paramsDomain.k2 = 0.01:0.04:0.4;
-paramsDomain.beta = 0.8:0.1:1.4;
-paramsDomain.sigma = 0.3:0.2:1.0;	
-
-simulatedPsiParams = struct;
-simulatedPsiParams.Sr = 1.004; 
-simulatedPsiParams.k1 = .016; 
-simulatedPsiParams.k2 = .118; 
-simulatedPsiParams.beta = 1.0; 
-simulatedPsiParams.sigma = .1;
-
-qpPres = false;
-
-showPlots = true;
-
-[psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain,...,
-'qpPres',qpPres,'simulatedPsiParams', simulatedPsiParams,...,
- 'showPlots',showPlots);
-
----------------------------------------------------------------------------
-Example 2: Logistic Model
-
+% Provide a model handle
 model = @logistic;
 
+% Specify the parameter domain. Each value must correspond to a parameter
+% expected by the model. 
 paramsDomain = struct;
 paramsDomain.slope = makeDomain(-1.2,-.2,10,'spacing','log');
 paramsDomain.semiSat = makeDomain(.01,1,10);
 paramsDomain.beta = makeDomain(.75,1.25,11,'spacing','zeno');
-paramsDomain.sigma = makeDomain(.05,2,10);
 
+% Sigma in the parameter domain is searching for noiseSD
+paramsDomain.sigma = makeDomain(.5,4,8);
+
+% Specify a stimulus domain and whether it spaced linear or log.
 stimulusDomain = {makeDomain(.01,1,25)};
 stimulusDomainSpacing = 'lin';
-nTrials = 30;
-qpPres = false;
 
-showPlots = true;
+% Number of trials to run.
+nTrials = 100;
 
-simulatedPsiParams = struct;
-simulatedPsiParams.slope = .12;
-simulatedPsiParams.semiSat = .49;
-simulatedPsiParams.beta = 1.0;
-simulatedPsiParams.sigma = .4;
+% Allow Q+ to control the stimuli or not (false).
+qpPres = true;
 
+nOutcomes = 5;% Set the number of outcome categories / bins.
+
+showPlots = true; % Do you want to see plots?
+
+
+% The range of BOLD signal to simulate (e.g., from baseline to maximum BOLD)
+maxBOLDSimulated = 1.5;
+% How noisy simulated BOLD data are in units of maxBOLDSimulated
+noiseSD = .02; 
+How long the trials are (in seconds).
 trialLength = 12;
 
 % Note, this will save a copy of questData after it is initialized. 
 [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain,...,
 'qpPres',qpPres, 'showPlots',showPlots,'stimulusDomain',stimulusDomain,...,
-'stimulusDomainSpacing',stimulusDomainSpacing,...,
-'simulatedPsiParams',simulatedPsiParams,'nTrials',nTrials,'trialLength',trialLength);
+'stimulusDomainSpacing',stimulusDomainSpacing,'noiseSD',noiseSD,...,
+'simulatedPsiParams',simulatedPsiParams,'nTrials',nTrials,...,
+'maxBOLDSimulated',maxBOLDSimulated,'trialLength',trialLength,...,
+'nOutcomes',nOutcomes);
 ---------------------------------------------------------------------------
-Time saver for debugging: After running one of the above examples, keep
-everything in memory and run the line below. Especially useful if the
-paramsDomain is large or multi-dimensional.
+Example 1 Time Saver code:
+
+% Time saver for debugging: After running one of the above examples, keep
+% everything in memory and run the line below. Especially useful if the
+% paramsDomain is large or multi-dimensional.
 
 % If paramsDomain is not changed, the following line can be run with
-questDataCopy as an optional argument to save the initialization step.
+% questDataCopy as an optional argument to save the initialization step.
 [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain,...,
 'qpPres',qpPres, 'showPlots',showPlots,'stimulusDomain',stimulusDomain,...,
-'stimulusDomainSpacing',stimulusDomainSpacing,...,
-'questDataCopy',questDataCopy,'simulatedPsiParams',simulatedPsiParams,'nTrials',nTrials);
+'stimulusDomainSpacing',stimulusDomainSpacing,'noiseSD',noiseSD,...,
+'simulatedPsiParams',simulatedPsiParams,'nTrials',nTrials,...,
+'maxBOLDSimulated',maxBOLDSimulated,'trialLength',trialLength,...,
+'nOutcomes',nOutcomes,'questDataCopy',questDataCopy);
 
 
 
@@ -205,7 +197,7 @@ p.addParameter('nTrials',10,@isnumeric);
 p.addParameter('stimulusStructDeltaT',100,@isnumeric);
 p.addParameter('baselineStimulus','');
 p.addParameter('maxBOLDStimulus','');
-p.addParameter('nOutcomes',51,@isnumeric);
+p.addParameter('nOutcomes',5,@isnumeric);
 p.addParameter('noiseSD',.1,@isvector);
 p.addParameter('stimulusDomain',{},@iscell);
 p.addParameter('stimulusDomainSpacing','lin',@ischar);
@@ -215,6 +207,7 @@ p.addParameter('questDataCopy',{},@isstruct);
 p.addParameter('showPlots',false,@islogical);
 p.addParameter('figWidth',1100,@isnumeric);
 p.addParameter('figHeight',1100,@isnumeric);
+p.addParameter('saveGif',false,@islogical);
 
 % Parse
 p.parse( model, paramsDomain, varargin{:});
@@ -236,12 +229,8 @@ nTrials = p.Results.nTrials;
 stimulusStructDeltaT = p.Results.stimulusStructDeltaT; 
 baselineStimulus = p.Results.baselineStimulus;
 maxBOLDStimulus = p.Results.maxBOLDStimulus;
-
-% Changing nOutcomes has unpredictable effects on the search for sigma
-if p.Results.nOutcomes ~= 51
-    warning('51 bins (nOutcomes) are recommended. If you change this, be sure to alter the parameter domain for sigma.');
-end
-
+% Put noiseSD on the scale of maxBOLDSimulated
+noiseSD = p.Results.noiseSD .* maxBOLDSimulated;
 myQpParams.nOutcomes = p.Results.nOutcomes;
 
 showPlots = p.Results.showPlots;
@@ -279,7 +268,8 @@ if iscell(p.Results.stimulusDomain)
 elseif isvector(p.Results.stimulusDomain)
     myQpParams.stimParamsDomainList = {p.Results.stimulusDomain};
 else
-    myQpParams.stimParamsDomainList = {[baselineStimulus,1.875,3.75,7.5,15,30,60]};
+    warning('No stimulus domain specified. Defaulting to values between 0.01 and 1.');
+    myQpParams.stimParamsDomainList = {makeDomain(.01,1,25)};
 end
 
 % Create baseline stimulus and maxBOLD stimulus if not passed.
@@ -309,9 +299,8 @@ if isempty(p.Results.simulatedPsiParams)
         % Beta is always one for simulations
         simulatedPsiParams(betaIndex) = 1;
         
-        % simulatedPsiParams is selected from a random sample of
-        % p.Results.noiseSD
-        simulatedPsiParams(sigmaIndex) = randsample(p.Results.noiseSD,1);
+        % Simulated noise is selected from a random sample of noiseSD
+        simulatedPsiParams(sigmaIndex) = randsample(noiseSD,1);
         
         if abs(model(baselineStimulus,simulatedPsiParams)) < simulatedPsiParams(betaIndex)/10000
             stillSearching = false;
@@ -323,17 +312,24 @@ if isempty(p.Results.simulatedPsiParams)
 
 else
     simulatedPsiParams = zeros(1,length(paramNamesInOrder));
+    
+    % A relic of naming simulatedPsiParams noise parameter as sigma.
     for i = 1:length(paramNamesInOrder)
-        simulatedPsiParams(i) =  p.Results.simulatedPsiParams.(paramNamesInOrder{i});
+        if i == sigmaIndex && ~isfield(p.Results.simulatedPsiParams,'sigma')
+            simulatedPsiParams(sigmaIndex) = noiseSD;
+        else
+            simulatedPsiParams(i) =  p.Results.simulatedPsiParams.(paramNamesInOrder{i});
+        end
     end
+    
     % Beta will converge to 1 as maxBOLD gets closer and closer to the
     % simulated maxBOLD. As a result, when simulating data, beta should always
-    % be set to 1. And, Q+ should always be able to incorporate 1 in its
-    % domain. Assert these conditions are true. 
-    % Beta is always one for simulations
+    % be set to 1. 
     simulatedPsiParams(betaIndex) = 1;
-        
     assert(simulatedPsiParams(betaIndex)==1,'Simulated Beta should always be 1.');
+    
+    % Select simulated psychometric parameters whose range of outputs
+    % are between 0 and 1 for the model being used. 
     if abs(model(baselineStimulus,simulatedPsiParams)) < simulatedPsiParams(betaIndex)/10000
         warning('Simulated psychometric parameters will result in minimum values below 0.\nMin possible value = %.02f',abs(model(baselineStimulus,simulatedPsiParams)));
     elseif abs(model(baselineStimulus,simulatedPsiParams)) > .01
@@ -342,8 +338,6 @@ else
         warning('Simulated psychometric parameters will result in maximum BOLD values below 1.\nMax possible value = %.02f',model(maxBOLDStimulus,simulatedPsiParams));
     end
 end
-
-
 
 % Derive some lower and upper bounds from the parameter ranges. This is
 % used later in maximum likelihood fitting
@@ -361,18 +355,14 @@ lowerBoundsConstrained(betaIndex) = .999;
 upperBoundsConstrained(betaIndex) = 1.001;
 
 % Make sure 1 is a member of the beta parameter domains. If it's not, add
-% it in.
+% it in. 
 if ~ismember(1,paramsDomain.beta)
     warning('The domain for beta should always include 1. Adding 1 to beta parameter domain. This may create non-linear spacing.');
     paramsDomain.beta = sort(paramsDomain.beta);
     paramsDomain.beta = [paramsDomain.beta(paramsDomain.beta<1) 1 paramsDomain.beta(paramsDomain.beta>1)];
 end
 
-
-
-
-% We also want to make sure that the veridical values are actually within
-% the domain bounds. Don't do this for sigma. 
+% Veridical values should be within domain bounds, except for sigma.
 for param = 1:length(paramNamesInOrder)
     if ~strcmp(paramNamesInOrder{param},'sigma')
         assert(lowerBounds(param) <= simulatedPsiParams(param)...
@@ -381,17 +371,16 @@ for param = 1:length(paramNamesInOrder)
     end
 end
 
-
 % Create a simulated observer with binned output
 myQpParams.qpOutcomeF = @(f) qpSimulatedObserver(f,myQpParams.qpPF,simulatedPsiParams);
 
-
-
-% Initialize Q+. Save some time if we're debugging
+%% Initialize Q+. 
+% Save some time if Q+ has already been initialized with the same
+% parameters and the user has passed it as an input. 
 if isstruct(questDataCopy)
     questData = questDataCopy;
 else
-    % Warn the user that we are initializing
+    % Warn the user that initializing has started and may take a minute.
     tic
     fprintf('Initializing Q+. This may take a minute...\n');
     questData = qpInitialize(myQpParams);
@@ -399,12 +388,10 @@ else
     toc
 end
 
-    
-% Calculate the lower headroom bin offset. We'll use this later
-nLower = round(headroom*myQpParams.nOutcomes);
-nUpper = round(headroom*myQpParams.nOutcomes);
+% Calculate the lower headroom bin offset. We'll use this for plotting.
+nLower = max([1 round(headroom*myQpParams.nOutcomes)]);
+nUpper = max([1 round(headroom*myQpParams.nOutcomes)]);
 nMid = myQpParams.nOutcomes - nLower - nUpper;
-
 
 % Tack on a continuous output simulated observer to myQpParams
 myQpParams.continuousPF = @(f) model(f,simulatedPsiParams);
@@ -425,6 +412,7 @@ end
 
 % Create a plot in which we can track the model progress
 if showPlots
+    % Create a fine version of the stimulus space.
     if strcmpi(p.Results.stimulusDomainSpacing,'log')
         stimulusDomainFine = logspace(log(min(myQpParams.stimParamsDomainList{1})),...,
             log(max(myQpParams.stimParamsDomainList{1})),100);
@@ -432,33 +420,32 @@ if showPlots
         stimulusDomainFine = linspace(min(myQpParams.stimParamsDomainList{1}),...,
             max(myQpParams.stimParamsDomainList{1}),100);
     end
-    % First, we'll plot the parameter domains
+    
+    %% Plot the parameter domains
     [paramsFig] = plotParamsDomain(model, paramsDomain, stimulusDomainFine,...,
         'nOutcomes',myQpParams.nOutcomes,'headroom',headroom,...,
         'stimulusDomainSpacing',p.Results.stimulusDomainSpacing,...,
         'figHeight',figHeight,'figWidth',figWidth);
     set(gcf,'color','w');
-    
     hold off;
     
-    % Create the packet early for plotting
+    % Create an empty packet for plotting
     thePacket = createPacket('nTrials',nTrials,...,
         'trialLengthSecs',trialLength,...,
         'stimulusStructDeltaT',stimulusStructDeltaT);
     
-    % Initialize the figure
+    % Initialize the main figure
     mainFig = figure('Position',[10 10 figWidth figHeight]);
     set(gcf,'color','w');
     hold on;
     
-    
-    
-    % Set up the BOLD fMRI response and model fit
+    %% Subplot (bottom panel): Simulated fMRI data and model response.
     subplot(3,4,[9 10 11 12])
     currentBOLDHandleData = plot(thePacket.stimulus.timebase./1000,zeros(size(thePacket.stimulus.timebase)),'-k');
     hold on
     currentBOLDHandleFit = plot(thePacket.stimulus.timebase./1000,zeros(size(thePacket.stimulus.timebase)),'-r');
     xlim([min(thePacket.stimulus.timebase./1000) max(thePacket.stimulus.timebase)./1000]);
+    % Use yMax to set the range for the plot.
     yMax = maxBOLDSimulated + maxBOLDSimulated*simulatedPsiParams(sigmaIndex)*2;
     ylim([-yMax yMax]);
     xlabel('time [seconds]','FontSize',20);
@@ -467,36 +454,46 @@ if showPlots
     set(gca,'box','off');
     ax = gca;
     ax.FontSize = 15;
+    drawnow
     
-    % Set up the TTF figure
+    %% Subplot (left top panel): Veridical model, individual trials, current model fit.
     subplot(3,4,[1 2 5 6])
-    % MIGHT WANT TO FIX THIS DOWN THE ROAD??
-    predictedRelativeResponse = model(stimulusDomainFine,simulatedPsiParams) - ...
-        model(baselineStimulus,simulatedPsiParams);
-    % May need to scale the predictedRelativeResponse here to account for
-    % the offset produced by subtraction of the baseline amplitude.    
+    set(gca,'Box','off');
+    % TO DO: MIGHT WANT TO FIX THIS DOWN THE ROAD??
+    % Predicted relative response is adjusted for the baseline and scaled
+    % to maxBOLD
+    predictedRelativeResponse = (model(stimulusDomainFine,simulatedPsiParams) - ...
+        model(baselineStimulus,simulatedPsiParams))*maxBOLDSimulated;  
     plotFunc(stimulusDomainFine,predictedRelativeResponse,'-k');
-    ylim([-0.5 1.5]);
+    ylim([-0.5 maxBOLDSimulated+1]);
     xlabel('Stimulus Values');
     ylabel('Relative response amplitude');
     title('Estimate of Model');
     hold on
+    % Scatter plot of the stimulus values
     currentOutcomesHandle = scatter(nan,nan);
+    lastOutcomeHandle = scatter(nan,nan);
+    % Veridical model plot.
     currentTTFHandle = plot(stimulusDomainFine,model(stimulusDomainFine,simulatedPsiParams),'-k');
-  
-    % Set up the entropy x trial figure
-    h = subplot(3,4,[3 4 7 8]);
+    linePlot = plot(nan);
+    
+    
+    %% Subplot (right top panel): Annotations.
+    subplot(3,4,[3 4]);
+    title('Trial Information','FontSize',25);
+    set(gca,'visible','off');
+    drawnow
+    
+    %% Subplot (right middle panel): Entropy by trial.
+    subplot(3,4,[7 8]);
     entropyAfterTrial = nan(1,nTrials);
+    xlabel('Trial number');
+    ylabel('Entropy');
     currentEntropyHandle = plot(1:nTrials,entropyAfterTrial,'*k');
     xlim([1 nTrials]);
     set(gca,'box','off');
-    title('Model entropy by trial number');
-    xlabel('Trial number');
-    ylabel('Entropy');
+    drawnow
 end
-
-
-
 
 %% Print the simulated psychometric parameters:
 fprintf('Simulated parameters:\n'); 
@@ -507,49 +504,54 @@ fprintf('\n');
 
 %% Run simulated trials
 for tt = 1:nTrials
-    fprintf('\nTrial %d\n',tt);
+
     % If it is the first three trials we force a baseline or maxBOLD event
     % Require 3 each. 
     if tt<=6
-        if mod(tt,2) > 0
+        if mod(tt,2) > 0 % Baseline trial
             stimulusVec(tt) = baselineStimulus;
-            string = sprintf('Stimulus (Initial baseline): %0.3f\n',stimulusVec(tt));
-        else
+            trialString = sprintf('\nTrial %d: Initial baseline\n',tt);
+            stimString = sprintf('Stimulus: %0.3f\n',stimulusVec(tt));
+        else % maxBOLD trial
             stimulusVec(tt) = maxBOLDStimulus;
-            string = sprintf('Stimulus (Initial maxBOLD): %0.3f\n',stimulusVec(tt));
+            trialString = sprintf('\nTrial %d: Initial max BOLD\n',tt);
+            stimString = sprintf('Stimulus: %0.3f\n',stimulusVec(tt));
         end
-    % Require a maxBOLD and a baseline every X trials (SAVE FOR LATER)
+    % After that, every 5th trial will be a baseline or a maxBOLD trial.    
+    elseif mod(tt,5) == 0 % Baseline trial
+        stimulusVec(tt) = baselineStimulus;
+        trialString = sprintf('\nTrial %d: Initial baseline\n',tt);
+        stimString = sprintf('Stimulus: %0.3f\n',stimulusVec(tt));
+    elseif mod(tt,10) == 0 % maxBOLD trial
+        stimulusVec(tt) = maxBOLDStimulus;
+        trialString = sprintf('\nTrial %d: Initial max BOLD\n',tt);
+        stimString = sprintf('Stimulus: %0.3f\n',stimulusVec(tt));
+    % Every other trial will be selected randomly, or by Q+
     else
         if ~qpPres
             % get random stimulus
+            trialString = sprintf('\nTrial %d: Random Stimulus Selection\n',tt);
             stimulusVec(tt) = questData.stimParamsDomain(randi(questData.nStimParamsDomain));
-            string = sprintf('Stimulus (Random): %0.3f\n',stimulusVec(tt));
+            stimString = sprintf('Stimulus: %0.3f\n',stimulusVec(tt));
         else
             % get next stimulus from Q+
+            trialString = sprintf('\nTrial %d: Q+ Stimulus Selection\n',tt);
             stimulusVec(tt) = qpQuery(questData);
-            string = sprintf('Stimulus (Q+): %0.3f\n',stimulusVec(tt));
+            stimString = sprintf('Stimulus: %0.3f\n',stimulusVec(tt));
         end
     end
-    fprintf(string);
+    fprintf(trialString);
+    fprintf(stimString);
     
     % Update maxBOLD with our best guess at the maximum BOLD fMRI response
     % that could be evoked by a stimulus (relative to the baseline
     % stimulus), which is the beta value of the model
     % Only update maxBOLD after we've had at least one maxBOLD trial
     if tt > 2
-        
         psiParamsIndex = qpListMaxArg(questData.posterior);
         psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
-       
+        % Update maxBOLD by the current best guess for Beta.
         maxBOLD = maxBOLD.*psiParamsQuest(betaIndex);
-       
-        fprintf('\nQ+ parameters\n');
-        for i = 1:length(psiParamsQuest)
-            fprintf('%s: %0.3f ',paramNamesInOrder{i},psiParamsQuest(i));
-        end
-        
-        fprintf('\nmaxBOLD estimate = %0.3f\n',maxBOLD);
-        fprintf('\n');
     end
 
     % Create a packet
@@ -558,7 +560,7 @@ for tt = 1:nTrials
         'stimulusStructDeltaT',stimulusStructDeltaT);
 
     % Obtain outcomes from tfeUpdate 
-    [outcomes, modelResponseStruct, thePacketOut] = ...
+    [outcomes, modelResponseStruct, thePacketOut, ~, baselineEstimate] = ...
         tfeUpdate(thePacket, myQpParams, stimulusVec, baselineStimulus, ...
         'maxBOLDSimulated',maxBOLDSimulated,...
         'rngSeed',rngSeed,...,
@@ -575,72 +577,105 @@ for tt = 1:nTrials
         questData = qpUpdate(questData,stimulusVec(yy),outcomes(yy));
     end
     
+    % TO DO: MIGHT NEED TO FIX THIS AS WELL. 
     % Get the yValues out of the outcome bins.
     yVals = (outcomes - nLower - 1)./nMid;
     psiParamsIndex = qpListMaxArg(questData.posterior);
     psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
-    yVals = (yVals*psiParamsQuest(betaIndex))*maxBOLD;
+    yVals = yVals*psiParamsQuest(betaIndex)*maxBOLD;
+    yValsStim = yVals + baselineEstimate;
+    
+    % Print results to the console.
+    resultString = sprintf('Output value %.03f\n',yVals(end));
+    fprintf(resultString);
+    entropyString = sprintf('Entropy after last trial: %.03f\n',questData.entropyAfterTrial(end));
+    fprintf(entropyString);
+    fprintf('\nQ+ parameters\n');
+    for i = 1:length(psiParamsQuest)
+        fprintf('%s: %0.3f ',paramNamesInOrder{i},psiParamsQuest(i));
+    end
+    fprintf('\nmaxBOLD estimate = %0.3f\n',maxBOLD);
+    fprintf('\n');
     
     %% Plot the ongoing results
     % Update the plots
     if showPlots
         % Delete all previous annotations.
         delete(findall(gcf,'type','annotation'));
-        % Simulated BOLD fMRI time-series and fit
+        %% Subplot (bottom panel): Simulated fMRI data and model response.
         subplot(3,4,[9 10 11 12]);
         delete(currentBOLDHandleData)
         delete(currentBOLDHandleFit)
         currentBOLDHandleData = plot(thePacketOut.response.timebase./1000,thePacketOut.response.values,'.k');
         currentBOLDHandleFit = plot(modelResponseStruct.timebase./1000,modelResponseStruct.values,'-r');
-        
-        linePlot = plot([(tt-1)*trialLength tt*trialLength],[yVals(tt) yVals(tt)],'Color','b','LineWidth',4);
-        linePlot.Color(4) = .2;
+        delete(linePlot);
+        % This plots each stimulus as a blue line, with y-value
+        % corresponding to simulated BOLD (as estimated by the nOutcome 
+        % assignment and maxBOLD).
+        for m = 1:tt
+            linePlot(m) = plot([(m-1)*trialLength m*trialLength],[yValsStim(m) yValsStim(m)],'Color','b','LineWidth',4);
+            linePlot(m).Color(4) = .2;
+        end
+        linePlot(m).Color(4) = 1;
         drawnow
         
-        
-        % TTF figure
+        %% Subplot (left top panel): Veridical model, individual trials, current model fit.
         subplot(3,4,[1 2 5 6])
         % Current guess at the TTF, along with stims and outcomes
-
+        set(gca,'Box','off');
         stimulusVecPlot = stimulusVec;
         stimulusVecPlot(stimulusVecPlot==0)=min(myQpParams.stimParamsDomainList{1});
         delete(currentOutcomesHandle);
-        currentOutcomesHandle = scatter(stimulusVecPlot(1:tt),yVals,'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',.2);
-       
-        predictedQuestRelativeResponse = model(stimulusDomainFine,psiParamsQuest) - ...
-            model(baselineStimulus,psiParamsQuest);
-        ax = gca;
-        xLoc = ax.Position(1);
-        yLoc = ax.Position(2);
-        annotation('textbox',[xLoc+.6 yLoc-.3 .4 .2],'String',sprintf('Trial #%d\n%s',tt,string),'EdgeColor','none','FontSize',15);
-        % MAY WANT TO FIX TO ALLOW LOG PLOTS
+        delete(lastOutcomeHandle);
+        currentOutcomesHandle = scatter(stimulusVecPlot(1:tt-1),yVals(1:end-1),'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',.2);
+        lastOutcomeHandle = scatter(stimulusVecPlot(tt),yVals(end),'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',1,'HandleVisibility','off');
+        predictedQuestRelativeResponse = (model(stimulusDomainFine,psiParamsQuest) - ...
+            model(baselineStimulus,psiParamsQuest))*psiParamsQuest(betaIndex)*maxBOLD;
         delete(currentTTFHandle)
-        currentTTFHandle = plot(stimulusDomainFine,predictedQuestRelativeResponse,'-r');
-        legend('Veridical model','Stimulus outcome bins','Best-fit model','Location','northwest');
+        currentTTFHandle = plotFunc(stimulusDomainFine,predictedQuestRelativeResponse,'-r');
+        legend('Veridical Model','Individual Trials','Best-fit Model','Location','northwest');
         drawnow
         
         
-        % Entropy by trial
-        h = subplot(3,4,[3 4 7 8]);
+        %% Subplot (right top panel): Annotations.
+        subplot(3,4,[3 4]);
+        title('Trial Information','FontSize',25);
+        set(gca,'visible','off');
+        ax = gca;
+        xLoc = ax.Position(1);
+        yLoc = ax.Position(2);
+        annotation('textbox',[xLoc yLoc .4 .2],'String',sprintf('%s%s%s%s',trialString,stimString,resultString,entropyString),'EdgeColor','none','FontSize',15);
+        drawnow
+        
+        %% Subplot (right middle panel): Entropy by trial.
+        subplot(3,4,[7 8]);
         delete(currentEntropyHandle)
         entropyAfterTrial(1:tt)=questData.entropyAfterTrial;
         plot(1:nTrials,entropyAfterTrial,'*k');
         xlim([1 nTrials]);
         ylim([0 nanmax(entropyAfterTrial)]);
+        set(gca,'box','off');
+        title('Model entropy by trial number');
         xlabel('Trial number');
         ylabel('Entropy');
         drawnow
+       
+        hold off;
         
-        
-        % Requires gif package from fileexchange.
-        if tt == 1
-            % Requires gif package from fileexchange.
-            gif('simulate.gif','DelayTime',1,'frame',gcf,'nodither');
-        else
-            gif;
+        % Save this plot as a GIF?
+        if p.Results.saveGif
+            if tt == 1
+                % Requires gif package from fileexchange.
+                try
+                    gif('qpSimulate.gif','DelayTime',1,'frame',gcf,'nodither');
+                catch
+                    warning('You tried to save a gif, but perhaps you are missing the gif package.')
+                end
+            else
+                gif;
+            end
         end
     end
-    
     
 end
 
@@ -651,14 +686,10 @@ end
 % Grab our current beta estimate is: 
 psiParamsIndex = qpListMaxArg(questData.posterior);
 psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
-
-        
 psiParamsFit = qpFitBads(questData.trialData,questData.qpPF,psiParamsQuest,questData.nOutcomes,...
     'lowerBounds', lowerBounds,'upperBounds',upperBounds,...
     'plausibleLowerBounds',lowerBounds,'plausibleUpperBounds',upperBounds);
-
 maxBOLD = maxBOLD.*psiParamsFit(betaIndex);
-
 
 % Now run through the fitting steps again with the new maxBOLD
 thePacket = createPacket('nTrials',tt,...,
@@ -686,18 +717,17 @@ fprintf('--------------------------------------------------------------\n');
 % on the gridded parameter domain.
 psiParamsIndex = qpListMaxArg(questData.posterior);
 psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
+% Print simulated parameters.
 fprintf('Simulated parameters:              '); 
 for i = 1:length(simulatedPsiParams)
     fprintf('%s: %0.3f ',paramNamesInOrder{i},simulatedPsiParams(i));
 end
-
+% Print Q+ Fit parameters.
 fprintf('\nMax posterior QUEST+ parameters:   '); 
-
 for i = 1:length(psiParamsQuest)
     fprintf('%s: %0.3f ',paramNamesInOrder{i},psiParamsQuest(i));
 end
-
-
+% Prepare for BADS fit.
 psiParamsBads = psiParamsQuest;
 psiParamsBads(betaIndex) = 1;
 
@@ -707,21 +737,21 @@ psiParamsBads(betaIndex) = 1;
 psiParamsFit = qpFitBads(questData.trialData,questData.qpPF,psiParamsBads,questData.nOutcomes,...
     'lowerBounds', lowerBoundsConstrained,'upperBounds',upperBoundsConstrained,...
     'plausibleLowerBounds',lowerBoundsConstrained,'plausibleUpperBounds',upperBoundsConstrained);
-
-
+% Print BADS best fit parameters.
 fprintf('\nMax BADS parameters:               '); 
 for i = 1:length(psiParamsFit)
     fprintf('%s: %0.3f ',paramNamesInOrder{i},psiParamsFit(i));
 end
-
+% Print maxBOLD
 fprintf('\nmaxBOLD estimate: %0.3f\n',maxBOLD);
 
 %% Final plot fits
 if showPlots
     finalFig = figure('Position', [10 10 figWidth figHeight]);
     hold on;
-    predictedBADSRelativeResponse = model(stimulusDomainFine,psiParamsFit) - ...
-        model(baselineStimulus,psiParamsFit);
+    % TO DO: Might want to fix this for plotting.
+    predictedBADSRelativeResponse = (model(stimulusDomainFine,psiParamsFit) - ...
+        model(baselineStimulus,psiParamsFit)).*maxBOLD;
     plotFunc(stimulusDomainFine,predictedRelativeResponse,'-k','LineWidth',6);
     plotFunc(stimulusDomainFine,predictedBADSRelativeResponse,'-','Color','#FA4515','LineWidth',6);
     if strcmpi(p.Results.stimulusDomainSpacing,'log')

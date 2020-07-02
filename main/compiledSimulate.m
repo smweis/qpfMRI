@@ -182,7 +182,7 @@ p.addParameter('maxBOLDSimulated','1.5',@ischar);
 p.addParameter('maxBOLD','1.0',@ischar);
 p.addParameter('baselineStimulus','',@ischar);
 p.addParameter('maxBOLDStimulus','',@ischar);
-p.addParameter('nOutcomes','51',@ischar);
+p.addParameter('nOutcomes','5',@ischar);
 p.addParameter('headroom','.1',@ischar);
 p.addParameter('TR','800', @ischar);
 p.addParameter('trialLength','12', @ischar);

@@ -1,4 +1,4 @@
-function [outcomes, modelResponseStruct, thePacket, adjustedAmplitudes] = tfeUpdate(thePacket, qpParams, stimulusVec, baselineStimulus, varargin)
+function [outcomes, modelResponseStruct, thePacket, adjustedAmplitudes, baselineEstimate] = tfeUpdate(thePacket, qpParams, stimulusVec, baselineStimulus, varargin)
 % Returns the QP outcomes given a packet and a stimulus vector.
 %
 % Syntax:
@@ -205,17 +205,18 @@ end
 [params,~,modelResponseStruct] = tfeObj.fitResponse(thePacket,...
     'defaultParamsInfo', defaultParamsInfo, 'searchMethod','linearRegression');
 
+
 % We engage in reference coding, such that the amplitude of any stimulus is
 % expressed w.r.t. the "baseline" stimulus
-adjustedAmplitudes = params.paramMainMatrix - ...
-    mean(params.paramMainMatrix(stimulusVec==p.Results.baselineStimulus));
+baselineEstimate = mean(params.paramMainMatrix(stimulusVec==p.Results.baselineStimulus));
+adjustedAmplitudes = params.paramMainMatrix - baselineEstimate;
 
 % Get the number of outcomes (bins)
 nOutcomes = qpParams.nOutcomes;
 
 % Determine the number of bins to be reserved for upper and lower headroom
-nLower = round(nOutcomes.*p.Results.headroom);
-nUpper = round(nOutcomes.*p.Results.headroom);
+nLower = max([1 round(nOutcomes.*p.Results.headroom)]);
+nUpper = max([1 round(nOutcomes.*p.Results.headroom)]);
 nMid = nOutcomes - nLower - nUpper;
 
 % Convert the adjusted BOLD amplitudes into scaled amplitudes (0-1)

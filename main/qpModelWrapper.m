@@ -130,7 +130,7 @@ if params(end)==0
     gaussKernel = zeros(1,nOutcomes);
     gaussKernel(floor(nOutcomes/2)+1)=1;
 else
-    gaussKernel = gausswin(nOutcomes,nOutcomes/(10*params(end)))';
+    gaussKernel = gausswin(nOutcomes,nOutcomes*params(end))';
 end
 
 % Initialize a variable to hold the result
