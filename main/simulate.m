@@ -146,14 +146,13 @@ showPlots = true; % Do you want to see plots?
 maxBOLDSimulated = 1.5;
 % How noisy simulated BOLD data are in units of maxBOLDSimulated
 noiseSD = .02; 
-How long the trials are (in seconds).
+%How long the trials are (in seconds).
 trialLength = 12;
 
 % Note, this will save a copy of questData after it is initialized. 
 [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain,...,
 'qpPres',qpPres, 'showPlots',showPlots,'stimulusDomain',stimulusDomain,...,
-'stimulusDomainSpacing',stimulusDomainSpacing,'noiseSD',noiseSD,...,
-'simulatedPsiParams',simulatedPsiParams,'nTrials',nTrials,...,
+'stimulusDomainSpacing',stimulusDomainSpacing,'noiseSD',noiseSD,'nTrials',nTrials,...,
 'maxBOLDSimulated',maxBOLDSimulated,'trialLength',trialLength,...,
 'nOutcomes',nOutcomes);
 ---------------------------------------------------------------------------
