@@ -302,9 +302,7 @@ if isempty(p.Results.simulatedPsiParams)
         % Simulated noise is selected from a random sample of noiseSD
         simulatedPsiParams(sigmaIndex) = randsample(noiseSD,1);
         
-        if abs(model(baselineStimulus,simulatedPsiParams)) < simulatedPsiParams(betaIndex)/10000
-            stillSearching = false;
-        elseif abs(model(maxBOLDStimulus,simulatedPsiParams)) < 1
+        if abs(model(baselineStimulus,simulatedPsiParams)) < simulatedPsiParams(betaIndex)/10000 && abs(model(maxBOLDStimulus,simulatedPsiParams)) < 1
             stillSearching = false;
         end
     end
