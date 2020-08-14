@@ -137,7 +137,7 @@ nTrials = 100;
 % Allow Q+ to control the stimuli or not (false).
 qpPres = true;
 
-nOutcomes = 5;% Set the number of outcome categories / bins.
+nOutcomes = 15;% Set the number of outcome categories / bins.
 
 showPlots = true; % Do you want to see plots?
 
@@ -302,7 +302,9 @@ if isempty(p.Results.simulatedPsiParams)
         % Simulated noise is selected from a random sample of noiseSD
         simulatedPsiParams(sigmaIndex) = randsample(noiseSD,1);
         
-        if abs(model(baselineStimulus,simulatedPsiParams)) < simulatedPsiParams(betaIndex)/10000 && abs(model(maxBOLDStimulus,simulatedPsiParams)) < 1
+        if abs(model(baselineStimulus,simulatedPsiParams)) < simulatedPsiParams(betaIndex)/10000 && ...
+                abs(model(maxBOLDStimulus,simulatedPsiParams)) < 1 && ...
+                abs(model(maxBOLDStimulus,simulatedPsiParams)) > .99
             stillSearching = false;
         end
     end
