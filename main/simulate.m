@@ -132,7 +132,7 @@ stimulusDomain = {makeDomain(.01,1,25)};
 stimulusDomainSpacing = 'lin';
 
 % Number of trials to run.
-nTrials = 100;
+nTrials = 30;
 
 % Allow Q+ to control the stimuli or not (false).
 qpPres = true;
@@ -229,6 +229,7 @@ nTrials = p.Results.nTrials;
 stimulusStructDeltaT = p.Results.stimulusStructDeltaT; 
 baselineStimulus = p.Results.baselineStimulus;
 maxBOLDStimulus = p.Results.maxBOLDStimulus;
+
 % Put noiseSD on the scale of maxBOLDSimulated
 noiseSD = p.Results.noiseSD .* maxBOLDSimulated;
 myQpParams.nOutcomes = p.Results.nOutcomes;
@@ -237,6 +238,9 @@ showPlots = p.Results.showPlots;
 figWidth = p.Results.figWidth;
 figHeight = p.Results.figHeight;
 
+
+% Time saver will use a blank copy of questData if it's been initialized
+% and passed in as an argument. 
 try
     questDataCopy = p.Results.questDataCopy;
 catch
@@ -244,11 +248,13 @@ catch
 end
 
 %% Check the model is supported and correct and return the model-specific values. 
+% Here, we make sure that the psychometric model passed is legitimate and
+% supported, and has all necessary values associated with it. 
 [paramNamesInOrder, myQpParams.qpPF, myQpParams.psiParamsDomainList] = checkModel(model,...,
     paramsDomain,'nOutcomes',myQpParams.nOutcomes,'headroom',headroom);
 
 %% Handle inputs
-% This finds beta and sigma no matter where they are.
+% Find beta and sigma by name so we know how to index them. 
 betaIndex = find(strcmp(paramNamesInOrder,'beta'));
 sigmaIndex = find(strcmp(paramNamesInOrder,'sigma'));
 
@@ -412,6 +418,15 @@ end
 
 % Create a plot in which we can track the model progress
 if showPlots
+    
+    % Setup colors for the main simulation plot to vary by trial type: 
+    % A cell array to hold cell values as trials come in. 
+    lineColor = cell(1,nTrials);
+    baselineColor = '#0B6F17';
+    maxBOLDColor = '#ADF7B6';
+    qpColor = '#007EA7';
+    randColor = '#007EA7';
+    
     % Create a fine version of the stimulus space.
     if strcmpi(p.Results.stimulusDomainSpacing,'log')
         stimulusDomainFine = logspace(log(min(myQpParams.stimParamsDomainList{1})),...,
@@ -512,20 +527,24 @@ for tt = 1:nTrials
             stimulusVec(tt) = baselineStimulus;
             trialString = sprintf('\nTrial %d: Initial baseline\n',tt);
             stimString = sprintf('Stimulus: %0.3f\n',stimulusVec(tt));
+            lineColor{tt} = baselineColor;
         else % maxBOLD trial
             stimulusVec(tt) = maxBOLDStimulus;
             trialString = sprintf('\nTrial %d: Initial max BOLD\n',tt);
             stimString = sprintf('Stimulus: %0.3f\n',stimulusVec(tt));
+            lineColor{tt} = maxBOLDColor;
         end
     % After that, every 5th trial will be a baseline or a maxBOLD trial.    
     elseif mod(tt,5) == 0 % Baseline trial
         stimulusVec(tt) = baselineStimulus;
         trialString = sprintf('\nTrial %d: Initial baseline\n',tt);
         stimString = sprintf('Stimulus: %0.3f\n',stimulusVec(tt));
+        lineColor{tt} = baselineColor;
     elseif mod(tt,10) == 0 % maxBOLD trial
         stimulusVec(tt) = maxBOLDStimulus;
         trialString = sprintf('\nTrial %d: Initial max BOLD\n',tt);
         stimString = sprintf('Stimulus: %0.3f\n',stimulusVec(tt));
+        lineColor{tt} = maxBOLDColor;
     % Every other trial will be selected randomly, or by Q+
     else
         if ~qpPres
@@ -533,11 +552,13 @@ for tt = 1:nTrials
             trialString = sprintf('\nTrial %d: Random Stimulus Selection\n',tt);
             stimulusVec(tt) = questData.stimParamsDomain(randi(questData.nStimParamsDomain));
             stimString = sprintf('Stimulus: %0.3f\n',stimulusVec(tt));
+            lineColor{tt} = qpColor;
         else
             % get next stimulus from Q+
             trialString = sprintf('\nTrial %d: Q+ Stimulus Selection\n',tt);
             stimulusVec(tt) = qpQuery(questData);
             stimString = sprintf('Stimulus: %0.3f\n',stimulusVec(tt));
+            lineColor{tt} = randColor;
         end
     end
     fprintf(trialString);
@@ -609,14 +630,13 @@ for tt = 1:nTrials
         currentBOLDHandleData = plot(thePacketOut.response.timebase./1000,thePacketOut.response.values,'.k');
         currentBOLDHandleFit = plot(modelResponseStruct.timebase./1000,modelResponseStruct.values,'-r');
         delete(linePlot);
+        
         % This plots each stimulus as a blue line, with y-value
         % corresponding to simulated BOLD (as estimated by the nOutcome 
         % assignment and maxBOLD).
         for m = 1:tt
-            linePlot(m) = plot([(m-1)*trialLength m*trialLength],[yValsStim(m) yValsStim(m)],'Color','b','LineWidth',4);
-            linePlot(m).Color(4) = .2;
+            linePlot(m) = plot([(m-1)*trialLength m*trialLength],[yValsStim(m) yValsStim(m)],'Color',lineColor{m},'LineWidth',4);
         end
-        linePlot(m).Color(4) = 1;
         drawnow
         
         %% Subplot (left top panel): Veridical model, individual trials, current model fit.
