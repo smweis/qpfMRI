@@ -38,6 +38,20 @@
 		"update": "",
 		"url": "https:\/\/github.com\/lacerbi\/bads.git"
 	},
+
+{
+		"flavor": "",
+		"hook": "",
+		"importance": "",
+		"localHookTemplate": "",
+		"name": "qpfmri",
+		"pathPlacement": "append",
+		"subfolder": "",
+		"toolboxRoot": "",
+		"type": "installed",
+		"update": "",
+		"url": "https:\/\/github.com\/smweis\/qpfmri.git"
+	},
 {
 		"flavor": "",
 		"hook": "",
