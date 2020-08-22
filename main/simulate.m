@@ -100,6 +100,8 @@ function [psiParamsFit,maxBOLD,questDataCopy]=simulate(model, paramsDomain, vara
 %                             Width of figure window size.
 %   'figHeight'             - Integer (Default = 900)
 %                             Height of figure window size.
+%   'saveFigs'              - Logical (Default = false)
+%                             Whether to save the figures as output.
 %   'saveGif'               - Logical (Default = false)
 %                             Whether to save the animated plot as a gif.
 % Outputs:
@@ -208,7 +210,7 @@ p.addParameter('showPlots',false,@islogical);
 p.addParameter('figWidth',1100,@isnumeric);
 p.addParameter('figHeight',1100,@isnumeric);
 p.addParameter('saveGif',false,@islogical);
-
+p.addParameter('saveFigs',false,@islogical);
 % Parse
 p.parse( model, paramsDomain, varargin{:});
 
@@ -790,23 +792,25 @@ end
 
 % Save figures
 if showPlots
-    delete(findall(gcf,'type','annotation'));
-    set(mainFig,'Units','Inches');
-    pos = get(mainFig,'Position');
-    set(mainFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)]);
-    print(mainFig,'simulate2.pdf','-dpdf','-r0');
+    if saveFigs
+        delete(findall(gcf,'type','annotation'));
+        set(mainFig,'Units','Inches');
+        pos = get(mainFig,'Position');
+        set(mainFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)]);
+        print(mainFig,'simulate2.pdf','-dpdf','-r0');
     
-    set(paramsFig,'Units','Inches');
-    pos = get(paramsFig,'Position');
-    set(paramsFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)]);
-    print(paramsFig,'paramsFigs2.pdf','-dpdf','-r0');
+        set(paramsFig,'Units','Inches');
+        pos = get(paramsFig,'Position');
+        set(paramsFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)]);
+        print(paramsFig,'paramsFigs2.pdf','-dpdf','-r0');
     
-    set(finalFig,'Units','Inches');
-    pos = get(finalFig,'Position');
-    set(finalFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)]);
-    print(finalFig,'finalFig2.pdf','-dpdf','-r0');
-end
+        set(finalFig,'Units','Inches');
+        pos = get(finalFig,'Position');
+        set(finalFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)]);
+        print(finalFig,'finalFig2.pdf','-dpdf','-r0');
 
+    end
+end
 resultsOut = array2table(psiParamsFit,'VariableNames',paramNamesInOrder);
 resultsOut.maxBOLD = maxBOLD;
 resultsFileName = [outNum 'Results.csv'];
