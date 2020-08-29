@@ -418,16 +418,16 @@ else
     plotFunc = @plot;
 end
 
+% Setup colors for the main simulation plot to vary by trial type:
+% A cell array to hold cell values as trials come in.
+lineColor = cell(1,nTrials);
+baselineColor = '#0B6F17';
+maxBOLDColor = '#ADF7B6';
+qpColor = '#007EA7';
+randColor = '#007EA7';
+    
 % Create a plot in which we can track the model progress
 if showPlots
-    
-    % Setup colors for the main simulation plot to vary by trial type: 
-    % A cell array to hold cell values as trials come in. 
-    lineColor = cell(1,nTrials);
-    baselineColor = '#0B6F17';
-    maxBOLDColor = '#ADF7B6';
-    qpColor = '#007EA7';
-    randColor = '#007EA7';
     
     % Create a fine version of the stimulus space.
     if strcmpi(p.Results.stimulusDomainSpacing,'log')
