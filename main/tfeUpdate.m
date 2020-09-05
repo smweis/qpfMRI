@@ -189,7 +189,7 @@ end
 % We engage in reference coding, such that the amplitude of any stimulus is
 % expressed w.r.t. the "baseline" stimulus
 baselineEstimate = mean(params.paramMainMatrix(stimulusVec==myQpfmriParams.baselineStimulus));
-adjustedAmplitudes = params.paramMainMatrix - myQpfmriParams.baselineEstimate;
+adjustedAmplitudes = params.paramMainMatrix - baselineEstimate;
 
 % Get the number of outcomes (bins)
 nOutcomes = qpParams.nOutcomes;

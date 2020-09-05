@@ -1,8 +1,9 @@
-function thePacket = createPacket(myQpfmriParams,varargin)
+function thePacket = createPacket(myQpfmriParams,nTrials,varargin)
+%% thePacket = createPacket(myQpfmriParams,nTrials,varargin) 
 % Returns thePacket for use with tfeUpdate
 %
 % Syntax:
-%  thePacket = createPacket();
+%  thePacket = createPacket(myQpfmriParams,nTrials);
 %
 % Description:
 %	Generates a stimulusStruct and kernelStruct based on optional inputs
@@ -11,7 +12,8 @@ function thePacket = createPacket(myQpfmriParams,varargin)
 % Inputs:
 %   myQpfmriParams          - Struct. Set of parameters used for qpfmri.
 %                             See qpfmriParams function for more details
-%
+%   nTrials                 - Scalar. Number of trials to generate. Other
+%                             parameters taken from myQpfmriParams
 % Optional key/value pairs:
 %   'verbose'               - How talkative. 
 %                             Default - False
@@ -29,16 +31,17 @@ p = inputParser;
 
 % Required input
 p.addRequired('myQpfmriParams',@isstruct);
+p.addRequired('nTrials',@isscalar);
 % Optional params
 p.addParameter('verbose', false, @islogical);
 
 % Parse and check the parameters
-p.parse( myQpfmriParams, varargin{:});
+p.parse( myQpfmriParams, nTrials, varargin{:});
 
 
 %% Temporal domain of the stimulus
 deltaT = myQpfmriParams.stimulusStructDeltaT; % in msecs
-totalTime = myQpfmriParams.nTrials*myQpfmriParams.trialLength*1000; % in msecs.
+totalTime = nTrials*myQpfmriParams.trialLength*1000; % in msecs.
 eventDuration = myQpfmriParams.trialLength*1000; % block duration in msecs
 
 % Define the timebase
@@ -49,7 +52,7 @@ nTimeSamples = size(stimulusStruct.timebase,2);
 % This loop will create a stimulus struct that has the property that each 
 % non-baseline trial will create its own regressor (row). Each baseline
 % trial will be added to the first regressor.
-for ii=1:(myQpfmriParams.nTrials)
+for ii=1:(nTrials)
     stimulusStruct.values(ii,:)=zeros(1,nTimeSamples);
     stimulusStruct.values(ii,(ii-1)*eventDuration/deltaT+1:ii*eventDuration/deltaT)=1;
 end

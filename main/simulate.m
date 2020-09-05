@@ -130,7 +130,7 @@ myQpParams = qpParams();
 qpfmriResults = myQpfmriParams;
 
 % Put noiseSD on the scale of maxBOLDSimulated
-noiseSD = myQpfmriParams.noiseSD .* myQpfmriParams.maxBOLDSimulated;
+myQpfmriParams.noiseSD = myQpfmriParams.noiseSD .* myQpfmriParams.maxBOLDSimulated;
 
 % Initialize maxBOLD
 qpfmriResults.maxBOLDoverTrials = nan(1,myQpfmriParams.nTrials);
@@ -194,7 +194,7 @@ if isempty(myQpfmriParams.simulatedPsiParams)
         myQpfmriParams.simulatedPsiParams(betaIndex) = 1;
         
         % Simulated noise is selected from a random sample of noiseSD
-        myQpfmriParams.simulatedPsiParams(sigmaIndex) = randsample(noiseSD,1);
+        myQpfmriParams.simulatedPsiParams(sigmaIndex) = randsample(myQpfmriParams.noiseSD,1);
         
         if abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)) < myQpfmriParams.simulatedPsiParams(betaIndex)/10000 && ...
                 abs(myQpfmriParams.model(myQpfmriParams.maxBOLDStimulus,myQpfmriParams.simulatedPsiParams)) < 1 && ...
@@ -342,7 +342,7 @@ if p.Results.showPlots
     %hold off;
 
     % Create an empty packet for plotting
-    thePacket = createPacket(myQpfmriParams);
+    thePacket = createPacket(myQpfmriParams,myQpfmriParams.nTrials);
     
     % Initialize the main figure
     mainFig = figure('Position',[10 10 p.Results.figWidth p.Results.figHeight]);
@@ -471,7 +471,7 @@ for tt = 1:myQpfmriParams.nTrials
     end
 
     % Create a packet
-    thePacket = createPacket(myQpfmriParams);
+    thePacket = createPacket(myQpfmriParams,tt);
 
     % Obtain outcomes from tfeUpdate 
     [outcomes, modelResponseStruct, thePacketOut, ~, baselineEstimate] = ...
@@ -558,8 +558,8 @@ for tt = 1:myQpfmriParams.nTrials
         subplot(3,4,[7 8]);
         delete(currentEntropyHandle)
         entropyAfterTrial(1:tt)=questData.entropyAfterTrial;
-        plot(1:nTrials,entropyAfterTrial,'*k');
-        xlim([1 nTrials]);
+        plot(1:myQpfmriParams.nTrials,entropyAfterTrial,'*k');
+        xlim([1 myQpfmriParams.nTrials]);
         ylim([0 nanmax(entropyAfterTrial)]);
         set(gca,'box','off');
         title('Model entropy by trial number');
