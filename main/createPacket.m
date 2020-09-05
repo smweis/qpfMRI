@@ -1,25 +1,18 @@
-function thePacket = createPacket(varargin)
+function thePacket = createPacket(myQpfmriParams,varargin)
 % Returns thePacket for use with tfeUpdate
 %
 % Syntax:
-%  thePacket = makePacket();
+%  thePacket = createPacket();
 %
 % Description:
 %	Generates a stimulusStruct and kernelStruct based on optional inputs
 %	and prepares tfeObj and thePacket for use with tfeUpdate. 
 %
 % Inputs:
-%   tfeObj         - temporal fitting engine object created using tfeInit
-%   thePacket      - struct for input into tfe, containing stimulus and kernel
-%                    values and timespace.
+%   myQpfmriParams          - Struct. Set of parameters used for qpfmri.
+%                             See qpfmriParams function for more details
 %
 % Optional key/value pairs:
-%   'nTrials'               - How many trials (including baseline trials)
-%                             Default - 25
-%   'trialLengthSecs'       - How long is each trial
-%                             Default - 12
-%   'stimulusStructDeltaT'  - The resolution of the stimulus struct in msecs
-%                             Default - 100
 %   'verbose'               - How talkative. 
 %                             Default - False
 % Outputs:
@@ -27,7 +20,7 @@ function thePacket = createPacket(varargin)
 %
 % Examples:
 %{
-   thePacket = createPacket()
+   thePacket = createPacket(myQpfmriParams)
 %}
 
 
@@ -35,21 +28,18 @@ function thePacket = createPacket(varargin)
 p = inputParser;
 
 % Required input
-
+p.addRequired('myQpfmriParams',@isstruct);
 % Optional params
-p.addParameter('nTrials', 25, @isscalar);
-p.addParameter('trialLengthSecs', 12, @isscalar);
-p.addParameter('stimulusStructDeltaT',100,@isnumeric);
 p.addParameter('verbose', false, @islogical);
 
 % Parse and check the parameters
-p.parse( varargin{:});
+p.parse( myQpfmriParams, varargin{:});
 
 
 %% Temporal domain of the stimulus
-deltaT = p.Results.stimulusStructDeltaT; % in msecs
-totalTime = p.Results.nTrials*p.Results.trialLengthSecs*1000; % in msecs.
-eventDuration = p.Results.trialLengthSecs*1000; % block duration in msecs
+deltaT = myQpfmriParams.stimulusStructDeltaT; % in msecs
+totalTime = myQpfmriParams.nTrials*myQpfmriParams.trialLength*1000; % in msecs.
+eventDuration = myQpfmriParams.trialLength*1000; % block duration in msecs
 
 % Define the timebase
 stimulusStruct.timebase = linspace(0,totalTime-deltaT,totalTime/deltaT);
@@ -59,7 +49,7 @@ nTimeSamples = size(stimulusStruct.timebase,2);
 % This loop will create a stimulus struct that has the property that each 
 % non-baseline trial will create its own regressor (row). Each baseline
 % trial will be added to the first regressor.
-for ii=1:(p.Results.nTrials)
+for ii=1:(myQpfmriParams.nTrials)
     stimulusStruct.values(ii,:)=zeros(1,nTimeSamples);
     stimulusStruct.values(ii,(ii-1)*eventDuration/deltaT+1:ii*eventDuration/deltaT)=1;
 end

@@ -1,27 +1,11 @@
-function [fig] = plotParamsDomain(model, paramsDomain, stimulusDomain, varargin)
+function [fig] = plotParamsDomain(myQpfmriParams, varargin)
 %% Plot all possible combos of a parameter domain. 
 % Plots all possible combinations of a parameter domain across a range of
 % stimulus values.
 % Inputs:
-%   model                 - A function handle. This should be the
-%                           'continuous function.' The Quest+ specific
-%                           function will be defined in the model-specific
-%                           code block. Currently supported:
-%                             @doeTemporalModel
-%                             @watsonTemporalModel
-%                             @logistic
-%   paramsDomain          - Struct consisting of upper bounds, lower
-%                           bounds, and intervals for all necessary
-%                           parameters. All models should have beta and
-%                           sigma as parameters.
-%                             DoE    (n=5): Sr, k1, k2, beta, sigma
-%                             Watson (n=5): tau, kappa, zeta, beta, sigma
-%                             logistic (n=4): slope, semiSat, beta, sigma
-%   stimulusDomain        - Vector specifying the expected domain of the
-%                             stimulus.
+%   myQpfmriParams          - Struct. Set of parameters used for qpfmri.
+%                             See qpfmriParams function for more details
 % Optional key/value pairs:
-%   'stimulusDomain'      - String. Default = 'lin'
-%                           The spacing of the stimulus domain.
 %   'xParam'                - Integer (Default = 1)
 %                             Which parameter to vary along the x subplot axis.
 %   'yParam'                - Integer (Default = 2)
@@ -47,7 +31,7 @@ paramsDomain.sigma = 0.3:0.2:1;	% Standard deviation of the scaled (0-1) noise
 model = @doeTemporalModel;
 stimulusDomain = [1.875, 3.75, 7.5, 15, 30, 60];
 
-plotParamsDomain(model, paramsDomain, stimulusDomain);
+plotParamsDomain(myQpfmriParams);
 
 % Example 2: 
 % from early doeSimulate code
@@ -60,12 +44,13 @@ paramsDomain.sigma = 0.3:0.2:1;	% Standard deviation of the scaled (0-1) noise
 model = @doeTemporalModel;
 stimulusDomain = logspace(log10(0.01),log10(200),100);;
 stimDomainSpacing = 'log';
-plotParamsDomain(model, paramsDomain, stimulusDomain,...,
-'stimulusDomainSpacing',stimDomainSpacing);
-%
 
+myQpfmriParams = (model,paramsDomain,'stimulusDomain',stimulusDomain,...,
+'stimulusDomainSpacing',stimulusDomainSpacing);
 
+plotParamsDomain(myQpfmriParams);
 
+%Example 3
 
 model = @logistic;
 
@@ -78,22 +63,19 @@ paramsDomain.sigma = linspace(.3,1.5,8);
 stimulusDomain = {linspace(.01,1,10)};
 stimulusDomainSpacing = 'lin';
 
-plotParamsDomain(model, paramsDomain, stimulusDomain,...,
-'stimulusDomainSpacing',stimDomainSpacing);
+myQpfmriParams = (model,paramsDomain,'stimulusDomain',stimulusDomain,...,
+'stimulusDomainSpacing',stimulusDomainSpacing);
+
+plotParamsDomain(myQpfmriParams);
 
 %}
 %% Handle initial inputs
 p = inputParser;
 
 % Required input
-p.addRequired('model',@(x) isa(x,'function_handle'));
-p.addRequired('paramsDomain',@isstruct);
-p.addRequired('stimulusDomain',@isvector);
+p.addRequired('myQpfmriParams',@isstruct);
 
 % Optional params
-p.addParameter('stimulusDomainSpacing','lin',@ischar);
-p.addParameter('nOutcomes',51,@isnumeric);
-p.addParameter('headroom',.1,@isscalar);
 p.addParameter('xParam',1,@isnumeric);
 p.addParameter('yParam', 2, @isnumeric);
 p.addParameter('colorParam', 3, @isnumeric);
@@ -102,14 +84,10 @@ p.addParameter('figHeight',900,@isnumeric);
 
 
 % Parse
-p.parse( model, paramsDomain, stimulusDomain, varargin{:});
-
-nOutcomes = p.Results.nOutcomes;
-headroom = p.Results.headroom;
+p.parse( myQpfmriParams, varargin{:});
 
 % First verify the model is valid and the parameters are accounted for.
-[paramNamesInOrder] = checkModel(model,paramsDomain,...,
-    'nOutcomes',nOutcomes,'headroom',headroom);
+[paramNamesInOrder] = checkModel(myQpfmriParams);
 
 % Models are passed with beta and sigma but we need to ignore them here.
 betaIndex = find(strcmp(paramNamesInOrder,'beta'));
@@ -130,7 +108,7 @@ paramVectors = cell(nParameters,1);
 
 for par = 1:nParameters
     
-    paramVectors{par} = paramsDomain.(paramNamesInOrder{par});
+    paramVectors{par} = myQpfmriParams.paramsDomain.(paramNamesInOrder{par});
     if length(paramVectors{par}) > 10
         warning('Too many divisions for %s to plot in a reasonable way. Parameter domain made coarser.',...,
             paramNamesInOrder{par});
@@ -144,7 +122,6 @@ end
 if nParameters == 4  % including beta
     figWidth = p.Results.figWidth;
     figHeight = p.Results.figHeight;
-    colorParam = p.Results.colorParam;
     colorLength = paramSpaceSize(p.Results.colorParam);
     iterator1 = paramSpaceSize(p.Results.yParam)*paramSpaceSize(p.Results.colorParam);
     iterator2 = paramSpaceSize(p.Results.colorParam);
@@ -177,7 +154,7 @@ nAllCombos = length(allParameterCombos);
 
 % Prep for plotting
 
-if strcmpi(p.Results.stimulusDomainSpacing,'log')
+if strcmpi(myQpfmriParams.stimulusDomainSpacing,'log')
     plotFunc = @semilogx;
 else 
     plotFunc = @plot;
@@ -199,8 +176,8 @@ for c = 1:nAllCombos
     % For the first one, initialize
     if c == 1
         subplot(xParam,yParam,subplotNum);
-        yVals = model(stimulusDomain,allParameterCombos(c,:));
-        plotFunc(stimulusDomain,yVals,'Color',colorMap(color,:));
+        yVals = myQpfmriParams.model(myQpfmriParams.stimulusDomain{:},allParameterCombos(c,:));
+        plotFunc(myQpfmriParams.stimulusDomain{:},yVals,'Color',colorMap(color,:));
         plotTitle = sprintf('%s: %.03f',paramNamesInOrder{plotTitleParam},...,
             paramVectors{plotTitleParam,1}(plotColumn));
         title(plotTitle); 
@@ -235,10 +212,10 @@ for c = 1:nAllCombos
     end
 
     color = color + 1;
-    yVals = model(stimulusDomain,allParameterCombos(c,:));
-    plotFunc(stimulusDomain,yVals,'Color',colorMap(color,:));
+    yVals = myQpfmriParams.model(myQpfmriParams.stimulusDomain{:},allParameterCombos(c,:));
+    plotFunc(myQpfmriParams.stimulusDomain{:},yVals,'Color',colorMap(color,:));
     
-    if strcmpi(p.Results.stimulusDomainSpacing,'log')
+    if strcmpi(myQpfmriParams.stimulusDomainSpacing,'log')
         set(gca,'xtick',[],'ytick',[],'XScale', 'log');
     end
 end

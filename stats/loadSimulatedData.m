@@ -27,8 +27,8 @@ opts.Delimiter = ",";
 optsResults.VariableNames = ["slope", "semiSat", "beta", "sigma", "maxBOLD","simID"];
 optsResults.VariableTypes = ["double", "double", "double", "double", "double", "string"];
 
-optsParams.VariableNames = ["slopeSim","semiSatSim","betaSim","sigmaSim","maxBOLDSim","simIDSim"];
-optsParams.VariableTypes = ["double", "double", "double", "double", "double", "string"];
+optsParams.VariableNames = ["slopeSim","semiSatSim","betaSim","sigmaSim","maxBOLDSim","nOutcomes","simIDSim"];
+optsParams.VariableTypes = ["double", "double", "double", "double", "double","double","string"];
 
 paramsData = table('Size',[length(resultsDirFiles),length(optsParams.VariableNames)],...
     'VariableTypes',optsParams.VariableTypes,'VariableNames',optsParams.VariableNames);

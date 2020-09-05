@@ -1,4 +1,4 @@
-function [outcomes, modelResponseStruct, thePacket, adjustedAmplitudes, baselineEstimate] = tfeUpdate(thePacket, qpParams, stimulusVec, baselineStimulus, varargin)
+function [outcomes, modelResponseStruct, thePacket, adjustedAmplitudes, baselineEstimate] = tfeUpdate(thePacket, qpParams, myQpfmriParams, stimulusVec, maxBOLDLatestGuess, varargin)
 % Returns the QP outcomes given a packet and a stimulus vector.
 %
 % Syntax:
@@ -19,24 +19,13 @@ function [outcomes, modelResponseStruct, thePacket, adjustedAmplitudes, baseline
 %                           contain a value for nOutcomes other than the
 %                           default (2) to ensure enough range of values
 %                           for Q+ to work with.
-%   stimulusVec           - 1xk vector. Provides the numeric value for each
-%                           stimulus.
-%   baselineStimulus      - Scalar. Provides the numeric value for the
-%                           baseline stimulus that is used for reference
-%                           coding.
+%   myQpfmriParams        - Struct. Set of parameters used for qpfmri.
+%                           See qpfmriParams function for more details
+%   stimulusVec           - 1xn vector. Stimulus values presented thus far.
+%   maxBOLDLatestGuess    - Scalar. The latest guess for the value of
+%                           maxBOLD
 %
-% Optional key/value pairs (used in fitting):
-%  'headroom'             - Scalar. The proportion of the nOutcomes from 
-%                           qpParams that will be used as extra on top and
-%                           bottom.
-%  'maxBOLD'              - Scalar. The value (in % change units) of the
-%                           maximum expected response to a stimulus w.r.t.
-%                           the response to the baseline stimulus.
-%
-% Optional key/value pairs (used in simulation):
-%  'maxBOLDSimulated'     - Scalar. The value (in % change units) of the
-%                           maximum expected response to a stimulus w.r.t.
-%                           the response to the baseline stimulus.
+% Optional key/value pairs:
 %  'rngSeed'              - Struct. By passing a seed to the random
 %                           number generator, calling function can ensure
 %                           that this routine returns the same output for a
@@ -46,10 +35,6 @@ function [outcomes, modelResponseStruct, thePacket, adjustedAmplitudes, baseline
 %                           deviations.
 %  'pinkNoise'            - Logical. If the noise should be modeled as
 %                           pink (auto-correlated).
-%  'TRmsecs'              - Scalar. The TR of the BOLD fMRI measurement in 
-%                           msecs. Needed in simulation mode to know how
-%                           much to downsample the simulated signal.
-% 
 % Outputs:
 %   outcomes              - 1xk vector. The outcome of each stimulus,
 %                           expressed as a integer indicating into which of
@@ -59,7 +44,8 @@ function [outcomes, modelResponseStruct, thePacket, adjustedAmplitudes, baseline
 %                           method fitResponse
 %   thePacket             - Struct. The updated packet with response struct
 %                           completed.
-%
+%   adjustedAmplitudes    - 
+%   baselineEstimate      - 
 % Examples:
 %{
     % SIMULATION MODE
@@ -125,26 +111,20 @@ p = inputParser;
 % Required input
 p.addRequired('thePacket',@isstruct);
 p.addRequired('qpParams',@isstruct);
-p.addRequired('stimulusVec',@isnumeric);
-p.addRequired('baselineStimulus',@isscalar);
-
-% Optional params used in fitting
-p.addParameter('headroom', 0.1, @isnumeric);
-p.addParameter('maxBOLD', 1.0, @isscalar);
+p.addRequired('myQpfmriParams',@isstruct);
+p.addRequired('stimulusVec',@isvector);
+p.addRequired('maxBOLDLatestGuess',@isnumeric);
 
 % Optional params used in simulation
-p.addParameter('maxBOLDSimulated', 1.5, @isscalar);
 p.addParameter('rngSeed',rng(1,'twister'),@isstruct);
-p.addParameter('noiseSD',0.25, @isscalar);
 p.addParameter('pinkNoise',1, @isnumeric);
-p.addParameter('TRmsecs',800, @isnumeric);
 
 % Parse
-p.parse( thePacket, qpParams, stimulusVec, baselineStimulus, varargin{:});
+p.parse( thePacket, qpParams, myQpfmriParams, stimulusVec, maxBOLDLatestGuess, varargin{:});
 
 % We need to have at least one "baseline" stimulus in the vector of
 % stimuli to support reference-coding of the BOLD fMRI responses
-if isempty(find(stimulusVec==p.Results.baselineStimulus, 1))
+if isempty(find(stimulusVec==myQpfmriParams.baselineStimulus, 1))
     error('The stimulusVec must have at least one instance of the baselineStimulus.');
 end
 
@@ -167,19 +147,19 @@ if isempty(thePacket.response)
     
     % Initialize params0, which will allow us to create the forward model.
     params0 = tfeObj.defaultParams('defaultParamsInfo', defaultParamsInfo);
-    params0.noiseSd = p.Results.noiseSD;
+    params0.noiseSd = myQpfmriParams.noiseSD;
     params0.noiseInverseFrequencyPower = p.Results.pinkNoise;
     modelAmplitude = zeros(length(stimulusVec),1);
         
     % Obtain the continuous amplitude response
     for ii = 1:length(stimulusVec)        
-        modelAmplitude(ii) = qpParams.continuousPF(stimulusVec(ii)) .* p.Results.maxBOLDSimulated;    
+        modelAmplitude(ii) = qpParams.continuousPF(stimulusVec(ii)) .* myQpfmriParams.maxBOLDSimulated;    
     end
 
     % We enforce reference coding, such that amplitude of response to the
     % stimuli is expressed relative to the response to the baseline
     % stimulus.
-    modelAmplitude = modelAmplitude - mean(modelAmplitude(stimulusVec==p.Results.baselineStimulus));
+    modelAmplitude = modelAmplitude - mean(modelAmplitude(stimulusVec==myQpfmriParams.baselineStimulus));
 
     % Place the responses in the paramMainMatrix
     params0.paramMainMatrix = modelAmplitude;
@@ -192,7 +172,7 @@ if isempty(thePacket.response)
     thePacket.response = tfeObj.computeResponse(params0,thePacket.stimulus,thePacket.kernel,'AddNoise',true);
     
     % Resample the response to the BOLD fMRI TR
-    BOLDtimebase = min(thePacket.response.timebase):p.Results.TRmsecs:max(thePacket.response.timebase);
+    BOLDtimebase = min(thePacket.response.timebase):myQpfmriParams.TR:max(thePacket.response.timebase);
     thePacket.response= tfeObj.resampleTimebase(thePacket.response,BOLDtimebase);
     
     % Mean center the response
@@ -208,19 +188,19 @@ end
 
 % We engage in reference coding, such that the amplitude of any stimulus is
 % expressed w.r.t. the "baseline" stimulus
-baselineEstimate = mean(params.paramMainMatrix(stimulusVec==p.Results.baselineStimulus));
-adjustedAmplitudes = params.paramMainMatrix - baselineEstimate;
+baselineEstimate = mean(params.paramMainMatrix(stimulusVec==myQpfmriParams.baselineStimulus));
+adjustedAmplitudes = params.paramMainMatrix - myQpfmriParams.baselineEstimate;
 
 % Get the number of outcomes (bins)
 nOutcomes = qpParams.nOutcomes;
 
 % Determine the number of bins to be reserved for upper and lower headroom
-nLower = max([1 round(nOutcomes.*p.Results.headroom)]);
-nUpper = max([1 round(nOutcomes.*p.Results.headroom)]);
+nLower = max([1 round(nOutcomes.*myQpfmriParams.headroom)]);
+nUpper = max([1 round(nOutcomes.*myQpfmriParams.headroom)]);
 nMid = nOutcomes - nLower - nUpper;
 
 % Convert the adjusted BOLD amplitudes into scaled amplitudes (0-1)
-scaledAmplitudes = adjustedAmplitudes./p.Results.maxBOLD;
+scaledAmplitudes = adjustedAmplitudes./maxBOLDLatestGuess;
 
 % Map the responses to binned outcomes
 outcomes = 1+round(scaledAmplitudes.*nMid)+nLower;

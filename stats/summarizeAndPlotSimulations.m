@@ -44,19 +44,19 @@ function [data]= summarizeAndPlotSimulations(model,paramsDomain,factorName,sameP
 
 model = @logistic;
 paramsDomain = struct;
-paramsDomain.slope = makeDomain(-1.5,0,20,'spacing','log');
+paramsDomain.slope = makeDomain(-1.5,-.2,10,'spacing','log');
 paramsDomain.semiSat = makeDomain(.01,1,10);
-paramsDomain.maxBOLD = makeDomain(0,2.5,100);
-paramsDomain.sigma = makeDomain(0,9,100);
+paramsDomain.maxBOLD = makeDomain(.75,1.25,11,'spacing','zeno');
+paramsDomain.sigma = makeDomain(.5,4,8);
 nParamsForHist = 0;
 paramNamesToPlot = {};
-factorName = 'sigmaSim';
+factorName = 'nOutcomes';
 sameParams = true; 
 stimDomain = makeDomain(.01,1,25);
 baseline = .01;
 posterMode = true;
 dirStem = pwd;
-dirName = fullfile(dirStem,'logisticResultsParamSet9');
+dirName = fullfile(dirStem,'results','7vs31_.15sdNoise');
 
 data = summarizeAndPlotSimulations(model,paramsDomain,factorName,...,
     sameParams,stimDomain,baseline,dirName,'posterMode',posterMode,...,
@@ -72,7 +72,7 @@ data = summarizeAndPlotSimulations(model,paramsDomain,factorName,...,
 % Example 2: Make figures for all parameter sets: 
 model = @logistic;
 paramsDomain = struct;
-paramsDomain.slope = makeDomain(-1.5,0,20,'spacing','log');
+paramsDomain.slope = makeDomain(-1.2,-.2,20,'spacing','log');
 paramsDomain.semiSat = makeDomain(.01,1,10);
 paramsDomain.maxBOLD = makeDomain(0,2.5,100);
 paramsDomain.sigma = makeDomain(0,9,100);
@@ -134,8 +134,7 @@ posterFormat.veridicalColor = '#000000';
 % If 'data' not in memory, run the function to extract the data from the directory
 if isempty(p.Results.data)
     fprintf('Data being re-loaded from %s',dirName)
-    fullDirName = fullfile(dirName,'Results');
-    [data] = loadSimulatedData(fullDirName,model,[1,2]);
+    [data] = loadSimulatedData(dirName,model,[1,2]);
 else
     fprintf('Data being re-analyzed.');
     data = p.Results.data;
@@ -166,7 +165,7 @@ end
 
 
 % Print the average result for Q+/random and the given factor. 
-avgResults = varfun(p.Results.avgFunc,data,'InputVariables',[paramNamesInOrder 'maxBOLD'],...
+avgResults = varfun(p.Results.avgFunc,data,'InputVariables',[paramNamesInOrder 'maxBOLD' 'nOutcomes'],...
        'GroupingVariables',{factorName,'qpPres'})
 
 avgFuncName = func2str(p.Results.avgFunc);
@@ -250,7 +249,10 @@ for i = 1:length(ind)
     modelName(1) = upper(modelName(1));
     if strcmpi(factorName,'sigmaSim')
         plotFactorName = 'Noise';
+    else
+        plotFactorName = factorName;
     end
+    
     sgtitle(sprintf('%s Model Fits for %s = %s(SD)',modelName,plotFactorName,num2str(level)),'FontSize',45);
     hold off;
     
