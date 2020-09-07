@@ -458,9 +458,9 @@ if p.Results.showPlots
 end
 
 % Save results in struct
-resultsOut = array2table(psiParamsFit,'VariableNames',paramNamesInOrder);
-resultsOut.maxBOLD = maxBOLD;
-resultsFileName = [outNum 'Results.csv'];
+resultsOut = array2table(psiParamsFit,'VariableNames',myQpfmriParams.paramNamesInOrder);
+resultsOut.maxBOLDLatestGuess = maxBOLDLatestGuess;
+resultsFileName = [myQpfmriParams.outNum 'Results.csv'];
 resultsFolderName = ['.' filesep myQpfmriParams.outFolder filesep 'results'];
 
 if ~exist(resultsFolderName,'dir')
@@ -468,16 +468,16 @@ if ~exist(resultsFolderName,'dir')
 end
 
 
-resultsOut = array2table(psiParamsFit,'VariableNames',paramNamesInOrder);
+resultsOut = array2table(psiParamsFit,'VariableNames',myQpfmriParams.paramNamesInOrder);
 resultsOut.maxBOLDLatestGuess = maxBOLDLatestGuess;
 
 writetable(resultsOut,[resultsFolderName filesep resultsFileName]);
 
-simulatedParamsOut = array2table(myQpfmriParams.simulatedPsiParams,'VariableNames',paramNamesInOrder);
+simulatedParamsOut = array2table(myQpfmriParams.simulatedPsiParams,'VariableNames',myQpfmriParams.paramNamesInOrder);
 simulatedParamsOut.maxBOLDSimulated = myQpfmriParams.maxBOLDSimulated;
 simulatedParamsOut.nOutcomes = myQpfmriParams.nOutcomes;
 
-paramsFileName = [outNum 'Params.csv'];
+paramsFileName = [myQpfmriParams.outNum 'Params.csv'];
 paramsFolderName = ['.' filesep myQpfmriParams.outFolder filesep 'params'];
 
 if ~exist(paramsFolderName,'dir')

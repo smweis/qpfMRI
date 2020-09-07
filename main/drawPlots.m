@@ -95,13 +95,6 @@ end
 
 % Delete all previous annotations and reset the handleStruct
 delete(findall(gcf,'type','annotation'));
-delete(handleStruct.currentBOLDHandleData);
-delete(handleStruct.currentBOLDHandleFit);
-delete(handleStruct.linePlot);
-delete(handleStruct.currentOutcomesHandle);
-delete(handleStruct.lastOutcomeHandle);
-delete(handleStruct.currentEntropyHandle);
-delete(handleStruct.currentTTFHandle);     
 
 % Define plot function
 if strcmpi(myQpfmriParams.stimulusDomainSpacing,'log')
@@ -144,13 +137,16 @@ predictedQuestRelativeResponse = (myQpfmriParams.model(stimulusDomainFine,psiPar
     myQpfmriParams.model(myQpfmriParams.baselineStimulus,psiParamsQuest))*psiParamsQuest(myQpfmriParams.betaIndex)*maxBOLDLatestGuess;
 
 % The current best fit model
+delete(handleStruct.currentTTFHandle);
 handleStruct.currentTTFHandle = plotFunc(stimulusDomainFine,predictedQuestRelativeResponse,'-r');
 
 % Individual trial outcomes
+delete(handleStruct.currentOutcomesHandle);
 handleStruct.currentOutcomesHandle = scatter(stimulusVecPlot(1:nTrials-1),...,
     yVals(1:end-1),'o','MarkerFaceColor','b','MarkerEdgeColor','none',...,
     'MarkerFaceAlpha',.2);
 % Last individual trial outcome
+delete(handleStruct.lastOutcomeHandle);
 handleStruct.lastOutcomeHandle = scatter(stimulusVecPlot(nTrials),...,
     yVals(end),'o','MarkerFaceColor','b','MarkerEdgeColor','none',...,
     'MarkerFaceAlpha',1,'HandleVisibility','off');
@@ -176,7 +172,7 @@ annotation('textbox',[xLoc yLoc .4 .2],'String',sprintf('%s%s%s',trialString,sti
 % Labeling
 title('Trial Information','FontSize',25);
 
-set(gca,'visible','off');
+%set(gca,'visible','off');
 drawnow
 
 %% Subplot (right middle panel):
@@ -184,7 +180,7 @@ drawnow
 subplot(3,4,[7 8]);
 
 % Plot entropy by trials
-plot(1:nTrials,entropyAfterTrial,'*k');
+handleStruct.currentEntropyHandle=plot(1:nTrials,entropyAfterTrial,'*k');
 
 % Set and keep x and y-lims
 xlim([1 myQpfmriParams.nTrials]);
@@ -203,13 +199,16 @@ drawnow
 subplot(3,4,[9 10 11 12]);
 
 % In black dots, the simulated TRs. 
+delete(handleStruct.currentBOLDHandleData);     
 handleStruct.currentBOLDHandleData = plot(thePacketOut.response.timebase./1000,thePacketOut.response.values,'.k');
 
 % In a red line, the model fit. 
+delete(handleStruct.currentBOLDHandleFit);
 handleStruct.currentBOLDHandleFit = plot(modelResponseStruct.timebase./1000,modelResponseStruct.values,'-r');
 
 % In horizontal bars (colored by trial type), the beta estimate, scaled by
 % maxBOLDLatestGuess, per trial.
+delete(handleStruct.linePlot);
 for m = 1:nTrials
     xLine = [(m-1)*myQpfmriParams.trialLength m*myQpfmriParams.trialLength];
     yLine = [yValsPlusBaseline(m) yValsPlusBaseline(m)];
