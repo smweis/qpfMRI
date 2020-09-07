@@ -1,4 +1,4 @@
-function qpfmriData = qpfmriParams(model,paramsDomain,varargin)
+function [myQpfmriParams,myQpParams] = qpfmriParams(model,paramsDomain,varargin)
 %qpfmriParams  Set user defined parameters for a QUEST+ fMRI run.
 %
 % Usage:
@@ -90,9 +90,12 @@ function qpfmriData = qpfmriParams(model,paramsDomain,varargin)
 %                             Whether the stimulusDomain is spaced linear
 %                             or log.
 % Outputs:
-%     qpfmriData          Structure with one field each corresponding to the
-%                        keys below. Each field has the same name as the
-%                        key.
+%     myQpfmriParams        - Structure with one field each corresponding to the
+%                             keys below. Each field has the same name as the
+%                             key.
+%     myQpParams            - Structure with one field each corresponding to the
+%                             keys below. Each field has the same name as the
+%                             key.
 
 % 08/30/2020 smw Started on this.
 
@@ -129,4 +132,38 @@ p.parse( model, paramsDomain, varargin{:});
 
 
 %% Return structure
-qpfmriData = p.Results;
+
+myQpfmriParams = p.Results;
+
+% Establish qpParams
+myQpParams = qpParams();
+
+% Put noiseSD on the scale of maxBOLDSimulated
+myQpfmriParams.noiseSD = myQpfmriParams.noiseSD .* myQpfmriParams.maxBOLDSimulated;
+
+%% Check the model is supported and correct and return the model-specific values. 
+% Here, we make sure that the psychometric model passed is legitimate and
+% supported, and has all necessary values associated with it. 
+[myQpfmriParams, myQpParams.qpPF, myQpParams.psiParamsDomainList] = checkModel(myQpfmriParams);
+
+% Add nOutcomes to myQpParams
+myQpParams.nOutcomes = myQpfmriParams.nOutcomes;
+
+%% Add the stimulus domain.  
+if iscell(myQpfmriParams.stimulusDomain)
+    myQpParams.stimParamsDomainList = myQpfmriParams.stimulusDomain;
+elseif isvector(myQpfmriParams.stimulusDomain)
+    myQpParams.stimParamsDomainList = {myQpfmriParams.stimulusDomain};
+else
+    warning('No stimulus domain specified. Defaulting to values between 0.01 and 1.');
+    myQpParams.stimParamsDomainList = {makeDomain(.01,1,25)};
+end
+
+% Create baseline stimulus and maxBOLD stimulus if not passed.
+if isempty(myQpfmriParams.baselineStimulus)
+    myQpfmriParams.baselineStimulus = min(myQpParams.stimParamsDomainList{1});
+end
+if isempty(myQpfmriParams.maxBOLDStimulus)
+    myQpfmriParams.maxBOLDStimulus = max(myQpParams.stimParamsDomainList{1});
+end
+

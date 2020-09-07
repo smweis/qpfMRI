@@ -1,4 +1,4 @@
-function [paramNamesInOrder, varargout] = checkModel(myQpfmriParams)
+function [myQpfmriParams, varargout] = checkModel(myQpfmriParams)
 %checkModel will validate that the model and parameters specified match and
 %are currently supported. 
 % Inputs:
@@ -61,20 +61,24 @@ s = functions(myQpfmriParams.model);
 assert(any(strcmp(modelNames,s.function)==1),'Model not defined');
 
 % Grab the right parameter names and qpPF function
-paramNamesInOrder = modelParamNames.(s.function);
+myQpfmriParams.paramNamesInOrder = modelParamNames.(s.function);
+
+% Add betaIndex and sigmaIndex to myQpfmriParams
+myQpfmriParams.betaIndex = find(strcmp(myQpfmriParams.paramNamesInOrder,'beta'));
+myQpfmriParams.sigmaIndex = find(strcmp(myQpfmriParams.paramNamesInOrder,'sigma'));
 
 % Return the qpPF handle
 varargout{1} = @(f,p) qpModelWrapper(myQpfmriParams.model,f,p,...,
     myQpfmriParams.nOutcomes,myQpfmriParams.headroom);
 
 % Initialize the psiParamsDomain
-varargout{2} = cell(1,length(paramNamesInOrder));
+varargout{2} = cell(1,length(myQpfmriParams.paramNamesInOrder));
 
 % Step through each parameter, making sure all fields are accounted
 % for, then assign them to the cell.
-for i = 1:length(paramNamesInOrder)
-    assert(isfield(myQpfmriParams.paramsDomain,paramNamesInOrder{i}),'Parameter missing or misnamed for model.');
-    varargout{2}{i} = myQpfmriParams.paramsDomain.(paramNamesInOrder{i});
+for i = 1:length(myQpfmriParams.paramNamesInOrder)
+    assert(isfield(myQpfmriParams.paramsDomain,myQpfmriParams.paramNamesInOrder{i}),'Parameter missing or misnamed for model.');
+    varargout{2}{i} = myQpfmriParams.paramsDomain.(myQpfmriParams.paramNamesInOrder{i});
 end
 
 end

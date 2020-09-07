@@ -1,4 +1,4 @@
-function [qpfmriResults,questDataCopy]=simulate(myQpfmriParams, varargin)
+function [qpfmriResults,questDataCopy]=simulate(myQpfmriParams, myQpParams, varargin)
 %% [qpfmriResults,questDataCopy]=simulate(myQpfmriParams, varargin)
 % A script that will simulate fMRI BOLD data and fit a model with or
 % without Q+ control
@@ -14,6 +14,8 @@ function [qpfmriResults,questDataCopy]=simulate(myQpfmriParams, varargin)
 % Required Inputs
 %   myQpfmriParams          - Struct. Set of parameters used for qpfmri.
 %                             See qpfmriParams function for more details
+%   myQpParams              - Struct. Set of parameters used for qp.
+%                             See qpParams function for more details
 % Optional key/value pairs:
 %	'questDataCopy'         - Struct (Default is empty)
 %                             If it is not necessary to reinitialize Q+
@@ -26,10 +28,6 @@ function [qpfmriResults,questDataCopy]=simulate(myQpfmriParams, varargin)
 % Optional key/value pairs (used in plotting):
 %   'showPlots'             - Logical: (Default = false)
 %                             Whether to show plots.
-%   'figWidth'              - Integer (Default = 900)
-%                             Width of figure window size.
-%   'figHeight'             - Integer (Default = 900)
-%                             Height of figure window size.
 %   'saveFigs'              - Logical (Default = false)
 %                             Whether to save the figures as output.
 %   'saveGif'               - Logical (Default = false)
@@ -78,14 +76,14 @@ noiseSD = .02;
 %How long the trials are (in seconds).
 trialLength = 12;
 
-myQpfmriParams = qpfmriParams(model,paramsDomain,'qpPres',qpPres,...,
+[myQpfmriParams,myQpParams] = qpfmriParams(model,paramsDomain,'qpPres',qpPres,...,
 'stimulusDomain',stimulusDomain,'stimulusDomainSpacing',stimulusDomainSpacing,...,
 'noiseSD',noiseSD,'nTrials',nTrials,'maxBOLDSimulated',maxBOLDSimulated,...,
 'trialLength',trialLength,'nOutcomes',nOutcomes);
 
 
 % Note, this will save a copy of questData after it is initialized. 
-[qpfmriResults,questDataCopy]=simulate(myQpfmriParams,'showPlots',showPlots);
+[qpfmriResults,questDataCopy]=simulate(myQpfmriParams,myQpParams,'showPlots',showPlots);
 ---------------------------------------------------------------------------
 Example 1 Time Saver code:
 
@@ -109,47 +107,25 @@ Example 1 Time Saver code:
 p = inputParser;
 
 p.addRequired('myQpfmriParams',@isstruct);
-
+p.addRequired('myQpParams',@isstruct);
 % Check if there's a copy of questData already
 p.addParameter('questDataCopy',{},@isstruct);
 
 % Optional params for plotting
 p.addParameter('showPlots',false,@islogical);
-p.addParameter('figWidth',1100,@isnumeric);
-p.addParameter('figHeight',1100,@isnumeric);
-p.addParameter('saveGif',false,@islogical);
 p.addParameter('saveFigs',false,@islogical);
-
 % Parse inputs
-p.parse( myQpfmriParams, varargin{:});
+p.parse( myQpfmriParams, myQpParams, varargin{:});
 
-% Establish qpParams
-myQpParams = qpParams();
 
 % Initialize struct to save results out.
 qpfmriResults = myQpfmriParams;
-
-% Put noiseSD on the scale of maxBOLDSimulated
-myQpfmriParams.noiseSD = myQpfmriParams.noiseSD .* myQpfmriParams.maxBOLDSimulated;
 
 % Initialize maxBOLD
 qpfmriResults.maxBOLDoverTrials = nan(1,myQpfmriParams.nTrials);
 maxBOLDLatestGuess = myQpfmriParams.maxBOLDInitialGuess;
 
-% Add nOutcomes to myQpParams
-myQpParams.nOutcomes = myQpfmriParams.nOutcomes;
-
-
-
-%% Check the model is supported and correct and return the model-specific values. 
-% Here, we make sure that the psychometric model passed is legitimate and
-% supported, and has all necessary values associated with it. 
-[paramNamesInOrder, myQpParams.qpPF, myQpParams.psiParamsDomainList] = checkModel(myQpfmriParams);
-
 %% Handle inputs
-% Find beta and sigma by name so we know how to index them. 
-betaIndex = find(strcmp(paramNamesInOrder,'beta'));
-sigmaIndex = find(strcmp(paramNamesInOrder,'sigma'));
 
 % If seed is a keyword, pick a random seed. We use shuffle so it's new
 % every time.
@@ -161,42 +137,25 @@ else
     fprintf('Random call after seed %.04f\n',rand);
 end
 
-%% Add the stimulus domain.  
-if iscell(myQpfmriParams.stimulusDomain)
-    myQpParams.stimParamsDomainList = myQpfmriParams.stimulusDomain;
-elseif isvector(p.Results.stimulusDomain)
-    myQpParams.stimParamsDomainList = {myQpfmriParams.stimulusDomain};
-else
-    warning('No stimulus domain specified. Defaulting to values between 0.01 and 1.');
-    myQpParams.stimParamsDomainList = {makeDomain(.01,1,25)};
-end
-
-% Create baseline stimulus and maxBOLD stimulus if not passed.
-if isempty(myQpfmriParams.baselineStimulus)
-    myQpfmriParams.baselineStimulus = min(myQpParams.stimParamsDomainList{1});
-end
-if isempty(myQpfmriParams.maxBOLDStimulus)
-    myQpfmriParams.maxBOLDStimulus = max(myQpParams.stimParamsDomainList{1});
-end
 
 %% Select the veridical psychometric paramteers for the function.
 % Pick some random params to simulate if none provided but set beta to 1.
 % We require the simulated parameters to result in a baseline trial = 0.
 if isempty(myQpfmriParams.simulatedPsiParams)
-    myQpfmriParams.simulatedPsiParams = zeros(1,length(paramNamesInOrder));
+    myQpfmriParams.simulatedPsiParams = zeros(1,length(myQpfmriParams.paramNamesInOrder));
     stillSearching = true;
     while stillSearching
-        for i = 1:length(paramNamesInOrder)
-            myQpfmriParams.simulatedPsiParams(i) = randsample(myQpfmriParams.paramsDomain.(paramNamesInOrder{i}),1);
+        for i = 1:length(myQpfmriParams.paramNamesInOrder)
+            myQpfmriParams.simulatedPsiParams(i) = randsample(myQpfmriParams.paramsDomain.(myQpfmriParams.paramNamesInOrder{i}),1);
         end
         
         % Beta is always one for simulations
-        myQpfmriParams.simulatedPsiParams(betaIndex) = 1;
+        myQpfmriParams.simulatedPsiParams(myQpfmriParams.betaIndex) = 1;
         
         % Simulated noise is selected from a random sample of noiseSD
-        myQpfmriParams.simulatedPsiParams(sigmaIndex) = randsample(myQpfmriParams.noiseSD,1);
+        myQpfmriParams.simulatedPsiParams(myQpfmriParams.sigmaIndex) = randsample(myQpfmriParams.noiseSD,1);
         
-        if abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)) < myQpfmriParams.simulatedPsiParams(betaIndex)/10000 && ...
+        if abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)) < myQpfmriParams.simulatedPsiParams(myQpfmriParams.betaIndex)/10000 && ...
                 abs(myQpfmriParams.model(myQpfmriParams.maxBOLDStimulus,myQpfmriParams.simulatedPsiParams)) < 1 && ...
                 abs(myQpfmriParams.model(myQpfmriParams.maxBOLDStimulus,myQpfmriParams.simulatedPsiParams)) > .99
             stillSearching = false;
@@ -205,26 +164,26 @@ if isempty(myQpfmriParams.simulatedPsiParams)
     
 
 else
-    myQpfmriParams.simulatedPsiParams = zeros(1,length(paramNamesInOrder));
+    myQpfmriParams.simulatedPsiParams = zeros(1,length(myQpfmriParams.paramNamesInOrder));
     
     % A relic of naming simulatedPsiParams noise parameter as sigma.
-    for i = 1:length(paramNamesInOrder)
-        if i == sigmaIndex && ~isfield(myQpfmriParams.simulatedPsiParams,'sigma')
-            myQpfmriParams.simulatedPsiParams(sigmaIndex) = noiseSD;
+    for i = 1:length(myQpfmriParams.paramNamesInOrder)
+        if i == myQpfmriParams.sigmaIndex && ~isfield(myQpfmriParams.simulatedPsiParams,'sigma')
+            myQpfmriParams.simulatedPsiParams(myQpfmriParams.sigmaIndex) = noiseSD;
         else
-            myQpfmriParams.simulatedPsiParams(i) =  myQpfmriParams.simulatedPsiParams.(paramNamesInOrder{i});
+            myQpfmriParams.simulatedPsiParams(i) =  myQpfmriParams.simulatedPsiParams.(myQpfmriParams.paramNamesInOrder{i});
         end
     end
     
     % Beta will converge to 1 as maxBOLD gets closer and closer to the
     % simulated maxBOLD. As a result, when simulating data, beta should always
     % be set to 1. 
-    myQpfmriParams.simulatedPsiParams(betaIndex) = 1;
-    assert(myQpfmriParams.simulatedPsiParams(betaIndex)==1,'Simulated Beta should always be 1.');
+    myQpfmriParams.simulatedPsiParams(myQpfmriParams.betaIndex) = 1;
+    assert(myQpfmriParams.simulatedPsiParams(myQpfmriParams.betaIndex)==1,'Simulated Beta should always be 1.');
     
     % Select simulated psychometric parameters whose range of outputs
     % are between 0 and 1 for the model being used. 
-    if abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)) < myQpfmriParams.simulatedPsiParams(betaIndex)/10000
+    if abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)) < myQpfmriParams.simulatedPsiParams(myQpfmriParams.betaIndex)/10000
         warning('Simulated psychometric parameters will result in minimum values below 0.\nMin possible value = %.02f',abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)));
     elseif abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)) > .01
         warning('Simulated psychometric parameters will result in minimum values greater than 0.\nMin possible value = %.02f',abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)));
@@ -235,18 +194,18 @@ end
 
 % Derive some lower and upper bounds from the parameter ranges. This is
 % used later in maximum likelihood fitting
-lowerBounds = zeros(1,length(paramNamesInOrder));
-upperBounds = zeros(1,length(paramNamesInOrder));
-for i = 1:length(paramNamesInOrder)
-    lowerBounds(i) = myQpfmriParams.paramsDomain.(paramNamesInOrder{i})(1);
-    upperBounds(i) = myQpfmriParams.paramsDomain.(paramNamesInOrder{i})(end);
+lowerBounds = zeros(1,length(myQpfmriParams.paramNamesInOrder));
+upperBounds = zeros(1,length(myQpfmriParams.paramNamesInOrder));
+for i = 1:length(myQpfmriParams.paramNamesInOrder)
+    lowerBounds(i) = myQpfmriParams.paramsDomain.(myQpfmriParams.paramNamesInOrder{i})(1);
+    upperBounds(i) = myQpfmriParams.paramsDomain.(myQpfmriParams.paramNamesInOrder{i})(end);
 end
 
 % Constrain bounds on beta to be very tight around 1.
 lowerBoundsConstrained = lowerBounds;
 upperBoundsConstrained = upperBounds;
-lowerBoundsConstrained(betaIndex) = .999;
-upperBoundsConstrained(betaIndex) = 1.001;
+lowerBoundsConstrained(myQpfmriParams.betaIndex) = .999;
+upperBoundsConstrained(myQpfmriParams.betaIndex) = 1.001;
 
 % Make sure 1 is a member of the beta parameter domains. If it's not, add
 % it in. 
@@ -257,11 +216,11 @@ if ~ismember(1,myQpfmriParams.paramsDomain.beta)
 end
 
 % Veridical values should be within domain bounds, except for sigma.
-for param = 1:length(paramNamesInOrder)
-    if ~strcmp(paramNamesInOrder{param},'sigma')
+for param = 1:length(myQpfmriParams.paramNamesInOrder)
+    if ~strcmp(myQpfmriParams.paramNamesInOrder{param},'sigma')
         assert(lowerBounds(param) <= myQpfmriParams.simulatedPsiParams(param)...
             && upperBounds(param) >= myQpfmriParams.simulatedPsiParams(param),...,
-            'Parameter %s is not within the bounds of the parameter domain.',paramNamesInOrder{param});
+            'Parameter %s is not within the bounds of the parameter domain.',myQpfmriParams.paramNamesInOrder{param});
     end
 end
 
@@ -304,111 +263,19 @@ questDataUntrained = questData;
 
 % Create a stimulusVec to hold the trial across the loops
 stimulusVec = nan(1,myQpfmriParams.nTrials);
-
+% This allows us to store how each trial was generated
+stimulusVecTrialTypes = cell(1,myQpfmriParams.nTrials);
 %% Plotting features
-% Select the plotting type based on stimulus domain spacing.
-if strcmpi(myQpfmriParams.stimulusDomainSpacing,'log')
-    plotFunc = @semilogx;
-else
-    plotFunc = @plot;
-end
 
-% Setup colors for the main simulation plot to vary by trial type:
-% A cell array to hold cell values as trials come in.
-lineColor = cell(1,myQpfmriParams.nTrials);
-baselineColor = '#0B6F17';
-maxBOLDColor = '#ADF7B6';
-qpColor = '#007EA7';
-randColor = '#007EA7';
-    
 % Create a plot in which we can track the model progress
 if p.Results.showPlots
-    
-    % Create a fine version of the stimulus space.
-    if strcmpi(myQpfmriParams.stimulusDomainSpacing,'log')
-        stimulusDomainFine = logspace(log(min(myQpParams.stimParamsDomainList{1})),...,
-            log(max(myQpParams.stimParamsDomainList{1})),100);
-    else
-        stimulusDomainFine = linspace(min(myQpParams.stimParamsDomainList{1}),...,
-            max(myQpParams.stimParamsDomainList{1}),100);
-    end
-
-    
-    %% Plot the parameter domains
-    % BROKEN AT THE MOMENT
-    %[paramsFig] = plotParamsDomain(myQpfmriParams,...,
-    %    'figHeight',p.Results.figHeight,'figWidth',p.Results.figWidth);
-    %set(gcf,'color','w');
-    %hold off;
-
-    % Create an empty packet for plotting
-    thePacket = createPacket(myQpfmriParams,myQpfmriParams.nTrials);
-    
-    % Initialize the main figure
-    mainFig = figure('Position',[10 10 p.Results.figWidth p.Results.figHeight]);
-    set(gcf,'color','w');
-    hold on;
-    
-    %% Subplot (bottom panel): Simulated fMRI data and model response.
-    subplot(3,4,[9 10 11 12])
-    currentBOLDHandleData = plot(thePacket.stimulus.timebase./1000,zeros(size(thePacket.stimulus.timebase)),'-k');
-    hold on
-    currentBOLDHandleFit = plot(thePacket.stimulus.timebase./1000,zeros(size(thePacket.stimulus.timebase)),'-r');
-    xlim([min(thePacket.stimulus.timebase./1000) max(thePacket.stimulus.timebase)./1000]);
-    % Use yMax to set the range for the plot.
-    yMax = myQpfmriParams.maxBOLDSimulated + myQpfmriParams.maxBOLDSimulated*myQpfmriParams.simulatedPsiParams(sigmaIndex)*2;
-    ylim([-yMax yMax]);
-    xlabel('time [seconds]','FontSize',20);
-    ylabel('BOLD fMRI [% change]','FontSize',20);
-    title('Simulated BOLD fMRI data','FontSize',20);
-    set(gca,'box','off');
-    ax = gca;
-    ax.FontSize = 15;
-    drawnow
-    
-    %% Subplot (left top panel): Veridical model, individual trials, current model fit.
-    subplot(3,4,[1 2 5 6])
-    set(gca,'Box','off');
-    % TO DO: MIGHT WANT TO FIX THIS DOWN THE ROAD??
-    % Predicted relative response is adjusted for the baseline and scaled
-    % to maxBOLD
-    predictedRelativeResponse = (myQpfmriParams.model(stimulusDomainFine,myQpfmriParams.simulatedPsiParams) - ...
-        myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams))*myQpfmriParams.maxBOLDSimulated;  
-    plotFunc(stimulusDomainFine,predictedRelativeResponse,'-k');
-    ylim([-0.5 myQpfmriParams.maxBOLDSimulated+1]);
-    xlabel('Stimulus Values');
-    ylabel('Relative response amplitude');
-    title('Estimate of Model');
-    hold on
-    % Scatter plot of the stimulus values
-    currentOutcomesHandle = scatter(nan,nan);
-    lastOutcomeHandle = scatter(nan,nan);
-    % Veridical model plot.
-    currentTTFHandle = plot(stimulusDomainFine,myQpfmriParams.model(stimulusDomainFine,myQpfmriParams.simulatedPsiParams),'-k');
-    linePlot = plot(nan);
-    
-    
-    %% Subplot (right top panel): Annotations.
-    subplot(3,4,[3 4]);
-    title('Trial Information','FontSize',25);
-    set(gca,'visible','off');
-    drawnow
-    
-    %% Subplot (right middle panel): Entropy by trial.
-    subplot(3,4,[7 8]);
-    entropyAfterTrial = nan(1,myQpfmriParams.nTrials);
-    xlabel('Trial number');
-    ylabel('Entropy');
-    currentEntropyHandle = plot(1:myQpfmriParams.nTrials,entropyAfterTrial,'*k');
-    xlim([1 myQpfmriParams.nTrials]);
-    set(gca,'box','off');
-    drawnow
+    [mainFig,handleStruct] = initializePlots(myQpfmriParams,myQpParams);
 end
 
 %% Print the simulated psychometric parameters:
 fprintf('Simulated parameters:\n'); 
 for i = 1:length(myQpfmriParams.simulatedPsiParams)
-    fprintf('%s: %0.3f ',paramNamesInOrder{i},myQpfmriParams.simulatedPsiParams(i));
+    fprintf('%s: %0.3f ',myQpfmriParams.paramNamesInOrder{i},myQpfmriParams.simulatedPsiParams(i));
 end
 fprintf('\n'); 
 
@@ -420,43 +287,34 @@ for tt = 1:myQpfmriParams.nTrials
     if tt<=6
         if mod(tt,2) > 0 % Baseline trial
             stimulusVec(tt) = myQpfmriParams.baselineStimulus;
-            trialString = sprintf('\nTrial %d: Initial baseline\n',tt);
-            stimString = sprintf('Stimulus: %0.3f\n',stimulusVec(tt));
-            lineColor{tt} = baselineColor;
+            stimulusVecTrialTypes{tt} = 'baseline';
         else % maxBOLD trial
             stimulusVec(tt) = myQpfmriParams.maxBOLDStimulus;
-            trialString = sprintf('\nTrial %d: Initial max BOLD\n',tt);
-            stimString = sprintf('Stimulus: %0.3f\n',stimulusVec(tt));
-            lineColor{tt} = maxBOLDColor;
+            stimulusVecTrialTypes{tt} = 'maxBOLD';
         end
     % After that, every 5th trial will be a baseline or a maxBOLD trial.    
     elseif mod(tt,5) == 0 % Baseline trial
         stimulusVec(tt) = myQpfmriParams.baselineStimulus;
-        trialString = sprintf('\nTrial %d: Initial baseline\n',tt);
-        stimString = sprintf('Stimulus: %0.3f\n',stimulusVec(tt));
-        lineColor{tt} = baselineColor;
+        stimulusVecTrialTypes{tt} = 'baseline';
     elseif mod(tt,10) == 0 % maxBOLD trial
         stimulusVec(tt) = myQpfmriParams.maxBOLDStimulus;
-        trialString = sprintf('\nTrial %d: Initial max BOLD\n',tt);
-        stimString = sprintf('Stimulus: %0.3f\n',stimulusVec(tt));
-        lineColor{tt} = maxBOLDColor;
+        stimulusVecTrialTypes{tt} = 'maxBOLD';
     % Every other trial will be selected randomly, or by Q+
     else
         if ~myQpfmriParams.qpPres
             % get random stimulus
-            trialString = sprintf('\nTrial %d: Random Stimulus Selection\n',tt);
             stimulusVec(tt) = questData.stimParamsDomain(randi(questData.nStimParamsDomain));
-            stimString = sprintf('Stimulus: %0.3f\n',stimulusVec(tt));
-            lineColor{tt} = qpColor;
+            stimulusVecTrialTypes{tt} = 'random';
         else
-            % get next stimulus from Q+
-            trialString = sprintf('\nTrial %d: Q+ Stimulus Selection\n',tt);
+            % get next stimulus from Q+ 
             stimulusVec(tt) = qpQuery(questData);
-            stimString = sprintf('Stimulus: %0.3f\n',stimulusVec(tt));
-            lineColor{tt} = randColor;
+            stimulusVecTrialTypes{tt} = 'qplus';
         end
     end
+    
+    trialString = sprintf('\nTrial %d: %s Stimulus Selection\n',tt,stimulusVecTrialTypes{tt});
     fprintf(trialString);
+    stimString = sprintf('Stimulus: %0.3f\n',stimulusVec(tt));
     fprintf(stimString);
     
     % Update maxBOLD with our best guess at the maximum BOLD fMRI response
@@ -467,7 +325,7 @@ for tt = 1:myQpfmriParams.nTrials
         psiParamsIndex = qpListMaxArg(questData.posterior);
         psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
         % Update maxBOLD by the current best guess for Beta.
-        maxBOLDLatestGuess = maxBOLDLatestGuess.*psiParamsQuest(betaIndex);
+        maxBOLDLatestGuess = maxBOLDLatestGuess.*psiParamsQuest(myQpfmriParams.betaIndex);
     end
 
     % Create a packet
@@ -485,22 +343,19 @@ for tt = 1:myQpfmriParams.nTrials
         questData = qpUpdate(questData,stimulusVec(yy),outcomes(yy));
     end
     
-    % TO DO: MIGHT NEED TO FIX THIS AS WELL. 
     % Get the yValues out of the outcome bins.
     yVals = (outcomes - nLower - 1)./nMid;
     psiParamsIndex = qpListMaxArg(questData.posterior);
     psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
-    yVals = yVals*psiParamsQuest(betaIndex)*maxBOLDLatestGuess;
-    yValsStim = yVals + baselineEstimate;
+    yVals = yVals*psiParamsQuest(myQpfmriParams.betaIndex)*maxBOLDLatestGuess;
+    yValsPlusBaseline = yVals + baselineEstimate;
     
     % Print results to the console.
     resultString = sprintf('Output value %.03f\n',yVals(end));
     fprintf(resultString);
-    entropyString = sprintf('Entropy after last trial: %.03f\n',questData.entropyAfterTrial(end));
-    fprintf(entropyString);
     fprintf('\nQ+ parameters\n');
     for i = 1:length(psiParamsQuest)
-        fprintf('%s: %0.3f ',paramNamesInOrder{i},psiParamsQuest(i));
+        fprintf('%s: %0.3f ',myQpfmriParams.paramNamesInOrder{i},psiParamsQuest(i));
     end
     fprintf('\nmaxBOLD estimate = %0.3f\n',maxBOLDLatestGuess);
     fprintf('\n');
@@ -508,80 +363,11 @@ for tt = 1:myQpfmriParams.nTrials
     %% Plot the ongoing results
     % Update the plots
     if p.Results.showPlots
-        % Delete all previous annotations.
-        delete(findall(gcf,'type','annotation'));
-        %% Subplot (bottom panel): Simulated fMRI data and model response.
-        subplot(3,4,[9 10 11 12]);
-        delete(currentBOLDHandleData)
-        delete(currentBOLDHandleFit)
-        currentBOLDHandleData = plot(thePacketOut.response.timebase./1000,thePacketOut.response.values,'.k');
-        currentBOLDHandleFit = plot(modelResponseStruct.timebase./1000,modelResponseStruct.values,'-r');
-        delete(linePlot);
-        
-        % This plots each stimulus as a blue line, with y-value
-        % corresponding to simulated BOLD (as estimated by the nOutcome 
-        % assignment and maxBOLD).
-        for m = 1:tt
-            linePlot(m) = plot([(m-1)*myQpfmriParams.trialLength m*myQpfmriParams.trialLength],[yValsStim(m) yValsStim(m)],'Color',lineColor{m},'LineWidth',4);
-        end
-        drawnow
-        
-        %% Subplot (left top panel): Veridical model, individual trials, current model fit.
-        subplot(3,4,[1 2 5 6])
-        % Current guess at the TTF, along with stims and outcomes
-        set(gca,'Box','off');
-        stimulusVecPlot = stimulusVec;
-        stimulusVecPlot(stimulusVecPlot==0)=min(myQpParams.stimParamsDomainList{1});
-        delete(currentOutcomesHandle);
-        delete(lastOutcomeHandle);
-        currentOutcomesHandle = scatter(stimulusVecPlot(1:tt-1),yVals(1:end-1),'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',.2);
-        lastOutcomeHandle = scatter(stimulusVecPlot(tt),yVals(end),'o','MarkerFaceColor','b','MarkerEdgeColor','none','MarkerFaceAlpha',1,'HandleVisibility','off');
-        predictedQuestRelativeResponse = (myQpfmriParams.model(stimulusDomainFine,psiParamsQuest) - ...
-            myQpfmriParams.model(myQpfmriParams.baselineStimulus,psiParamsQuest))*psiParamsQuest(betaIndex)*maxBOLDLatestGuess;
-        delete(currentTTFHandle)
-        currentTTFHandle = plotFunc(stimulusDomainFine,predictedQuestRelativeResponse,'-r');
-        legend('Veridical Model','Individual Trials','Best-fit Model','Location','northwest');
-        drawnow
-        
-        
-        %% Subplot (right top panel): Annotations.
-        subplot(3,4,[3 4]);
-        title('Trial Information','FontSize',25);
-        set(gca,'visible','off');
-        ax = gca;
-        xLoc = ax.Position(1);
-        yLoc = ax.Position(2);
-        annotation('textbox',[xLoc yLoc .4 .2],'String',sprintf('%s%s%s%s',trialString,stimString,resultString,entropyString),'EdgeColor','none','FontSize',15);
-        drawnow
-        
-        %% Subplot (right middle panel): Entropy by trial.
-        subplot(3,4,[7 8]);
-        delete(currentEntropyHandle)
-        entropyAfterTrial(1:tt)=questData.entropyAfterTrial;
-        plot(1:myQpfmriParams.nTrials,entropyAfterTrial,'*k');
-        xlim([1 myQpfmriParams.nTrials]);
-        ylim([0 nanmax(entropyAfterTrial)]);
-        set(gca,'box','off');
-        title('Model entropy by trial number');
-        xlabel('Trial number');
-        ylabel('Entropy');
-        drawnow
-       
-        hold off;
-        
-        % Save this plot as a GIF?
-        if p.Results.saveGif
-            if tt == 1
-                % Requires gif package from fileexchange.
-                try
-                    gif('qpSimulate.gif','DelayTime',1,'frame',gcf,'nodither');
-                catch
-                    warning('You tried to save a gif, but perhaps you are missing the gif package.')
-                end
-            else
-                gif;
-            end
-        end
+
+        % Draw plots
+        [mainFig,handleStruct] = drawPlots(myQpfmriParams,myQpParams,...,
+            stimulusVec,mainFig,handleStruct,thePacketOut,modelResponseStruct,...,
+            yVals,yValsPlusBaseline,psiParamsQuest,maxBOLDLatestGuess,questData.entropyAfterTrial,'trialTypes',stimulusVecTrialTypes);
     end
     
 end
@@ -596,14 +382,13 @@ psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
 psiParamsFit = qpFitBads(questData.trialData,questData.qpPF,psiParamsQuest,questData.nOutcomes,...
     'lowerBounds', lowerBounds,'upperBounds',upperBounds,...
     'plausibleLowerBounds',lowerBounds,'plausibleUpperBounds',upperBounds);
-maxBOLDLatestGuess = maxBOLDLatestGuess.*psiParamsFit(betaIndex);
+maxBOLDLatestGuess = maxBOLDLatestGuess.*psiParamsFit(myQpfmriParams.betaIndex);
 
 % Now run through the fitting steps again with the new maxBOLD
-thePacket = createPacket(myQpfmriParams);
+thePacket = createPacket(myQpfmriParams,myQpfmriParams.nTrials);
 
-[outcomes] = ...
-    tfeUpdate(thePacket, myQpParams, myQpfmriParams, maxBOLDLatestGuess,...,
-    'rngSeed',rngSeed);
+[outcomes, ~, ~, ~, ~] = ...
+        tfeUpdate(thePacket, myQpParams, myQpfmriParams, stimulusVec, maxBOLDLatestGuess, 'rngSeed',rngSeed);
 
 questData = questDataUntrained;
 for yy = 1:tt
@@ -621,16 +406,16 @@ psiParamsQuest = questData.psiParamsDomain(psiParamsIndex,:);
 % Print simulated parameters.
 fprintf('Simulated parameters:              '); 
 for i = 1:length(myQpfmriParams.simulatedPsiParams)
-    fprintf('%s: %0.3f ',paramNamesInOrder{i},myQpfmriParams.simulatedPsiParams(i));
+    fprintf('%s: %0.3f ',myQpfmriParams.paramNamesInOrder{i},myQpfmriParams.simulatedPsiParams(i));
 end
 % Print Q+ Fit parameters.
 fprintf('\nMax posterior QUEST+ parameters:   '); 
 for i = 1:length(psiParamsQuest)
-    fprintf('%s: %0.3f ',paramNamesInOrder{i},psiParamsQuest(i));
+    fprintf('%s: %0.3f ',myQpfmriParams.paramNamesInOrder{i},psiParamsQuest(i));
 end
 % Prepare for BADS fit.
 psiParamsBads = psiParamsQuest;
-psiParamsBads(betaIndex) = 1;
+psiParamsBads(myQpfmriParams.betaIndex) = 1;
 
 % Find maximum likelihood fit. Use psiParams from QUEST+ as the starting
 % parameter for the search, and impose as parameter bounds the range
@@ -641,27 +426,10 @@ psiParamsFit = qpFitBads(questData.trialData,questData.qpPF,psiParamsBads,questD
 % Print BADS best fit parameters.
 fprintf('\nMax BADS parameters:               '); 
 for i = 1:length(psiParamsFit)
-    fprintf('%s: %0.3f ',paramNamesInOrder{i},psiParamsFit(i));
+    fprintf('%s: %0.3f ',myQpfmriParams.paramNamesInOrder{i},psiParamsFit(i));
 end
 % Print maxBOLD
 fprintf('\nmaxBOLD estimate: %0.3f\n',maxBOLDLatestGuess);
-
-%% Final plot fits
-if p.Results.showPlots
-    finalFig = figure('Position', [10 10 p.Results.figWidth p.Results.figHeight]);
-    hold on;
-    % TO DO: Might want to fix this for plotting.
-    predictedBADSRelativeResponse = (myQpfmriParams.model(stimulusDomainFine,psiParamsFit) - ...
-        myQpfmriParams.model(myQpfmriParamsbaselineStimulus,psiParamsFit)).*maxBOLDLatestGuess;
-    plotFunc(stimulusDomainFine,predictedRelativeResponse,'-k','LineWidth',6);
-    plotFunc(stimulusDomainFine,predictedBADSRelativeResponse,'-','Color','#FA4515','LineWidth',6);
-    if strcmpi(myQpfmriParams.stimulusDomainSpacing,'log')
-        set(gca,'XScale', 'log');
-    end
-    xlabel('Contrast');
-    ylabel('Normalized Predicted Response');
-    legend('Veridical Model','Final Model Fit','Location','northwest');
-end
 
 
 %% Output
