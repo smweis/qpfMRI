@@ -22,7 +22,8 @@ function thePacket = createPacket(myQpfmriParams,nTrials,varargin)
 %
 % Examples:
 %{
-   thePacket = createPacket(myQpfmriParams)
+    
+   thePacket = createPacket(myQpfmriParams,30)
 %}
 
 

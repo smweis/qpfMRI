@@ -96,8 +96,50 @@ function [myQpfmriParams,myQpParams] = qpfmriParams(model,paramsDomain,varargin)
 %     myQpParams            - Structure with one field each corresponding to the
 %                             keys below. Each field has the same name as the
 %                             key.
-
+%
 % 08/30/2020 smw Started on this.
+%Examples: 
+%{
+% Provide a model handle
+model = @logistic;
+
+% Specify the parameter domain. Each value must correspond to a parameter
+% expected by the model. 
+
+paramsDomain = struct;
+paramsDomain.slope = makeDomain(-1.2,-.2,10,'spacing','log');
+paramsDomain.semiSat = makeDomain(.01,1,10);
+paramsDomain.beta = makeDomain(.75,1.25,11,'spacing','zeno');
+
+% Sigma in the parameter domain is searching for noiseSD
+paramsDomain.sigma = makeDomain(.5,4,8);
+
+% Specify a stimulus domain and whether it spaced linear or log.
+stimulusDomain = {makeDomain(.01,1,25)};
+stimulusDomainSpacing = 'lin';
+
+% Number of trials to run.
+nTrials = 30;
+
+% Allow Q+ to control the stimuli or not (false).
+qpPres = true;
+
+nOutcomes = 15;% Set the number of outcome categories / bins.
+
+showPlots = true; % Do you want to see plots?
+
+% The range of BOLD signal to simulate (e.g., from baseline to maximum BOLD)
+maxBOLDSimulated = 1.5;
+% How noisy simulated BOLD data are in units of maxBOLDSimulated
+noiseSD = .02; 
+%How long the trials are (in seconds).
+trialLength = 12;
+
+[myQpfmriParams,myQpParams] = qpfmriParams(model,paramsDomain,'qpPres',qpPres,...,
+'stimulusDomain',stimulusDomain,'stimulusDomainSpacing',stimulusDomainSpacing,...,
+'noiseSD',noiseSD,'nTrials',nTrials,'maxBOLDSimulated',maxBOLDSimulated,...,
+'trialLength',trialLength,'nOutcomes',nOutcomes);
+%}
 
 %% Parse inputs and set defaults
 %% Handle initial inputs
@@ -150,13 +192,13 @@ myQpfmriParams.noiseSD = myQpfmriParams.noiseSD .* myQpfmriParams.maxBOLDSimulat
 myQpParams.nOutcomes = myQpfmriParams.nOutcomes;
 
 %% Add the stimulus domain.  
-if iscell(myQpfmriParams.stimulusDomain)
-    myQpParams.stimParamsDomainList = myQpfmriParams.stimulusDomain;
-elseif isvector(myQpfmriParams.stimulusDomain)
-    myQpParams.stimParamsDomainList = {myQpfmriParams.stimulusDomain};
-else
+if isempty(myQpfmriParams.stimulusDomain)
     warning('No stimulus domain specified. Defaulting to values between 0.01 and 1.');
     myQpParams.stimParamsDomainList = {makeDomain(.01,1,25)};
+elseif isvector(myQpfmriParams.stimulusDomain)
+    myQpParams.stimParamsDomainList = myQpfmriParams.stimulusDomain;
+else
+    myQpParams.stimParamsDomainList = myQpfmriParams.stimulusDomain;
 end
 
 % Create baseline stimulus and maxBOLD stimulus if not passed.
@@ -167,3 +209,57 @@ if isempty(myQpfmriParams.maxBOLDStimulus)
     myQpfmriParams.maxBOLDStimulus = max(myQpParams.stimParamsDomainList{1});
 end
 
+
+%% Select the veridical psychometric paramteers for the function.
+% Pick some random params to simulate if none provided but set beta to 1.
+% We require the simulated parameters to result in a baseline trial = 0.
+if isempty(myQpfmriParams.simulatedPsiParams)
+    myQpfmriParams.simulatedPsiParams = zeros(1,length(myQpfmriParams.paramNamesInOrder));
+    stillSearching = true;
+    while stillSearching
+        for i = 1:length(myQpfmriParams.paramNamesInOrder)
+            myQpfmriParams.simulatedPsiParams(i) = randsample(myQpfmriParams.paramsDomain.(myQpfmriParams.paramNamesInOrder{i}),1);
+        end
+        
+        % Beta is always one for simulations
+        myQpfmriParams.simulatedPsiParams(myQpfmriParams.betaIndex) = 1;
+        
+        % Simulated noise is selected from a random sample of noiseSD
+        myQpfmriParams.simulatedPsiParams(myQpfmriParams.sigmaIndex) = randsample(myQpfmriParams.noiseSD,1);
+        
+        if abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)) < myQpfmriParams.simulatedPsiParams(myQpfmriParams.betaIndex)/10000 && ...
+                abs(myQpfmriParams.model(myQpfmriParams.maxBOLDStimulus,myQpfmriParams.simulatedPsiParams)) < 1 && ...
+                abs(myQpfmriParams.model(myQpfmriParams.maxBOLDStimulus,myQpfmriParams.simulatedPsiParams)) > .99
+            stillSearching = false;
+        end
+    end
+    
+
+else
+    myQpfmriParams.simulatedPsiParams = zeros(1,length(myQpfmriParams.paramNamesInOrder));
+    
+    % A relic of naming simulatedPsiParams noise parameter as sigma.
+    for i = 1:length(myQpfmriParams.paramNamesInOrder)
+        if i == myQpfmriParams.sigmaIndex && ~isfield(myQpfmriParams.simulatedPsiParams,'sigma')
+            myQpfmriParams.simulatedPsiParams(myQpfmriParams.sigmaIndex) = noiseSD;
+        else
+            myQpfmriParams.simulatedPsiParams(i) =  myQpfmriParams.simulatedPsiParams.(myQpfmriParams.paramNamesInOrder{i});
+        end
+    end
+    
+    % Beta will converge to 1 as maxBOLD gets closer and closer to the
+    % simulated maxBOLD. As a result, when simulating data, beta should always
+    % be set to 1. 
+    myQpfmriParams.simulatedPsiParams(myQpfmriParams.betaIndex) = 1;
+    assert(myQpfmriParams.simulatedPsiParams(myQpfmriParams.betaIndex)==1,'Simulated Beta should always be 1.');
+    
+    % Select simulated psychometric parameters whose range of outputs
+    % are between 0 and 1 for the model being used. 
+    if abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)) < myQpfmriParams.simulatedPsiParams(myQpfmriParams.betaIndex)/10000
+        warning('Simulated psychometric parameters will result in minimum values below 0.\nMin possible value = %.02f',abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)));
+    elseif abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)) > .01
+        warning('Simulated psychometric parameters will result in minimum values greater than 0.\nMin possible value = %.02f',abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)));
+    elseif abs(myQpfmriParams.model(myQpfmriParams.maxBOLDStimulus,myQpfmriParams.simulatedPsiParams)) < .99
+        warning('Simulated psychometric parameters will result in maximum BOLD values below 1.\nMax possible value = %.02f',myQpfmriParams.model(myQpfmriParams.maxBOLDStimulus,myQpfmriParams.simulatedPsiParams));
+    end
+end

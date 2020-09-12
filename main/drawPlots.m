@@ -1,10 +1,10 @@
-function [mainFig,handleStruct] = drawPlots(myQpfmriParams,myQpParams,stimulusVec,mainFig,handleStruct,thePacketOut,modelResponseStruct,yVals,yValsPlusBaseline,psiParamsQuest,maxBOLDLatestGuess,entropyAfterTrial,varargin)
-%% [mainFig,handleStruct] = drawPlots(myQpfmriParams,myQpParams,stimulusVec,mainFig,handleStruct,thePacketOut,modelResponseStruct,yVals,yValsPlusBaseline,psiParamsQuest,maxBOLDLatestGuess,entropyAfterTrial,varargin)
+function [mainFig,handleStruct] = drawPlots(myQpfmriParams,myQpParams,qpfmriResults,mainFig,handleStruct,thePacketOut,modelResponseStruct,yVals,yValsPlusBaseline,varargin)
+%% [mainFig,handleStruct] = drawPlots(myQpfmriParams,myQpParams,qpfmriResults,mainFig,handleStruct,thePacketOut,modelResponseStruct,yVals,yValsPlusBaseline,varargin)
 
 % Draw plots for the main qpfMRI functions
 %
 % Syntax:
-%[mainFig,handleStruct] = drawPlots(myQpfmriParams,myQpParams,stimulusVec,mainFig,handleStruct,thePacketOut,modelResponseStruct,yVals,yValsPlusBaseline,psiParamsQuest,maxBOLDLatestGuess,entropyAfterTrial,varargin)
+%[mainFig,handleStruct] = drawPlots(myQpfmriParams,myQpParams,qpfmriResults,mainFig,handleStruct,thePacketOut,modelResponseStruct,yVals,yValsPlusBaseline,varargin)
 
 %
 % Description:
@@ -27,13 +27,11 @@ function [mainFig,handleStruct] = drawPlots(myQpfmriParams,myQpParams,stimulusVe
 %   yVals                   - Vector. Y-values not normalized to the
 %                             baseline stimulus but scaled to maxBOLDLatestGuess. 
 %   yValsPlusBaseline       - Vector. Y-values scaled to maxBOLDLatestGuess. 
-%   psiParamsQuest          - Vector. Psychometric parameters returned by Q+. 
-%   maxBOLDLatestGuess      - Scalar. Latest guess at what maxBOLD is. 
-%   entropyAfterTrial       - Vector. Entropy value after each trial. 
 % Optional key/value pairs (used in plotting):
-%   
+%   colorStruct             - Struct. List of colors to use for plotting
+%                             different trial types. 
 % Outputs:
-%   mainFig                 - Figure handle. Empty figure to fill and use with drawPlots. 
+%   mainFig                 - Figure handle. 
 %   handleStruct            - Struct. All the handles used for plotting for
 %                             use with drawPlots.
 
@@ -42,16 +40,13 @@ p = inputParser;
 
 p.addRequired('myQpfmriParams',@isstruct);
 p.addRequired('myQpParams',@isstruct);
-p.addRequired('stimulusVec',@isvector);
+p.addRequired('qpfmriResults',@isstruct);
 p.addRequired('mainFig',@(x) isa(x,'matlab.ui.Figure'));
 p.addRequired('handleStruct',@isstruct);
 p.addRequired('yVals',@isvector);
 p.addRequired('yValsPlusBaseline',@isvector);
-p.addRequired('psiParamsQuest',@isvector);
-p.addRequired('maxBOLDLatestGuess',@isscalar);
-p.addRequired('entropyAfterTrial',@isvector);
+
 % Optional
-p.addParameter('trialTypes',{},@iscell);
 p.addParameter('colorStruct',{},@isstruct);
 
 % Optional for saving
@@ -59,12 +54,12 @@ p.addParameter('saveGif',false,@islogical);
 
 
 % Parse inputs
-p.parse( myQpfmriParams, myQpParams, stimulusVec, mainFig, handleStruct, yVals, yValsPlusBaseline, psiParamsQuest, maxBOLDLatestGuess, entropyAfterTrial, varargin{:});
+p.parse( myQpfmriParams, myQpParams, qpfmriResults, mainFig, handleStruct, yVals, yValsPlusBaseline, varargin{:});
 
 
 %% Setup parameters
 % Get nTrials that have been presented
-nTrials = length(stimulusVec(~isnan(stimulusVec)));
+nTrials = length(qpfmriResults.stimulusVec(~isnan(qpfmriResults.stimulusVec)));
 
 % Setup colors for the main simulation plot to vary by trial type:
 if isempty(p.Results.colorStruct)
@@ -77,17 +72,17 @@ end
 
 % A cell array to hold cell values as trials come in.
 lineColor = cell(1,nTrials);
-if isempty(p.Results.trialTypes)
+if isempty(qpfmriResults.stimulusVecTrialTypes)
     lineColor{:} = '#007EA7';
 else
     for i = 1:nTrials
-        if contains(p.Results.trialTypes{i},'baseline')
+        if contains(qpfmriResults.stimulusVecTrialTypes{i},'baseline')
             lineColor{i} = colorStruct.baseline;
-        elseif contains(p.Results.trialTypes{i},'maxbold','IgnoreCase',true)
+        elseif contains(qpfmriResults.stimulusVecTrialTypes{i},'maxbold','IgnoreCase',true)
             lineColor{i} = colorStruct.maxBOLD;
-        elseif contains(p.Results.trialTypes{i},'qplus')
+        elseif contains(qpfmriResults.stimulusVecTrialTypes{i},'qplus')
             lineColor{i} = colorStruct.qPlus;
-        elseif contains(p.Results.trialTypes{i},'random')
+        elseif contains(qpfmriResults.stimulusVecTrialTypes{i},'random')
             lineColor{i} = colorStruct.random;
         end
     end
@@ -114,27 +109,27 @@ end
 
 % Create results strings for anotations
 resultString = sprintf('Output value %.03f\n',yVals(end));
-if ~isempty(p.Results.trialTypes)
-    trialString = sprintf('\nTrial %d: %s Stimulus Selection\n',length(yVals),p.Results.trialTypes{end});
+if ~isempty(qpfmriResults.stimulusVecTrialTypes)
+    trialString = sprintf('\nTrial %d: %s Stimulus Selection\n',length(yVals),qpfmriResults.stimulusVecTrialTypes{end});
 else
     trialString = 'No Trial Type Saved.';
     warning('No Trial Type Data Saved.');
 end
-stimString = sprintf('Stimulus: %0.3f\n',stimulusVec(length(yVals)));
+stimString = sprintf('Stimulus: %0.3f\n',qpfmriResults.stimulusVec(length(yVals)));
 
 %% Subplot (left top panel): 
 % Veridical model, individual trials, current model fit.
 subplot(3,4,[1 2 5 6])
 
 % Plot to the minimum of the stimulus domain excluding zero.
-stimulusVecPlot = stimulusVec;
+stimulusVecPlot = qpfmriResults.stimulusVec;
 stimulusVecPlot(stimulusVecPlot==0)=min(myQpParams.stimParamsDomainList{1});
 
 % Calculate the predicted relative response from Q+, which
 % calculates the model fit depending on the baseline estimate and
 % scales to the maxBOLDLatestGuess
-predictedQuestRelativeResponse = (myQpfmriParams.model(stimulusDomainFine,psiParamsQuest) - ...
-    myQpfmriParams.model(myQpfmriParams.baselineStimulus,psiParamsQuest))*psiParamsQuest(myQpfmriParams.betaIndex)*maxBOLDLatestGuess;
+predictedQuestRelativeResponse = (myQpfmriParams.model(stimulusDomainFine,qpfmriResults.psiParamsQuest(nTrials,:)) - ...
+    myQpfmriParams.model(myQpfmriParams.baselineStimulus,qpfmriResults.psiParamsQuest(nTrials,:)))*qpfmriResults.psiParamsQuest(nTrials,myQpfmriParams.betaIndex)*qpfmriResults.maxBOLDoverTrials(nTrials);
 
 % The current best fit model
 delete(handleStruct.currentTTFHandle);
@@ -180,11 +175,11 @@ drawnow
 subplot(3,4,[7 8]);
 
 % Plot entropy by trials
-handleStruct.currentEntropyHandle=plot(1:nTrials,entropyAfterTrial,'*k');
+handleStruct.currentEntropyHandle=plot(1:nTrials,qpfmriResults.entropyOverTrials{nTrials},'*k');
 
 % Set and keep x and y-lims
 xlim([1 myQpfmriParams.nTrials]);
-ylim([0 nanmax(entropyAfterTrial)]);
+ylim([0 nanmax(qpfmriResults.entropyOverTrials{nTrials})]);
 
 % Labeling
 title('Model entropy by trial number');

@@ -1,6 +1,7 @@
 function [myQpfmriParams, varargout] = checkModel(myQpfmriParams)
-%checkModel will validate that the model and parameters specified match and
-%are currently supported. 
+%% [myQpfmriParams, varargout] = checkModel(myQpfmriParams)
+% Helper function to ensure that the model and parameters specified match and
+% are currently supported. 
 % Inputs:
 % Required Inputs
 %   myQpfmriParams          - Struct. Set of parameters used for qpfmri.
@@ -19,18 +20,22 @@ function [myQpfmriParams, varargout] = checkModel(myQpfmriParams)
 %Example
 %{
 
-model = @doeTemporalModel;
+% Provide a model handle
+model = @logistic;
+
+% Specify the parameter domain. Each value must correspond to a parameter
+% expected by the model. 
 
 paramsDomain = struct;
-paramsDomain.Sr = 0.899:0.025:1.099;
-paramsDomain.k1 = 0.01:0.04:0.4;
-paramsDomain.k2 = 0.01:0.04:0.4;
-paramsDomain.beta = 0.8:0.1:1.4; % Amplitude of the scaled response; should converge to unity
-paramsDomain.sigma = 0.3:0.2:1;	% Standard deviation of the scaled (0-1) noise
+paramsDomain.slope = makeDomain(-1.2,-.2,10,'spacing','log');
+paramsDomain.semiSat = makeDomain(.01,1,10);
+paramsDomain.beta = makeDomain(.75,1.25,11,'spacing','zeno');
 
+% Sigma in the parameter domain is searching for noiseSD
+paramsDomain.sigma = makeDomain(.5,4,8);
 myQpfmriParams = qpfmriParams(model,paramsDomain);
 
-[paramNamesInOrder, qpPF, psiParamsDomainList] = checkModel(myQpfmriParams);
+[myQpfmriParams, myQpParams.qpPF, myQpParams.psiParamsDomainList] = checkModel(myQpfmriParams);
 
 %}
 

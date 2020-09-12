@@ -1,5 +1,6 @@
 function [outcomes, modelResponseStruct, thePacket, adjustedAmplitudes, baselineEstimate] = tfeUpdate(thePacket, qpParams, myQpfmriParams, stimulusVec, maxBOLDLatestGuess, varargin)
-% Returns the QP outcomes given a packet and a stimulus vector.
+%% [outcomes, modelResponseStruct, thePacket, adjustedAmplitudes, baselineEstimate] = tfeUpdate(thePacket, qpParams, myQpfmriParams, stimulusVec, maxBOLDLatestGuess, varargin)
+%Returns the QP outcomes given a packet and a stimulus vector.
 %
 % Syntax:
 %  [outcomes, modelResponseStruct, thePacket, adjustedAmplitudes] = tfeUpdate(thePacket, qpParams, stimulusVec, baselineStimulus)
@@ -48,59 +49,53 @@ function [outcomes, modelResponseStruct, thePacket, adjustedAmplitudes, baseline
 %   baselineEstimate      - 
 % Examples:
 %{
-    % SIMULATION MODE
-    nTrials = 35;
-    thePacket = createPacket('nTrials',nTrials);
+% Provide a model handle
+model = @logistic;
 
-    % Generate a random stimulus vector
-    stimulusVec = randsample([0, 0, 1.875,3.75,7.5,10,15,20,30],nTrials,true);
+% Specify the parameter domain. Each value must correspond to a parameter
+% expected by the model. 
 
-    % Initialize some parameters to pass to tfeUpdate from Quest
-    myQpParams = qpParams;
-    % The number of outcome categories.
-    myQpParams.nOutcomes = 51;
-    
-    % The headroom is the proportion of outcomes that are reserved above and
-    % below the min and max output of the Watson model to account for noise
-    headroom = .1;
+paramsDomain = struct;
+paramsDomain.slope = makeDomain(-1.2,-.2,10,'spacing','log');
+paramsDomain.semiSat = makeDomain(.01,1,10);
+paramsDomain.beta = makeDomain(.75,1.25,11,'spacing','zeno');
 
-    % Define binned psychometric fuction
-    myQpParams.qpPF = @(f,p) qpWatsonTemporalModel(f,p,myQpParams.nOutcomes,headroom);
+% Sigma in the parameter domain is searching for noiseSD
+paramsDomain.sigma = makeDomain(.5,4,8);
 
-    % Create some simulatedPsiParams
-    tau = 0.5:0.5:10;	% time constant of the center filter (in msecs)
-    kappa = 0.5:0.25:3;	% multiplier of the time-constant for the surround
-    zeta = 0:0.25:2;	% multiplier of the amplitude of the surround
-    beta = 0.8:0.1:1;   % multiplier that maps watson 0-1 to BOLD % bins
-    sigma = 0:0.25:2;	% width of the BOLD fMRI noise against the 0-1 y vals
-    myQpParams.psiParamsDomainList = {tau, kappa, zeta, beta, sigma};
-    simulatedPsiParams = [randsample(tau,1) randsample(kappa,1) randsample(zeta,1) randsample(beta,1) 1];
+[myQpfmriParams,myQpParams] = qpfmriParams(model,paramsDomain);
 
-    % This is the continuous psychometric fuction
-    myQpParams.continuousPF = @(f) watsonTemporalModel(f,simulatedPsiParams);
 
-    % This is the veridical psychometric fuction in binned outcomes
-    myQpParams.qpOutcomeF = @(f) qpSimulatedObserver(f,myQpParams.qpPF,simulatedPsiParams);
-    
-    % Identify which stimulus is the "baseline" stimulus
-    baselineStimulus = 0;
+% SIMULATION MODE
+thePacket = createPacket(myQpfmriParams,myQpfmriParams.nTrials);
 
-    % Perform the simulation
-    [binAssignment, modelResponseStruct, thePacketOut, adjustedAmplitudes] = tfeUpdate(thePacket, myQpParams, stimulusVec, baselineStimulus, 'headroom', headroom);
+% Generate a random stimulus vector
+stimulusDomain = {makeDomain(.01,1,25)};
+stimulusVec = randsample(stimulusDomain{:},myQpfmriParams.nTrials,true);
+% Need at least one baseline.
+stimulusVec(1) = myQpfmriParams.baselineStimulus;
 
-    % Plot the results
-    figure
-    subplot(2,1,1)
-    plot(thePacketOut.response.timebase,thePacketOut.response.values,'.k');
-    hold on
-    plot(modelResponseStruct.timebase,modelResponseStruct.values,'-r');
-    subplot(2,1,2)
-    stimulusVecPlot = stimulusVec;
-    stimulusVecPlot(stimulusVecPlot==0)=1;
-    semilogx(stimulusVecPlot,binAssignment,'xk')
-    refline(0,myQpParams.nOutcomes.*headroom);
-    refline(0,myQpParams.nOutcomes-myQpParams.nOutcomes.*headroom);
-    ylim([1 myQpParams.nOutcomes]);
+%% Tack on a continuous output simulated observer to myQpParams
+myQpParams.continuousPF = @(f) myQpfmriParams.model(f,myQpfmriParams.simulatedPsiParams);
+
+% Perform the simulation
+[outcomes, modelResponseStruct, thePacketOut, ~, ~] = tfeUpdate(thePacket,...,
+ myQpParams, myQpfmriParams, stimulusVec,...,
+ myQpfmriParams.maxBOLDInitialGuess);
+
+% Plot the results
+figure
+subplot(2,1,1)
+plot(thePacketOut.response.timebase,thePacketOut.response.values,'.k');
+hold on
+plot(modelResponseStruct.timebase,modelResponseStruct.values,'-r');
+subplot(2,1,2)
+stimulusVecPlot = stimulusVec;
+stimulusVecPlot(stimulusVecPlot==0)=1;
+semilogx(stimulusVecPlot,outcomes,'xk')
+refline(0,myQpParams.nOutcomes.*headroom);
+refline(0,myQpParams.nOutcomes-myQpParams.nOutcomes.*myQpfmriParams.headroom);
+ylim([1 myQpParams.nOutcomes]);
 
 %}
 
