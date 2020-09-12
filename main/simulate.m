@@ -99,8 +99,7 @@ Example 1 Time Saver code:
 %}
 
 %% TO DO
-%1. Separate out plotting as separate functions. 
-%2. Create results struct to save out. 
+%1. Create results struct to save out. 
 
 
 %% Parse Inputs
