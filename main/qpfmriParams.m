@@ -114,31 +114,8 @@ paramsDomain.beta = makeDomain(.75,1.25,11,'spacing','zeno');
 % Sigma in the parameter domain is searching for noiseSD
 paramsDomain.sigma = makeDomain(.5,4,8);
 
-% Specify a stimulus domain and whether it spaced linear or log.
-stimulusDomain = {makeDomain(.01,1,25)};
-stimulusDomainSpacing = 'lin';
+[myQpfmriParams,myQpParams] = qpfmriParams(model,paramsDomain);
 
-% Number of trials to run.
-nTrials = 30;
-
-% Allow Q+ to control the stimuli or not (false).
-qpPres = true;
-
-nOutcomes = 15;% Set the number of outcome categories / bins.
-
-showPlots = true; % Do you want to see plots?
-
-% The range of BOLD signal to simulate (e.g., from baseline to maximum BOLD)
-maxBOLDSimulated = 1.5;
-% How noisy simulated BOLD data are in units of maxBOLDSimulated
-noiseSD = .02; 
-%How long the trials are (in seconds).
-trialLength = 12;
-
-[myQpfmriParams,myQpParams] = qpfmriParams(model,paramsDomain,'qpPres',qpPres,...,
-'stimulusDomain',stimulusDomain,'stimulusDomainSpacing',stimulusDomainSpacing,...,
-'noiseSD',noiseSD,'nTrials',nTrials,'maxBOLDSimulated',maxBOLDSimulated,...,
-'trialLength',trialLength,'nOutcomes',nOutcomes);
 %}
 
 %% Parse inputs and set defaults
@@ -164,7 +141,7 @@ p.addParameter('nTrials',10,@isnumeric);
 p.addParameter('stimulusStructDeltaT',100,@isnumeric);
 p.addParameter('baselineStimulus','');
 p.addParameter('maxBOLDStimulus','');
-p.addParameter('nOutcomes',5,@isnumeric);
+p.addParameter('nOutcomes',15,@isnumeric);
 p.addParameter('noiseSD',.1,@isvector);
 p.addParameter('stimulusDomain',{},@iscell);
 p.addParameter('stimulusDomainSpacing','lin',@ischar);

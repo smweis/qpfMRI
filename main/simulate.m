@@ -55,14 +55,18 @@ nTrials = 30;
 % Allow Q+ to control the stimuli or not (false).
 qpPres = true;
 
-nOutcomes = 15;% Set the number of outcome categories / bins.
+% Set the number of outcome categories / bins.
+nOutcomes = 15;
 
-showPlots = true; % Do you want to see plots?
+% Do you want to see plots?
+showPlots = true; 
 
 % The range of BOLD signal to simulate (e.g., from baseline to maximum BOLD)
 maxBOLDSimulated = 1.5;
+
 % How noisy simulated BOLD data are in units of maxBOLDSimulated
 noiseSD = .02; 
+
 %How long the trials are (in seconds).
 trialLength = 12;
 
@@ -72,7 +76,7 @@ trialLength = 12;
 'trialLength',trialLength,'nOutcomes',nOutcomes);
 
 
-% Note, this will save a copy of questData after it is initialized. 
+% Run the simulation. 
 [qpfmriResults]=simulate(myQpfmriParams,myQpParams,'showPlots',showPlots);
 
 %}

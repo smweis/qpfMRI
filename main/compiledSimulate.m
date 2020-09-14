@@ -1,68 +1,40 @@
-function [psiParamsFit,maxBOLD,questDataCopy] = compiledSimulate(modelName, varargin)
-%% compiledSimulate formats CLI input for simulation
-%% simulate
-% A script that will simulate fMRI BOLD data and fit a model with or
-% without Q+ control. 
-%
+function [qpfmriResults] = compiledSimulate(modelName, varargin)
+%% [qpfmriResults] = compiledSimulate(modelName, varargin)
+% compiledSimulate formats CLI input for simulation simulate
+% 
 % 
 % Description:
-%	Takes in a model and a possible set of parameters and whether or not Q+ 
-%   is in control of things flag. 
+%	This is the compiled version of simulate. It is designed to work with a
+%	high performance computing system, which can pass only strings as
+%	arguments. See simulate.m for how optional arguments should be specified.
 %
 % Inputs:
-%   model                 - String that is equivalent to a function handle. 
-%                           This should be the 'continuous function.' 
+%   modelName                 - String. Equivalent to a function handle.  
+%   nParams                   - String. Number of parameters for the
+%                               model.
+%   NOTE: These variables should be passed for all parameters where X is
+%   the number of parameters. Right now, we support up to 5 parameters. 
 %
+%   parameterXName            - String. Name of parameter X.
+%   parameterXLower           - String. Lower bound of parameter X.
+%   parameterXUpper           - String. Upper bound of parameter X.
+%   paramXnDivisions          - String. Number of divisions between lower
+%                               and upper bound for parameter.
+%   parameterXSpacing         - String. Spacing of parameter X. Can be log,
+%                               linear, or zeno's. (See makeDomain.m)
 %
-% See simulate.m for all additional inputs. 
+% See simulate.m for all optional inputs. 
 
 %Example: 
 %{
-
-modelName = 'doeTemporalModel';
-
-% Parameters 1-5 lower bounds on domains
-p1L = '.899'; 
-p2L = '.01';
-p3L = '.01';
-p4L = '.8';
-p5L = '.3';
-% Parameters 1-5 upper bounds on domains
-p1U = '1.099';
-p2U = '.4';
-p3U = '.4';
-p4U = '1.4';
-p5U = '1.0';
-% Parameters 1-5 intervals for domain creation
-p1I = '.025';
-p2I = '.04';
-p3I = '.04';
-p4I = '.1';
-p5I = '.2';
-
-% Simulated values for parameters. (These are optional).
-p1S = '1.004';
-p2S = '.016';
-p3S = '.118';
-p4S = '1.0';
-p5S = '.1';
-
-% Show plots just for verification that this works the same with simulate. 
-showPlots = true;
-
-% Note, this will save a copy of questData after it is initialized. 
-[psiParamsFit,maxBOLD,questDataCopy]=compiledSimulate(modelName,...,
-'param1Lower',p1L,'param1Upper',p1U,'param1nDivisions',p1I,...,
-'param2Lower',p2L,'param2Upper',p2U,'param2nDivisions',p2I,...,
-'param3Lower',p3L,'param3Upper',p3U,'param3nDivisions',p3I,...,
-'param4Lower',p4L,'param4Upper',p4U,'param4nDivisions',p4I,...,
-'param5Lower',p5L,'param5Upper',p5U,'param5nDivisions',p5I,...,
-'param1Simulated',p1S,'param2Simulated',p2S,'param3Simulated',p3S,...,
-'param4Simulated',p4S,'param5Simulated',p5S,'showPlots',showPlots);
-
-
 % Logisitic Regression example
 modelName = 'logistic';
+% How many parameters, and what are their names?
+nP = '4';
+p1Name = 'slope';
+p2Name = 'semiSat';
+p3Name = 'beta';
+p4Name = 'sigma';
 
 % Parameters lower bounds on domains
 p1L = '-2'; 
@@ -77,9 +49,9 @@ p3U = '1.5';
 p4U = '2.0';
 
 % Parameters nDivisions for domain creation
-p1N = '20';
-p2N = '20';
-p3N = '21';
+p1N = '10';
+p2N = '10';
+p3N = '11';
 p4N = '8';
 
 % Parameters spacing for domain creations
@@ -87,11 +59,6 @@ p1S = 'log';
 p2S = 'lin';
 p3S = 'zeno';
 p4S = 'lin';
-
-% NoiseSD sampling
-noiseSDLower = '.1';
-noiseSDUpper = '.8';
-noiseSDnDivisions = '7';
 
 % Q+ control
 qpPres = 'true';
@@ -105,16 +72,21 @@ stimSpacing = 'lin';
 % Show plots just for verification that this works the same with simulate. 
 showPlots = true;
 
+% Tiny noise so we know if things are working
+noiseSD = '.01';
+
+nTrials = '30';
+
 % Note, this will save a copy of questData after it is initialized. 
-[psiParamsFit,maxBOLD,questDataCopy]=compiledSimulate(modelName,...,
+[qpfmriResults]=compiledSimulate(modelName,'nParams',nP,...,
+'param1Name',p1Name,'param2Name',p2Name,'param3Name',p3Name,'param4Name',p4Name,...,
 'param1Lower',p1L,'param1Upper',p1U,'param1nDivisions',p1N,'param1Spacing',p1S,...,
 'param2Lower',p2L,'param2Upper',p2U,'param2nDivisions',p2N,'param2Spacing',p2S,...,
 'param3Lower',p3L,'param3Upper',p3U,'param3nDivisions',p3N,'param3Spacing',p3S,...,
 'param4Lower',p4L,'param4Upper',p4U,'param4nDivisions',p4N,'param4Spacing',p4S,...,
-'noiseSDLower',noiseSDLower,'noiseSDUpper',noiseSDUpper,'noiseSDnDivisions',noiseSDnDivisions,...,
 'stimDomainUpper',stimUpper,'stimDomainLower',stimLower,...,
 'stimDomainnDivisions',stimnDivisions,'stimDomainSpacing',stimSpacing,...,
-'showPlots',showPlots,'qpPres',qpPres);
+'showPlots',showPlots,'qpPres',qpPres,'noiseSD',noiseSD,'nTrials',nTrials);
 
 
 %}
@@ -129,6 +101,12 @@ p.addRequired(modelName,@ischar);
 
 %% Required input for any model.
 % The following are required to assemble params domain.
+p.addParameter('nParams','',@ischar);
+p.addParameter('param1Name','',@ischar);
+p.addParameter('param2Name','',@ischar);
+p.addParameter('param3Name','',@ischar);
+p.addParameter('param4Name','',@ischar);
+p.addParameter('param5Name','',@ischar);
 p.addParameter('param1Lower','',@ischar);
 p.addParameter('param2Lower','',@ischar);
 p.addParameter('param3Lower','',@ischar);
@@ -163,34 +141,29 @@ p.addParameter('param3Simulated','',@ischar);
 p.addParameter('param4Simulated','',@ischar);
 p.addParameter('param5Simulated','',@ischar);
 
-% To provide a range for noiseSD, enter the same values:
-p.addParameter('noiseSDLower','.1',@ischar);
-p.addParameter('noiseSDUpper','.1',@ischar);
-p.addParameter('noiseSDnDivisions','1',@ischar);
-
 % The following are to assemble the stimulus domain.
 p.addParameter('stimDomainLower','',@ischar);
 p.addParameter('stimDomainnDivisions','',@ischar);
 p.addParameter('stimDomainUpper','',@ischar);
 p.addParameter('stimDomainSpacing','lin',@ischar);
 
-%% Optional model general parameters
+% Optional params
 p.addParameter('qpPres','false',@ischar);
-p.addParameter('nTrials','30',@ischar);
-p.addParameter('stimulusStructDeltaT','100',@ischar);
-p.addParameter('maxBOLDSimulated','1.5',@ischar);
-p.addParameter('maxBOLD','1.0',@ischar);
-p.addParameter('baselineStimulus','',@ischar);
-p.addParameter('maxBOLDStimulus','',@ischar);
-p.addParameter('nOutcomes','5',@ischar);
-p.addParameter('headroom','.1',@ischar);
+p.addParameter('headroom', '0.1', @ischar);
+p.addParameter('maxBOLDInitialGuess', '1.0', @ischar);
+p.addParameter('maxBOLDSimulated', '1.5', @ischar);
 p.addParameter('TR','800', @ischar);
 p.addParameter('trialLength','12', @ischar);
 p.addParameter('outNum','test',@ischar);
-p.addParameter('seed','choose',@ischar);
+p.addParameter('outFolder','Results',@ischar);
+p.addParameter('seed','choose');
+p.addParameter('nTrials','10',@ischar);
+p.addParameter('stimulusStructDeltaT','100',@ischar);
+p.addParameter('baselineStimulus','');
+p.addParameter('maxBOLDStimulus','');
+p.addParameter('nOutcomes','15',@ischar);
+p.addParameter('noiseSD','.1',@ischar);
 
-% Optional params for future support (not currently supported)
-p.addParameter('questDataCopy',{},@isstruct);
 
 % Plotting parameters. This will only accept logicals (not strings) and
 % this will not be able to be used in compiled form. For testing, though,
@@ -201,89 +174,89 @@ p.parse(modelName, varargin{:});
 
 %% Create the model function from the model name
 model = str2func(modelName);
-[paramNamesInOrder] = checkModel(model);
+
 
 %% Build parameter domains
-% Assemble the paramsDomain and, if specified, simulatedPsiParams
-
 % Initialize paramDomains
 paramsDomain = struct;
 
 % Assemble the parameter domains
-for name = 1:length(paramNamesInOrder)
+for name = 1:str2double(p.Results.nParams)
     lower = str2double(p.Results.(['param' num2str(name) 'Lower']));
     nDivision = str2double(p.Results.(['param' num2str(name) 'nDivisions']));
     upper = str2double(p.Results.(['param' num2str(name) 'Upper']));
     % Call the function to make the parameterDomain space
-    paramsDomain.(paramNamesInOrder{name}) = makeDomain(lower,upper,nDivision,'spacing',p.Results.(['param' num2str(name) 'Spacing']));
+    paramsDomain.(p.Results.(['param' num2str(name) 'Name'])) = makeDomain(lower,upper,nDivision,'spacing',p.Results.(['param' num2str(name) 'Spacing']));
 end
 
-%% Build stimulus domain
-% Initialize 
-stimulusDomain = {};
+%% Get the default qpfmri parameters (we'll add the settings in later)
+[myQpfmriParams,myQpParams] = qpfmriParams(model,paramsDomain);
 
-% Assemble the parameter domains
+%% Build stimulus domain
+
+% Assemble the stimulus domain
 if ~isempty(p.Results.stimDomainLower)
     lower = str2double(p.Results.stimDomainLower);
     nDivision = str2double(p.Results.stimDomainnDivisions);
     upper = str2double(p.Results.stimDomainUpper);
     % Make the sure the parameter domain can be properly specified.
-    stimulusDomain = {makeDomain(lower,upper,nDivision,'spacing',p.Results.stimDomainSpacing)};
+    myQpfmriParams.stimulusDomain = {makeDomain(lower,upper,nDivision,'spacing',p.Results.stimDomainSpacing)};
+    fprintf('Stimulus domain added from input.\n');
+end
+
+% Check if a baseline stimulus was passed
+if ~isempty(p.Results.baselineStimulus)
+    myQpfmriParams.baselineStimulus = p.Results.baselineStimulus;
+end
+% Check if a maxBOLD stimulus was passed
+if ~isempty(p.Results.maxBOLDStimulus)
+    myQpfmriParams.maxBOLDStimulus = p.Results.maxBOLDStimulus;
 end
 
 
+%% Handle simulated psychomeric parameters
 
-
-% Check if one of the simulated parameters was passed. If not, simulate.m
+% Check if simulated parameters were passed. If not, simulate.m
 % will choose one randomly from the parameter domains.
-if ~isempty(p.Results.param1Simulated)
-    simulatedPsiParams = struct;
-    for name = 1:length(paramNamesInOrder)
+for name = 1:str2double(p.Results.nParams)
+    if ~isempty(p.Results.(['param' num2str(name) 'Simulated']))
         param = str2double(p.Results.(['param' num2str(name) 'Simulated']));
-        simulatedPsiParams.(paramNamesInOrder{name}) = param;
+        myQpfmriParams.simulatedPsiParams(name) = param;
+        sprintf('Parameter %s specified as %0.5f\n',myQpfmriParams.paramNamesInOrder{name},param);
+    else
+        sprintf('Parameter %s randomly chosen as %0.5f',myQpfmriParams.paramNamesInOrder{name},myQpfmriParams.simulatedPsiParams(name));
+
     end
-else
-    simulatedPsiParams = {};
 end
 
-% To provide a range for noiseSD, enter the same values:
-noiseSD = linspace(str2double(p.Results.noiseSDLower),...,
-    str2double(p.Results.noiseSDUpper),str2double(p.Results.noiseSDnDivisions));
-
-
-% Handle the rest of the optional arguments: 
-if strcmpi(p.Results.qpPres,'true')
-    qpPres = true;
+%% Handle the rest of the optional arguments: 
+if strcmpi(myQpfmriParams.qpPres,'true')
+    myQpfmriParams.qpPres = true;
 else
-    qpPres = false;
+    myQpfmriParams.qpPres = false;
 end
 
-nTrials = str2double(p.Results.nTrials);
-stimulusStructDeltaT = str2double(p.Results.stimulusStructDeltaT);
-maxBOLDSimulated = str2double(p.Results.maxBOLDSimulated);
-maxBOLD = str2double(p.Results.maxBOLD);
-baselineStimulus = p.Results.baselineStimulus;
-maxBOLDStimulus = p.Results.maxBOLDStimulus;
-nOutcomes = str2double(p.Results.nOutcomes);
-headroom = str2double(p.Results.headroom);
-TR = str2double(p.Results.TR);
-trialLength = str2double(p.Results.trialLength);
-outNum = p.Results.outNum;
+myQpfmriParams.headroom = str2double(p.Results.headroom);
+myQpfmriParams.maxBOLDInitialGuess = str2double(p.Results.maxBOLDInitialGuess);
+myQpfmriParams.maxBOLDSimulated = str2double(p.Results.maxBOLDSimulated);
+myQpfmriParams.TR = str2double(p.Results.TR);
+myQpfmriParams.trialLength = str2double(p.Results.trialLength);
+myQpfmriParams.outNum = p.Results.outNum;
+myQpfmriParams.outFolder = p.Results.outFolder;
+myQpfmriParams.nTrials = str2double(p.Results.nTrials);
+myQpfmriParams.stimulusStructDeltaT = str2double(p.Results.stimulusStructDeltaT);
+myQpfmriParams.nOutcomes = str2double(p.Results.nOutcomes);
+myQpfmriParams.noiseSD = str2double(p.Results.noiseSD);
 
+% Set seed, or let the simulation script choose. 
 if strcmpi(p.Results.seed,'choose')
-    seed = p.Results.seed;
+    myQpfmriParams.seed = p.Results.seed;
 else
-    seed = str2double(p.Results.seed);
+    myQpfmriParams.seed = str2double(p.Results.seed);
 end
 
-[psiParamsFit,maxBOLD,questDataCopy] = simulate(model, paramsDomain,...,
-    'simulatedPsiParams',simulatedPsiParams,'qpPres',qpPres,...,
-    'nTrials',nTrials,'stimulusStructDeltaT',stimulusStructDeltaT,...,
-    'maxBOLDSimulated',maxBOLDSimulated,'maxBOLD',maxBOLD,...,
-    'baselineStimulus',baselineStimulus,'maxBOLDStimulus',maxBOLDStimulus,...,
-    'nOutcomes',nOutcomes,'headroom',headroom,'noiseSD',noiseSD,...,
-    'TR',TR,'trialLength',trialLength,'outNum',outNum,'seed',seed,...,
-    'showPlots',p.Results.showPlots,'stimulusDomain',stimulusDomain);
+%% Run Simulation
+[qpfmriResults]=simulate(myQpfmriParams, myQpParams,'showPlots',p.Results.showPlots);
 
 end
 
