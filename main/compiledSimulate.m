@@ -90,6 +90,11 @@ nTrials = '30';
 
 
 %}
+%% TO DO
+%1. We are very inflexible with the number of parameters we can handle at
+%the moment, limited by the fact that we're expecting only strings as
+%inputs. Could point the compiled code to a struct with necessary
+%parameters?
 
 
 %% Handle inputs
@@ -163,7 +168,8 @@ p.addParameter('baselineStimulus','');
 p.addParameter('maxBOLDStimulus','');
 p.addParameter('nOutcomes','15',@ischar);
 p.addParameter('noiseSD','.1',@ischar);
-
+p.addParameter('baselineMaxBOLDInitial','6',@ischar);
+p.addParameter('baselineMaxBOLDRepeating','5',@ischar);
 
 % Plotting parameters. This will only accept logicals (not strings) and
 % this will not be able to be used in compiled form. For testing, though,
@@ -247,7 +253,8 @@ myQpfmriParams.nTrials = str2double(p.Results.nTrials);
 myQpfmriParams.stimulusStructDeltaT = str2double(p.Results.stimulusStructDeltaT);
 myQpfmriParams.nOutcomes = str2double(p.Results.nOutcomes);
 myQpfmriParams.noiseSD = str2double(p.Results.noiseSD);
-
+myQpfmriParams.baselineMaxBOLDInitial = str2double(p.Results.baselineMaxBOLDInitial);
+myQpfmriParams.baselineMaxBOLDRepeating = str2double(p.Results.baselineMaxBOLDRepeating);
 % Set seed, or let the simulation script choose. 
 if strcmpi(p.Results.seed,'choose')
     myQpfmriParams.seed = p.Results.seed;

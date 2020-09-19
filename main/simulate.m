@@ -204,7 +204,7 @@ fprintf('\n');
 for tt = 1:myQpfmriParams.nTrials
 
     % First trials require baseline or maxBOLD. 
-    if tt<=6
+    if tt <= myQpfmriParams.baselineMaxBOLDInitial
         % Baseline trial
         if mod(tt,2) > 0 
             qpfmriResults.stimulusVec(tt) = myQpfmriParams.baselineStimulus;
@@ -216,11 +216,11 @@ for tt = 1:myQpfmriParams.nTrials
         end
     % Optionally, every X trials can alternate as baseline or maxBOLD. 
     % Baseline trial
-    elseif mod(tt,5) == 0
+    elseif mod(tt,myQpfmriParams.baselineMaxBOLDRepeating) == 0
         qpfmriResults.stimulusVec(tt) = myQpfmriParams.baselineStimulus;
         qpfmriResults.stimulusVecTrialTypes{tt} = 'baseline';
     % maxBOLD trial
-    elseif mod(tt,10) == 0
+    elseif mod(tt,myQpfmriParams.baselineMaxBOLDRepeating*2) == 0
         qpfmriResults.stimulusVec(tt) = myQpfmriParams.maxBOLDStimulus;
         qpfmriResults.stimulusVecTrialTypes{tt} = 'maxBOLD';
     % Every other trial will be selected randomly, or by Q+

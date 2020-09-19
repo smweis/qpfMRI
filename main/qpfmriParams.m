@@ -89,6 +89,12 @@ function [myQpfmriParams,myQpParams] = qpfmriParams(model,paramsDomain,varargin)
 %   'stimulusDomainSpacing  - Default = 'lin'. 
 %                             Whether the stimulusDomain is spaced linear
 %                             or log.
+%   'baselineMaxBOLDInitial'- Integer. Default = 6. Number of initial trials
+%                             to reserve for alternating maxBOLD and
+%                             baseline trials.
+% 'baselineMaxBOLDRepeating'- Integer. Default = 5. How many trials to require 
+%                             presentation of a baseline or maxBOLD trial
+%                             (alternating)
 % Outputs:
 %     myQpfmriParams        - Structure with one field each corresponding to the
 %                             keys below. Each field has the same name as the
@@ -145,7 +151,8 @@ p.addParameter('nOutcomes',15,@isnumeric);
 p.addParameter('noiseSD',.1,@isvector);
 p.addParameter('stimulusDomain',{},@iscell);
 p.addParameter('stimulusDomainSpacing','lin',@ischar);
-
+p.addParameter('baselineMaxBOLDInitial',6,@isnumeric);
+p.addParameter('baselineMaxBOLDRepeating',5,@isnumeric);
 % Parse
 p.parse( model, paramsDomain, varargin{:});
 

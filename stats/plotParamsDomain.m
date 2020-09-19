@@ -87,19 +87,16 @@ p.addParameter('figHeight',900,@isnumeric);
 p.parse( myQpfmriParams, varargin{:});
 
 % First verify the model is valid and the parameters are accounted for.
-[paramNamesInOrder] = checkModel(myQpfmriParams);
+[myQpfmriParams] = checkModel(myQpfmriParams);
 
-% Models are passed with beta and sigma but we need to ignore them here.
-betaIndex = find(strcmp(paramNamesInOrder,'beta'));
-sigmaIndex = find(strcmp(paramNamesInOrder,'sigma'));
 
 % Beta and Sigma are not required and won't be plotted for this
-nParameters = length(paramNamesInOrder);
+nParameters = length(myQpfmriParams.paramNamesInOrder);
 % Beta needs to replaced with 1.
-paramsDomain.(paramNamesInOrder{betaIndex}) = 1; 
+myQpfmriParams.paramsDomain.(myQpfmriParams.paramNamesInOrder{betaIndex}) = 1; 
 
 % If sigma is provided, it's just ignored.
-if ~isempty(sigmaIndex)
+if ~isempty(myQpfmriParams.sigmaIndex)
     nParameters = nParameters - 1; 
 end
 
@@ -108,10 +105,10 @@ paramVectors = cell(nParameters,1);
 
 for par = 1:nParameters
     
-    paramVectors{par} = myQpfmriParams.paramsDomain.(paramNamesInOrder{par});
+    paramVectors{par} = myQpfmriParams.paramsDomain.(myQpfmriParams.paramNamesInOrder{par});
     if length(paramVectors{par}) > 10
         warning('Too many divisions for %s to plot in a reasonable way. Parameter domain made coarser.',...,
-            paramNamesInOrder{par});
+            myQpfmriParams.paramNamesInOrder{par});
         paramVectors{par} = linspace(min(paramVectors{par}),max(paramVectors{par}),10);
     end
     paramSpaceSize(par) = length(paramVectors{par});
