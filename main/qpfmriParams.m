@@ -220,16 +220,6 @@ if isempty(myQpfmriParams.simulatedPsiParams)
     
 
 else
-    myQpfmriParams.simulatedPsiParams = zeros(1,length(myQpfmriParams.paramNamesInOrder));
-    
-    % A relic of naming simulatedPsiParams noise parameter as sigma.
-    for i = 1:length(myQpfmriParams.paramNamesInOrder)
-        if i == myQpfmriParams.sigmaIndex && ~isfield(myQpfmriParams.simulatedPsiParams,'sigma')
-            myQpfmriParams.simulatedPsiParams(myQpfmriParams.sigmaIndex) = noiseSD;
-        else
-            myQpfmriParams.simulatedPsiParams(i) =  myQpfmriParams.simulatedPsiParams.(myQpfmriParams.paramNamesInOrder{i});
-        end
-    end
     
     % Beta will converge to 1 as maxBOLD gets closer and closer to the
     % simulated maxBOLD. As a result, when simulating data, beta should always

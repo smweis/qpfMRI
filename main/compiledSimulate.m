@@ -77,6 +77,11 @@ noiseSD = '.01';
 
 nTrials = '30';
 
+p1Sim = '.12';
+p2Sim = '.30';
+p3Sim = '1.0';
+p4Sim = '.1';
+
 % Note, this will save a copy of questData after it is initialized. 
 [qpfmriResults]=compiledSimulate(modelName,'nParams',nP,...,
 'param1Name',p1Name,'param2Name',p2Name,'param3Name',p3Name,'param4Name',p4Name,...,
@@ -86,7 +91,8 @@ nTrials = '30';
 'param4Lower',p4L,'param4Upper',p4U,'param4nDivisions',p4N,'param4Spacing',p4S,...,
 'stimDomainUpper',stimUpper,'stimDomainLower',stimLower,...,
 'stimDomainnDivisions',stimnDivisions,'stimDomainSpacing',stimSpacing,...,
-'showPlots',showPlots,'qpPres',qpPres,'noiseSD',noiseSD,'nTrials',nTrials);
+'showPlots',showPlots,'qpPres',qpPres,'noiseSD',noiseSD,'nTrials',nTrials,...,
+'param1Simulated',p1Sim,'param2Simulated',p2Sim,'param3Simulated',p3Sim,'param4Simulated',p4Sim);
 
 
 %}

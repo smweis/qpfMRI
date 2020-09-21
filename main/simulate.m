@@ -56,7 +56,7 @@ nTrials = 30;
 qpPres = true;
 
 % Set the number of outcome categories / bins.
-nOutcomes = 15;
+nOutcomes = 7;
 
 % Do you want to see plots?
 showPlots = true; 
@@ -65,15 +65,17 @@ showPlots = true;
 maxBOLDSimulated = 1.5;
 
 % How noisy simulated BOLD data are in units of maxBOLDSimulated
-noiseSD = .02; 
+noiseSD = .15; 
 
 %How long the trials are (in seconds).
 trialLength = 12;
 
+simulatedPsiParams = [.41,.57,1,.15];
+
 [myQpfmriParams,myQpParams] = qpfmriParams(model,paramsDomain,'qpPres',qpPres,...,
 'stimulusDomain',stimulusDomain,'stimulusDomainSpacing',stimulusDomainSpacing,...,
 'noiseSD',noiseSD,'nTrials',nTrials,'maxBOLDSimulated',maxBOLDSimulated,...,
-'trialLength',trialLength,'nOutcomes',nOutcomes);
+'trialLength',trialLength,'nOutcomes',nOutcomes,'simulatedPsiParams',simulatedPsiParams);
 
 
 % Run the simulation. 
@@ -81,8 +83,6 @@ trialLength = 12;
 
 %}
 
-%% TO DO
-%1. Allow modification of baseline and maxBOLD trials
 
 %% Parse Inputs
 p = inputParser;
@@ -216,11 +216,11 @@ for tt = 1:myQpfmriParams.nTrials
         end
     % Optionally, every X trials can alternate as baseline or maxBOLD. 
     % Baseline trial
-    elseif mod(tt,myQpfmriParams.baselineMaxBOLDRepeating) == 0
+    elseif mod(tt,myQpfmriParams.baselineMaxBOLDRepeating*2) == 0
         qpfmriResults.stimulusVec(tt) = myQpfmriParams.baselineStimulus;
         qpfmriResults.stimulusVecTrialTypes{tt} = 'baseline';
     % maxBOLD trial
-    elseif mod(tt,myQpfmriParams.baselineMaxBOLDRepeating*2) == 0
+    elseif mod(tt,myQpfmriParams.baselineMaxBOLDRepeating) == 0
         qpfmriResults.stimulusVec(tt) = myQpfmriParams.maxBOLDStimulus;
         qpfmriResults.stimulusVecTrialTypes{tt} = 'maxBOLD';
     % Every other trial will be selected randomly, or by Q+
