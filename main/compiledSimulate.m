@@ -234,15 +234,14 @@ for name = 1:str2double(p.Results.nParams)
     if ~isempty(p.Results.(['param' num2str(name) 'Simulated']))
         param = str2double(p.Results.(['param' num2str(name) 'Simulated']));
         myQpfmriParams.simulatedPsiParams(name) = param;
-        sprintf('Parameter %s specified as %0.5f\n',myQpfmriParams.paramNamesInOrder{name},param);
+        fprintf('Parameter %s specified as %0.5f\n',myQpfmriParams.paramNamesInOrder{name},param);
     else
-        sprintf('Parameter %s randomly chosen as %0.5f',myQpfmriParams.paramNamesInOrder{name},myQpfmriParams.simulatedPsiParams(name));
-
+        fprintf('Parameter %s randomly chosen as %0.5f',myQpfmriParams.paramNamesInOrder{name},myQpfmriParams.simulatedPsiParams(name));
     end
 end
 
 %% Handle the rest of the optional arguments: 
-if strcmpi(myQpfmriParams.qpPres,'true')
+if strcmpi(p.Results.qpPres,'true')
     myQpfmriParams.qpPres = true;
 else
     myQpfmriParams.qpPres = false;
@@ -261,12 +260,15 @@ myQpfmriParams.nOutcomes = str2double(p.Results.nOutcomes);
 myQpfmriParams.noiseSD = str2double(p.Results.noiseSD);
 myQpfmriParams.baselineMaxBOLDInitial = str2double(p.Results.baselineMaxBOLDInitial);
 myQpfmriParams.baselineMaxBOLDRepeating = str2double(p.Results.baselineMaxBOLDRepeating);
+
 % Set seed, or let the simulation script choose. 
 if strcmpi(p.Results.seed,'choose')
     myQpfmriParams.seed = p.Results.seed;
 else
     myQpfmriParams.seed = str2double(p.Results.seed);
 end
+
+fprintf('seed = %d', myQpfmriParams.seed);
 
 %% Run Simulation
 [qpfmriResults]=simulate(myQpfmriParams, myQpParams,'showPlots',p.Results.showPlots);
