@@ -165,7 +165,7 @@ myQpfmriParams = p.Results;
 myQpParams = qpParams();
 
 % Put noiseSD on the scale of maxBOLDSimulated
-myQpfmriParams.noiseSD = myQpfmriParams.noiseSD .* myQpfmriParams.maxBOLDSimulated;
+myQpfmriParams.fMRInoise = myQpfmriParams.noiseSD .* myQpfmriParams.maxBOLDSimulated;
 
 %% Check the model is supported and correct and return the model-specific values. 
 % Here, we make sure that the psychometric model passed is legitimate and

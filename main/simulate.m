@@ -42,6 +42,9 @@ paramsDomain.slope = makeDomain(-1.2,-.2,10,'spacing','log');
 paramsDomain.semiSat = makeDomain(.01,1,10);
 paramsDomain.beta = makeDomain(.75,1.25,11,'spacing','zeno');
 
+% Sigma in the parameter domain is searching for noiseSD
+paramsDomain.sigma = makeDomain(.1,1,10);
+
 % Specify a stimulus domain and whether it spaced linear or log.
 stimulusDomain = {makeDomain(.01,1,25)};
 stimulusDomainSpacing = 'lin';
@@ -55,8 +58,6 @@ qpPres = true;
 % Set the number of outcome categories / bins.
 nOutcomes = 15;
 
-% Sigma in the parameter domain is searching for noiseSD
-paramsDomain.sigma = makeDomain(.01,2.01,20);
 
 % Do you want to see plots?
 showPlots = true; 
@@ -64,13 +65,13 @@ showPlots = true;
 % The range of BOLD signal to simulate (e.g., from baseline to maximum BOLD)
 maxBOLDSimulated = 1.5;
 
-% How noisy simulated BOLD data are in units of maxBOLDSimulated
+% How noisy simulated BOLD data are
 noiseSD = .1; 
 
 %How long the trials are (in seconds).
 trialLength = 12;
 
-%simulatedPsiParams = [.25, .78, 1, noiseSD];
+%simulatedPsiParams = [.25, .78, 1, .3];
 simulatedPsiParams = [];
 
 [myQpfmriParams,myQpParams] = qpfmriParams(model,paramsDomain,'qpPres',qpPres,...,

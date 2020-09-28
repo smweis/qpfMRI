@@ -194,7 +194,7 @@ if isempty(thePacket.response)
     
     % Initialize params0, which will allow us to create the forward model.
     params0 = tfeObj.defaultParams('defaultParamsInfo', defaultParamsInfo);
-    params0.noiseSd = myQpfmriParams.noiseSD;
+    params0.noiseSd = myQpfmriParams.fMRInoise;
     params0.noiseInverseFrequencyPower = p.Results.pinkNoise;
     modelAmplitude = zeros(length(stimulusVec),1);
         
