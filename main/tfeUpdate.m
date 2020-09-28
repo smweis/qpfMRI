@@ -36,6 +36,12 @@ function [outcomes, modelResponseStruct, thePacket, adjustedAmplitudes, baseline
 %                           deviations.
 %  'pinkNoise'            - Logical. If the noise should be modeled as
 %                           pink (auto-correlated).
+%  'definePreScanState'   - Logical. Extends the first trial backwards into
+%                           negative time (before the start of the scan).
+%                           Without this, the model doesn't know how to
+%                           treat the neural state prior to the start of
+%                           the scan.
+%
 % Outputs:
 %   outcomes              - 1xk vector. The outcome of each stimulus,
 %                           expressed as a integer indicating into which of
@@ -113,6 +119,7 @@ p.addRequired('maxBOLDLatestGuess',@isnumeric);
 % Optional params used in simulation
 p.addParameter('rngSeed',rng(1,'twister'),@isstruct);
 p.addParameter('pinkNoise',1, @isnumeric);
+p.addParameter('definePreScanState',true, @islogical);
 
 % Parse
 p.parse( thePacket, qpParams, myQpfmriParams, stimulusVec, maxBOLDLatestGuess, varargin{:});
@@ -127,7 +134,6 @@ end
 rngSeed = rng(p.Results.rngSeed);
 rngSeed = rng(p.Results.rngSeed);
 
-
 % Construct the temporal fitting engine model object
 tfeObj = tfeIAMP('verbosity','none');
 
@@ -135,6 +141,52 @@ tfeObj = tfeIAMP('verbosity','none');
 % have been (which is based on the number of rows in the stimulus.values
 % struct)
 defaultParamsInfo.nInstances = size(thePacket.stimulus.values,1);
+
+
+%% Handle pre-scan time
+% If the stimulus state is not set prior to the start of the scan (i.e., at
+% negative time points), extend the state at the earliest time point back
+% in time. This extension back is set to be equal to the duration of the
+% kernel, so that after convolution the system is in a steady-state prior
+% to the scan start.
+if min(thePacket.stimulus.timebase)>=0 && p.Results.definePreScanState
+    
+    %% Stimulus
+    
+    % Define the pre-scan timebase
+    deltaT = diff(thePacket.stimulus.timebase(1:2));
+    preScanStart = -ceil(max(thePacket.kernel.timebase)/deltaT)*deltaT;
+    preScanEnd = min(thePacket.stimulus.timebase)-deltaT;
+    preScan.timebase = preScanStart:deltaT:preScanEnd;
+    
+    % Extend the stimulus
+    preScan.stimValues = repmat(thePacket.stimulus.values(:,1),1,length(preScan.timebase));
+    thePacket.stimulus.timebase = [preScan.timebase thePacket.stimulus.timebase];
+    thePacket.stimulus.values = [preScan.stimValues thePacket.stimulus.values];
+    
+    %% Response
+    
+    %%%%%%%%%%%%%%%%%
+    %%
+    %% I haven't had the chance to test this with an actual passed response
+    %% so if this routine is crashing when presented with empirical data,
+    %% chck here for bugs
+    %%
+    %%%%%%%%%%%%%%%%%
+    if ~isempty(thePacket.response)
+        
+        % Define the pre-scan timebase
+        deltaT = diff(thePacket.response.timebase(1:2));
+        preScanStart = -ceil(max(thePacket.kernel.timebase)/deltaT)*deltaT;
+        preScanEnd = min(thePacket.response.timebase)-deltaT;
+        preScan.timebase = preScanStart:deltaT:preScanEnd;
+        
+        % Extend the response
+        preScan.respValues = repmat(thePacket.response.values(:,1),1,length(preScan.timebase));
+        thePacket.response.timebase = [preScan.timebase thePacket.response.timebase];
+        thePacket.response.values = [preScan.stimValues thePacket.stimulus.values];
+    end
+end
 
 
 %% If response is empty, simulate it
