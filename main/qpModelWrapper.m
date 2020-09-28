@@ -1,8 +1,9 @@
-function predictedProportions = qpModelWrapper(model, stimulusValues, params, nOutcomesIn, headroomIn)
+function predictedProportions = qpModelWrapper(model, stimulusValues, params, nOutcomes, headroom, betaIndex, sigmaIndex)
+%% function predictedProportions = qpModelWrapper(model, stimulusValues, params, nOutcomes, headroom, betaIndex, sigmaIndex)
 % Express a psychometric model as amplitude proportions
 %
 % Syntax:
-%  predictedProportions = qpModelWrapper(model, stimulusValues, params, nOutcomesIn, headroomIn)
+%  predictedProportions = qpModelWrapper(model, stimulusValues, params, nOutcomes, headroom, betaIndex, sigmaIndex)
 %
 % Description:
 %	This function maps the amplitude of the psychometric function response
@@ -26,16 +27,18 @@ function predictedProportions = qpModelWrapper(model, stimulusValues, params, nO
 %       	                parameters to be passed to the model. The nth
 %                           value is the sigma of the Gaussian smoothing to
 %                           apply across the category boundaries.
-%   nOutcomesIn           - Scalar. Optional. Sets the number of bins into
+%   nOutcomes           - Scalar. Optional. Sets the number of bins into
 %                           which the y-axis will be divided. Defaults to
 %                           21 if not provided.
-%   headroomIn            - Scalar. Optional. Determines the proportion
+%   headroom            - Scalar. Optional. Determines the proportion
 %                           of the nOutcomes to reserve above and below
 %                           the minimum and maximum output of the Watson
 %                           model. Defaults to 0.1, which means that 20% of
 %                           the nOutcomes range will correspond to
 %                           response values that are less than zero or
 %                           greater than 1.
+%   betaIndex             - Integer. Within params, which parameter refers to beta?
+%   sigmaIndex            - Integer. Within params, which parameter refers to sigma?
 % Outputs:
 %   predictedProportions  - An nFrequencies x nOutcomes matrix that
 %                           provides for each of the frequencies to model
@@ -60,6 +63,7 @@ function predictedProportions = qpModelWrapper(model, stimulusValues, params, nO
     % Plot the Watson TTF
     freqDomain = logspace(0,log10(100),100);
     figure
+
     subplot(2,1,1);
     semilogx(freqDomain,model(freqDomain,[tau kappa zeta beta]));
     xlabel('log Freq [Hz]');
@@ -81,9 +85,10 @@ function predictedProportions = qpModelWrapper(model, stimulusValues, params, nO
 
     % The number of bins into which to divide the response amplitude
     nOutcomes = 21;
-
+    betaIndex = 4;
+    sigmaIndex = 5;
     % Perform the calculation
-    predictedProportions = qpModelWrapper(model,freqHz, params, nOutcomes);
+    predictedProportions = qpModelWrapper(model,freqHz, params, nOutcomes, betaIndex, sigmaIndex);
 
     % Plot the predicted proportions
     subplot(2,1,2);
@@ -95,23 +100,6 @@ function predictedProportions = qpModelWrapper(model, stimulusValues, params, nO
     title('Predicted proportions');
 %}
 
-% The number of bins into which we will divide the range of y-axis response
-% values. Either passed or set as a default
-if nargin >= 4
-    nOutcomes = nOutcomesIn;
-else
-    nOutcomes = 21;
-end
-
-% Ensure that nOutcomes is odd
-assert(mod(nOutcomes,2)==1);
-
-% Set the headroom if undefined
-if nargin >= 5
-    headroom = headroomIn;
-else
-    headroom = 0.1;
-end
 
 % Determine the number of bins to be reserved for upper and lower headroom
 nLower = max([1 round(nOutcomes.*headroom)]);
@@ -130,7 +118,9 @@ if params(end)==0
     gaussKernel = zeros(1,nOutcomes);
     gaussKernel(floor(nOutcomes/2)+1)=1;
 else
-    gaussKernel = gausswin(nOutcomes,nOutcomes*params(end))';
+    % Calculate alpha here so we can keep sigma in terms of std. dev.
+    alpha = ((nOutcomes-1)/(2*params(sigmaIndex)))*params(betaIndex);
+    gaussKernel = gausswin(nOutcomes,alpha)';
 end
 
 % Initialize a variable to hold the result

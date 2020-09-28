@@ -147,7 +147,7 @@ handleStruct.lastOutcomeHandle = scatter(stimulusVecPlot(nTrials),...,
     'MarkerFaceAlpha',1,'HandleVisibility','off');
 
 % Labeling
-legend('Veridical Model','Individual Trials','Best-fit Model','Location','northwest');
+legend('Veridical Model','Best-fit Model','Individual Trials','Location','northwest');
 set(gca,'box','off');
 
 drawnow

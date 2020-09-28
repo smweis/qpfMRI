@@ -74,7 +74,7 @@ myQpfmriParams.sigmaIndex = find(strcmp(myQpfmriParams.paramNamesInOrder,'sigma'
 
 % Return the qpPF handle
 varargout{1} = @(f,p) qpModelWrapper(myQpfmriParams.model,f,p,...,
-    myQpfmriParams.nOutcomes,myQpfmriParams.headroom);
+    myQpfmriParams.nOutcomes,myQpfmriParams.headroom,myQpfmriParams.betaIndex,myQpfmriParams.sigmaIndex);
 
 % Initialize the psiParamsDomain
 varargout{2} = cell(1,length(myQpfmriParams.paramNamesInOrder));
