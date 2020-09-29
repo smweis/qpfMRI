@@ -23,7 +23,7 @@ function [stats] = processSimulatedData(resultsDir,groupingVars,varargin)
 % Example
 %{
 %Change me!
-resultsDir = 'C:\Users\stevenweisberg\Documents\MATLAB\projects\Weisberg_Aguirre_2020\results\Paper_Results\batch2';
+resultsDir = 'C:\Users\stevenweisberg\Documents\MATLAB\projects\Weisberg_Aguirre_2020\results\Paper_Results\batch3';
 groupingVars = {'nOutcomes','noiseSD','qpPresFinal'};
 factor = 'noiseSD'; % Or try other groupingVars
 level = .1; % or try .25 for noiseSD. 

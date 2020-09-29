@@ -142,8 +142,8 @@ end
 % Constrain bounds on beta to be very tight around 1.
 lowerBoundsConstrained = lowerBounds;
 upperBoundsConstrained = upperBounds;
-lowerBoundsConstrained(myQpfmriParams.betaIndex) = .999;
-upperBoundsConstrained(myQpfmriParams.betaIndex) = 1.001;
+lowerBoundsConstrained(myQpfmriParams.betaIndex) = .99999999;
+upperBoundsConstrained(myQpfmriParams.betaIndex) = 1.0000001;
 
 % Make sure 1 is a member of the beta parameter domains. If it's not, add
 % it in. 

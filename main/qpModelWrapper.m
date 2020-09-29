@@ -119,7 +119,7 @@ if params(end)==0
     gaussKernel(floor(nOutcomes/2)+1)=1;
 else
     % Calculate alpha here so we can keep sigma in terms of std. dev.
-    alpha = (nOutcomes-1)/(2*params(sigmaIndex)*nOutcomes);
+    alpha = ((nOutcomes-1)/(params(sigmaIndex)*nOutcomes))*params(betaIndex);
     gaussKernel = gausswin(nOutcomes,alpha)';
 end
 
