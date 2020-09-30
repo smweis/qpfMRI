@@ -47,7 +47,9 @@ function [myQpfmriParams,myQpParams] = qpfmriParams(model,paramsDomain,varargin)
 %   'maxBOLDSimulated'      - Scalar: (Default = 1.5)
 %                             The value (in % change units) of the
 %                             maximum expected response to a stimulus w.r.t.
-%                             the response to the baseline stimulus.
+%                             the response to the baseline stimulus. The
+%                             resulting BOLD sigal will vary from
+%                             [-maxBOLDSimulated maxBOLDSimulated]
 %	'seed'                  - No check (Default = 'choose')
 %                             The value to initialize the rng. If 'choose'
 %                             it will randomly initialize the seed using
@@ -165,7 +167,7 @@ myQpfmriParams = p.Results;
 myQpParams = qpParams();
 
 % Put noiseSD on the scale of maxBOLDSimulated
-myQpfmriParams.fMRInoise = myQpfmriParams.noiseSD .* myQpfmriParams.maxBOLDSimulated;
+myQpfmriParams.fMRInoise = myQpfmriParams.noiseSD .* 2*myQpfmriParams.maxBOLDSimulated;
 
 %% Check the model is supported and correct and return the model-specific values. 
 % Here, we make sure that the psychometric model passed is legitimate and

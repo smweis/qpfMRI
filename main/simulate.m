@@ -43,14 +43,14 @@ paramsDomain.semiSat = makeDomain(.01,1,10);
 paramsDomain.beta = makeDomain(.75,1.25,11,'spacing','zeno');
 
 % Sigma in the parameter domain is searching for noiseSD
-paramsDomain.sigma = makeDomain(.1,1,10);
+paramsDomain.sigma = makeDomain(0.01,1,10);
 
 % Specify a stimulus domain and whether it spaced linear or log.
 stimulusDomain = {makeDomain(.01,1,25)};
 stimulusDomainSpacing = 'lin';
 
 % Number of trials to run.
-nTrials = 30;
+nTrials = 20;
 
 % Allow Q+ to control the stimuli or not (false).
 qpPres = true;
