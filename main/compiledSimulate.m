@@ -258,6 +258,7 @@ myQpfmriParams.nTrials = str2double(p.Results.nTrials);
 myQpfmriParams.stimulusStructDeltaT = str2double(p.Results.stimulusStructDeltaT);
 myQpfmriParams.nOutcomes = str2double(p.Results.nOutcomes);
 myQpfmriParams.noiseSD = str2double(p.Results.noiseSD);
+myQpfmriParams.fMRInoise = myQpfmriParams.noiseSD .* 2*myQpfmriParams.maxBOLDSimulated;
 myQpfmriParams.baselineMaxBOLDInitial = str2double(p.Results.baselineMaxBOLDInitial);
 myQpfmriParams.baselineMaxBOLDRepeating = str2double(p.Results.baselineMaxBOLDRepeating);
 
