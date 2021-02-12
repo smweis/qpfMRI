@@ -76,14 +76,18 @@ if isempty(qpfmriResults.stimulusVecTrialTypes)
     lineColor{:} = '#007EA7';
 else
     for i = 1:nTrials
-        if contains(qpfmriResults.stimulusVecTrialTypes{i},'baseline')
-            lineColor{i} = colorStruct.baseline;
-        elseif contains(qpfmriResults.stimulusVecTrialTypes{i},'maxbold','IgnoreCase',true)
-            lineColor{i} = colorStruct.maxBOLD;
-        elseif contains(qpfmriResults.stimulusVecTrialTypes{i},'qplus')
-            lineColor{i} = colorStruct.qPlus;
-        elseif contains(qpfmriResults.stimulusVecTrialTypes{i},'random')
-            lineColor{i} = colorStruct.random;
+        try
+            if contains(qpfmriResults.stimulusVecTrialTypes{i},'baseline')
+                lineColor{i} = colorStruct.baseline;
+            elseif contains(qpfmriResults.stimulusVecTrialTypes{i},'maxbold','IgnoreCase',true)
+                lineColor{i} = colorStruct.maxBOLD;
+            elseif contains(qpfmriResults.stimulusVecTrialTypes{i},'qplus')
+                lineColor{i} = colorStruct.qPlus;
+            elseif contains(qpfmriResults.stimulusVecTrialTypes{i},'random')
+                lineColor{i} = colorStruct.random;
+            end
+        catch
+            lineColor{i} = 'gray';
         end
     end
 end
