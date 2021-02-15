@@ -81,8 +81,6 @@ trialLength = 12;
 %       What this might look like is saving a copy of the trained Q+ model from
 %       the end of the previous run. Then we JUST want to re-run the model for
 %       the NEW data acquired during that run. 
-%       - OK - Now we need to LOAD IN the old data and handle that with
-%       what counts as a new trial. 
 %       
 % 2. We need to fix the plotting a little bit to make the y-lims more
 %    malleable if we get more variety in maxBOLD. 
@@ -91,10 +89,17 @@ trialLength = 12;
 %
 % 3. A question for Geoff is whether we want to estimate maxBOLD anew each
 %    time or use our estimate from the previous run. 
-%
-% 4. User input needs to talk to the p.Results struct that gets loaded in
-% (with defaults and things). 
 % 
+% 4. We need to create a more foolproof way of making sure our parameters
+%    line up. We could do this by asking the user to input values (or verify
+%    entered values). These include: 
+%       - number of trials
+%       - TR
+%       - trialLength
+%       - run number
+%       - directory to look for mainData (or the timeseries) and to write
+%         stim suggestions.
+%
 % 5. We need to make sure that stimulus suggestions are being written out
 %    somewhere that rtfmri can find them. 
 %
@@ -118,22 +123,15 @@ p.parse( myQpfmriParams, myQpParams, varargin{:});
 
 % run = str2double(input("Enter run #: ",'s'));
 % nTrials = str2double(input("Enter number of trials to run: ",'s'));
-% SHOULD READ: nTrials is set at XX. If correct, press enter. Else, enter
-% the # of trials.
 % trialLength = str2double(input("Enter trial length (seconds): ",'s'));
-% SHOULD READ: nTrials is set at XX. If correct, press enter. Else, enter
-% the # of trials.
 % TR = str2double(input("Enter TR (milliseconds): ",'s'));
-% SHOULD READ: nTrials is set at XX. If correct, press enter. Else, enter
-% the # of trials.
 % 
-% if floor(run) == ceil(run) || floor(nTrials) == ceil(nTrials) || floor(trialLength) == ceil(trialLength) || floor(TR) == ceil(TR)
+% if floor(run) == ceil(run) || isnan(nTrials) || isnan(trialLength) || isnan(TR)
 %     error("One of the variables was not an integer");
 % end
 %     
 % dataPath = input("Enter the full path of the directory location of the timeseries: ",'s');
-% stimPath = input("Enter the full path of the directory location where the
-% STIMULUS SUGGESTION should be written: ",'s');
+
 
 
 %% Initialize struct to save results out.
@@ -225,8 +223,8 @@ questDataUntrained = questData;
 disp(horzcat('Waiting for first ',num2str(myQpfmriParams.baselineMaxBOLDInitial),' trials'));
 trials = 0;
 while trials <= myQpfmriParams.baselineMaxBOLDInitial
-    fid = fopen('\\exasmb.rc.ufl.edu\blue\stevenweisberg\rtQuest\Ozzy_Test\actualStimuli1.txt');
-    %fid = fopen('/blue/stevenweisberg/rtQuest/Ozzy_Test/actualStimuli0.txt');
+    %fid = fopen('\\exasmb.rc.ufl.edu\blue\stevenweisberg\rtQuest\Ozzy_Test\actualStimuli1.txt');
+    fid = fopen('/blue/stevenweisberg/rtQuest/Ozzy_Test/actualStimuli0.txt');
 
     stims = textscan(fid, '%s','delimiter','\n');
     trials = length(stims{1});
@@ -263,19 +261,17 @@ if p.Results.showPlots
     [mainFig,handleStruct] = initializePlots(myQpfmriParams,myQpParams,'realData',true);
 end
 
-%% Run trial fitting loop
+%% Run simulated trials
 for tt = myQpfmriParams.baselineMaxBOLDInitial+1:myQpfmriParams.nTrials
 
-    
-    
+    qpfmriResults.stimulusVec(tt) = qpQuery(questData);
+    disp(qpfmriResults.stimulusVec(tt)); % nextStim
     if myQpfmriParams.qpPres
         qpfmriResults.stimulusVecTrialTypes{tt} = 'qplus';
-        qpfmriResults.stimulusVec(tt) = qpQuery(questData);
     else
         qpfmriResults.stimulusVecTrialTypes{tt} = 'random';
     end
     
-    disp(qpfmriResults.stimulusVec(tt)); % nextStim
     disp(qpfmriResults.stimulusVec);
 
     % Update maxBOLD with our best guess at the maximum BOLD fMRI response
@@ -287,12 +283,18 @@ for tt = myQpfmriParams.baselineMaxBOLDInitial+1:myQpfmriParams.nTrials
     % Create a packet
     thePacket = createPacket(myQpfmriParams,tt);
     
-    % Load in the timeseries
-    timeseries = readmatrix('\\exasmb.rc.ufl.edu\blue\stevenweisberg\rtQuest\Ozzy_Test\processed\run1\dataPlot.txt');
-    %timeseries = readmatrix('/blue/stevenweisberg/rtQuest/Ozzy_Test/processed/run1/dataPlot.txt');
-    % Trim it based on the # of trials.
+    % Right now we're loading in the full mainData struct. 
+    % Might be more economical to load in the timeseries directly. 
+    %mainData = load('\\exasmb.rc.ufl.edu\blue\stevenweisberg\rtQuest\Ozzy_Test\processed\run1\mainData.mat');
+    %mainData = load('/blue/stevenweisberg/rtQuest/Ozzy_Test/processed/run1/mainData.mat');
+    timeseries = readmatrix('/blue/stevenweisberg/rtQuest/Ozzy_Test/processed/run1/dataPlot.txt');
+    % We definitely need to know whether we need to trim the timeseries
     timeseries = timeseries(1:tt*(myQpfmriParams.trialLength*1000/myQpfmriParams.TR));
-
+    % And if it needs to be detrended and normalized.
+    
+    % DETREND AND MEAN-CENTER
+%     timeseries = (timeseries - mean(timeseries))./std(timeseries);
+%     timeseries = detrend(timeseries);
     
     thePacket.response.values = timeseries;
     thePacket.response.timebase = 0:myQpfmriParams.TR:length(thePacket.response.values)*myQpfmriParams.TR - myQpfmriParams.TR;
