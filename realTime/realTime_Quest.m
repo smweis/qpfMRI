@@ -121,6 +121,18 @@ p.addParameter('saveFigs',false,@islogical);
 % Parse inputs
 p.parse( myQpfmriParams, myQpParams, varargin{:});
 
+% run = str2double(input("Enter run #: ",'s'));
+% nTrials = str2double(input("Enter number of trials to run: ",'s'));
+% trialLength = str2double(input("Enter trial length (seconds): ",'s'));
+% TR = str2double(input("Enter TR (milliseconds): ",'s'));
+% 
+% if isnan(run) || isnan(nTrials) || isnan(trialLength) || isnan(TR)
+%     error("One of the variables was not an integer");
+% end
+%     
+% dataPath = input("Enter the full path of the directory location of the timeseries: ",'s');
+
+
 
 %% Initialize struct to save results out.
 qpfmriResults = myQpfmriParams;
@@ -134,6 +146,7 @@ qpfmriResults.entropyOverTrials = cell(1,myQpfmriParams.nTrials);
 % Set up save info and directory
 folderName = ['.' filesep myQpfmriParams.outFolder];
 fileName = ['sim_' myQpfmriParams.outNum '.mat'];
+modelFile = ['mod_' myQpfmriParams.outNum '.mat'];
 if ~exist(folderName,'dir')
     mkdir(folderName);
 end
@@ -210,8 +223,8 @@ questDataUntrained = questData;
 disp(horzcat('Waiting for first ',num2str(myQpfmriParams.baselineMaxBOLDInitial),' trials'));
 trials = 0;
 while trials <= myQpfmriParams.baselineMaxBOLDInitial
-    fid = fopen('\\exasmb.rc.ufl.edu\blue\stevenweisberg\rtQuest\Ozzy_Test\actualStimuli1.txt');
-    %fid = fopen('/blue/stevenweisberg/rtQuest/Ozzy_Test/actualStimuli0.txt');
+    %fid = fopen('\\exasmb.rc.ufl.edu\blue\stevenweisberg\rtQuest\Ozzy_Test\actualStimuli1.txt');
+    fid = fopen('/blue/stevenweisberg/rtQuest/Ozzy_Test/actualStimuli0.txt');
 
     stims = textscan(fid, '%s','delimiter','\n');
     trials = length(stims{1});
@@ -272,17 +285,16 @@ for tt = myQpfmriParams.baselineMaxBOLDInitial+1:myQpfmriParams.nTrials
     
     % Right now we're loading in the full mainData struct. 
     % Might be more economical to load in the timeseries directly. 
-    mainData = load('\\exasmb.rc.ufl.edu\blue\stevenweisberg\rtQuest\Ozzy_Test\processed\run1\mainData.mat');
+    %mainData = load('\\exasmb.rc.ufl.edu\blue\stevenweisberg\rtQuest\Ozzy_Test\processed\run1\mainData.mat');
     %mainData = load('/blue/stevenweisberg/rtQuest/Ozzy_Test/processed/run1/mainData.mat');
-    
+    timeseries = readmatrix('/blue/stevenweisberg/rtQuest/Ozzy_Test/processed/run1/dataPlot.txt');
     % We definitely need to know whether we need to trim the timeseries
-    timeseries = [mainData.mainData(:).roiSignal];
     timeseries = timeseries(1:tt*(myQpfmriParams.trialLength*1000/myQpfmriParams.TR));
     % And if it needs to be detrended and normalized.
     
     % DETREND AND MEAN-CENTER
-    timeseries = (timeseries - mean(timeseries))./std(timeseries);
-    timeseries = detrend(timeseries);
+%     timeseries = (timeseries - mean(timeseries))./std(timeseries);
+%     timeseries = detrend(timeseries);
     
     thePacket.response.values = timeseries;
     thePacket.response.timebase = 0:myQpfmriParams.TR:length(thePacket.response.values)*myQpfmriParams.TR - myQpfmriParams.TR;
@@ -419,12 +431,8 @@ if p.Results.showPlots
 end
 
 
-
 save(fullfile(folderName,fileName),'qpfmriResults');
+save(fullfile(folderName,modelFile),'questData');
 
 
 end
-
-
-
-
