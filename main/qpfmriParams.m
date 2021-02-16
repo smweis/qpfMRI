@@ -59,7 +59,7 @@ function [myQpfmriParams,myQpParams] = qpfmriParams(model,paramsDomain,varargin)
 %                             milliseconds. 
 %	'trialLength'           - Integer: (Default = 12)
 %                             Length of one trial in seconds.
-%	'outNum'                - String: (Default = 'test')
+%	'outNum'                - Integer: (Default = 1)
 %                             Name of the output file (e.g., 'test.csv')
 %	'outFolder'             - String: (Default = 'Results')
 %                             Name of the output file (e.g., './Results')
@@ -142,7 +142,7 @@ p.addParameter('maxBOLDInitialGuess', 1.0, @isscalar);
 p.addParameter('maxBOLDSimulated', 1.5, @isscalar);
 p.addParameter('TR',800, @isnumeric);
 p.addParameter('trialLength',12, @isnumeric);
-p.addParameter('outNum','test',@ischar);
+p.addParameter('outNum',1,@isnumeric);
 p.addParameter('outFolder','Results',@ischar);
 p.addParameter('seed','choose');
 p.addParameter('nTrials',10,@isnumeric);

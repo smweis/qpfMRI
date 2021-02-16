@@ -214,6 +214,12 @@ for m = 1:nTrials
     handleStruct.linePlot(m) = plot(xLine,yLine,'Color',lineColor{m},'LineWidth',4);
 end
 
+% Update Y-limit if the plot is going out of bounds. 
+currentYlim = ylim;
+if max(modelResponseStruct.values) > currentYlim(2)
+    ylim([-modelResponseStruct.values modelResponseStruct.values]);
+end
+
 % Custom legend handling is the easiest way to go
 h = zeros(5,1);
 h(1) = plot(NaN,NaN,'.k');
