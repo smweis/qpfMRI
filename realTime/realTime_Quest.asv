@@ -65,7 +65,7 @@ showPlots = true;
 %How long the trials are (in seconds).
 trialLength = 12;
 
-outNum = 3;
+outNum = 1;
 
 [myQpfmriParams,myQpParams] = qpfmriParams(model,paramsDomain,'qpPres',qpPres,...,
 'stimulusDomain',stimulusDomain,'stimulusDomainSpacing',stimulusDomainSpacing,...,
@@ -82,9 +82,9 @@ outNum = 3;
 % 1. We need to make sure that stimulus suggestions are being written out
 %    somewhere that rtfmri can find them. 
 % 
-% 2. I'd like to clean up how this script handles RANDOM vs. Q+. 
+% 2. I'd like to clean up how RANDOM vs. Q+ is handled. 
 %       Ideally for random, it's not doing much...maybe fitting the model
-%       every so often just to keep things consistent. 
+%       and plotting just to keep things consistent. 
 
 %% Parse Inputs
 p = inputParser;
@@ -105,25 +105,25 @@ function validateInput(inputVar)
     % Take a string that matches the name of a variable. Tell the user what
     % that variable is currently entered as. They can validate or change.
     
-    fprintf('%s is currently %s.\nIf this is correct, press Enter.\n',inputVar,myQpfmriParams.(inputVar));
-    pOutput = input('If not, input the correct number: ','s');
+    fprintf('%s is %d.\nCorrect? Press Enter.\n',inputVar,myQpfmriParams.(inputVar));
+    pOutput = input('Wrong? Input the correct number: ','s');
     
     if isempty(pOutput)
-        fprintf('%s set to %s\n',inputVar, myQpfmriParams.(inputVar));
+        fprintf('%s set to %d\n',inputVar, myQpfmriParams.(inputVar));
     elseif floor(str2double(pOutput)) == ceil(str2double(pOutput))
 	    myQpfmriParams.(inputVar) = str2double(pOutput);
-        fprintf('%s changed to %d\n',inputVar,myQpfmriParams.(inputVar));
+        fprintf('%s has CHANGED: New value is %d\n',inputVar,myQpfmriParams.(inputVar));
     else
         error("Not an integer");
     end
-
+    fprintf('\n');
 end
 
 validateInput('outNum');
 validateInput('nTrials');
 validateInput('trialLength');
 validateInput('TR');
-validateInput('outNum');
+
 
 % dataPath = input("Enter the full path of the directory location of the TIMESERIES: ",'s');
 % stimPath = input("Enter the full path of the directory location where the
@@ -190,36 +190,50 @@ nLower = max([1 round(myQpfmriParams.headroom*myQpParams.nOutcomes)]);
 nUpper = max([1 round(myQpfmriParams.headroom*myQpParams.nOutcomes)]);
 nMid = myQpParams.nOutcomes - nLower - nUpper;
 
-%% Create a copy of Q+
-% Do we already have 1 run worth of data?
-if myQpfmriParams.outNum > 1 
-    
+%% Initialize Q+
+
+% Do we already have data?
+% These try-catch blocks will search for .mat files named with the previous
+% run number. 
+loadToggle = input("Do you want to load previous Q+ data? [Y/n]: ",'s');
+if strcmp(loadToggle,'y')
     try
         % Load in the last run's questData
         oldModelFile = ['model_' num2str(myQpfmriParams.outNum - 1) '.mat'];
+        disp(
         load(fullfile(folderName,oldModelFile),'questData');
         fprintf('Re-loading data from run %d\n',myQpfmriParams.outNum);
-    
+
         % Clean out the the trial-specific stuff. Keep the rest. 
         questData.entropyAfterTrial = [];
         questData.trialData = [];
         questData.stimIndices = [];
-    
+
     catch
-        fprintf('No model file found with outNum
-        
-    % Load in last run's maxBOLDFinal estimate.
-    oldmaxBold = ['fmriResults' num2str(myQpfmriParams.outNum - 1) '.mat'];
-    maxBOLDLastRun = load(fullfile(folderName,oldmaxBold),'qpfmriResults');
-    maxBOLDLatestGuess = maxBOLDLastRun.qpfmriResults.maxBOLDFinal;
+        % Initialize Q+. 
+        % Warn the user that initializing has started and may take a minute.
+        fprintf('No model file found: %s\n',oldModelFile);
+        tic
+        fprintf('Initializing Q+. This may take a minute...\n');
+        questData = qpInitialize(myQpParams);
+        toc
+    end
+
+    try
+        % Load in last run's maxBOLDFinal estimate.
+        oldmaxBold = ['fmriResults' num2str(myQpfmriParams.outNum - 1) '.mat'];
+        maxBOLDLastRun = load(fullfile(folderName,oldmaxBold),'qpfmriResults');
+        maxBOLDLatestGuess = maxBOLDLastRun.qpfmriResults.maxBOLDFinal;
+    catch
+        fprintf('No results file found: %s\n',oldmaxBold);
+        fprintf('Starting with maxBOLD = %d.\n',qpfmriResults.maxBOLDInitialGuess);
+    end
 else
-    % Initialize Q+. 
-    % Warn the user that initializing has started and may take a minute.
     tic
     fprintf('Initializing Q+. This may take a minute...\n');
     questData = qpInitialize(myQpParams);
     toc
-
+    fprintf('Starting with maxBOLD = %d.\n',qpfmriResults.maxBOLDInitialGuess);
 end
 
 % Tack on a continuous output simulated observer to myQpParams
@@ -228,14 +242,15 @@ myQpParams.continuousPF = @(f) myQpfmriParams.model(f,myQpfmriParams.simulatedPs
 % Store this untrained copy. We will re-train the run model each time.
 questDataUntrained = questData;
 
-
 %% Wait for the initial trials to be completed. 
 % Once they're done, store the values for use in the main loop below.
 disp(horzcat('Waiting for first ',num2str(myQpfmriParams.baselineMaxBOLDInitial),' trials'));
 trials = 0;
+
 while trials <= myQpfmriParams.baselineMaxBOLDInitial
-    fid = fopen('\\exasmb.rc.ufl.edu\blue\stevenweisberg\rtQuest\Ozzy_Test\actualStimuli1.txt');
-    %fid = fopen('/blue/stevenweisberg/rtQuest/Ozzy_Test/actualStimuli0.txt');
+    %fid = fopen('\\exasmb.rc.ufl.edu\blue\stevenweisberg\rtQuest\Ozzy_Test\actualStimuli1.txt');
+    %fid = fopen(stimPath);
+    fid = fopen('/blue/stevenweisberg/rtQuest/Ozzy_Test/actualStimuli0.txt');
     stims = textscan(fid, '%s','delimiter','\n');
     trials = length(stims{1});
     pause(0.5);
@@ -279,9 +294,9 @@ for tt = myQpfmriParams.baselineMaxBOLDInitial+1:myQpfmriParams.nTrials
         qpfmriResults.stimulusVecTrialTypes{tt} = 'random';
     end
     
-    disp(qpfmriResults.stimulusVec(tt)); % nextStim
-    disp(qpfmriResults.stimulusVec);
-
+    disp(['Trial #',num2str(tt),': ',num2str(qpfmriResults.stimulusVec(tt)),...,
+        ' ', qpfmriResults.stimulusVecTrialTypes{tt}]);
+    
     % Update maxBOLD with our best guess at the maximum BOLD fMRI response
     % Only update maxBOLD after we've had at least one maxBOLD trial
     if tt > 2 && ~isnan(qpfmriResults.psiParamsQuest(tt-1,myQpfmriParams.betaIndex))
@@ -292,8 +307,8 @@ for tt = myQpfmriParams.baselineMaxBOLDInitial+1:myQpfmriParams.nTrials
     thePacket = createPacket(myQpfmriParams,tt);
     
     % Load in the timeseries
-    timeseries = readmatrix('\\exasmb.rc.ufl.edu\blue\stevenweisberg\rtQuest\Ozzy_Test\processed\run1\dataPlot.txt');
-    %timeseries = readmatrix('/blue/stevenweisberg/rtQuest/Ozzy_Test/processed/run1/dataPlot.txt');
+    %timeseries = readmatrix('\\exasmb.rc.ufl.edu\blue\stevenweisberg\rtQuest\Ozzy_Test\processed\run1\dataPlot.txt');
+    timeseries = readmatrix('/blue/stevenweisberg/rtQuest/Ozzy_Test/processed/run1/dataPlot.txt');
     % Trim it based on the # of trials.
     timeseries = timeseries(1:tt*(myQpfmriParams.trialLength*1000/myQpfmriParams.TR));
 
@@ -320,7 +335,7 @@ for tt = myQpfmriParams.baselineMaxBOLDInitial+1:myQpfmriParams.nTrials
     qpfmriResults.maxBOLDoverTrials(tt) = maxBOLDLatestGuess;
     qpfmriResults.entropyOverTrials{tt} = questData.entropyAfterTrial;
 
-    %% 
+    %% Calculate and print results
     % Calculate BOLD values from outcomes, scaled to maxBOLD and the
     % baseline estimate.
     yVals = (outcomes - nLower - 1)./nMid;

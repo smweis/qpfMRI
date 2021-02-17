@@ -195,37 +195,45 @@ nMid = myQpParams.nOutcomes - nLower - nUpper;
 % Do we already have data?
 % These try-catch blocks will search for .mat files named with the previous
 % run number. 
-try
-    % Load in the last run's questData
-    oldModelFile = ['model_' num2str(myQpfmriParams.outNum - 1) '.mat'];
-    load(fullfile(folderName,oldModelFile),'questData');
-    fprintf('Re-loading data from run %d\n',myQpfmriParams.outNum);
+loadToggle = input("Do you want to load previous Q+ data? [Y/n]: ",'s');
+if strcmp(loadToggle,'y')
+    try
+        % Load in the last run's questData
+        oldModelFile = ['model_' num2str(myQpfmriParams.outNum - 1) '.mat'];
+        load(fullfile(folderName,oldModelFile),'questData');
+        fprintf('Re-loading data from run %d\n',myQpfmriParams.outNum);
 
-    % Clean out the the trial-specific stuff. Keep the rest. 
-    questData.entropyAfterTrial = [];
-    questData.trialData = [];
-    questData.stimIndices = [];
+        % Clean out the the trial-specific stuff. Keep the rest. 
+        questData.entropyAfterTrial = [];
+        questData.trialData = [];
+        questData.stimIndices = [];
 
-catch
-    % Initialize Q+. 
-    % Warn the user that initializing has started and may take a minute.
-    fprintf('No model file found: %s\n',oldModelFile);
+    catch
+        % Initialize Q+. 
+        % Warn the user that initializing has started and may take a minute.
+        fprintf('No model file found: %s\n',oldModelFile);
+        tic
+        fprintf('Initializing Q+. This may take a minute...\n');
+        questData = qpInitialize(myQpParams);
+        toc
+    end
+
+    try
+        % Load in last run's maxBOLDFinal estimate.
+        oldmaxBold = ['fMRIresults_' num2str(myQpfmriParams.outNum - 1) '.mat'];
+        maxBOLDLastRun = load(fullfile(folderName,oldmaxBold),'qpfmriResults');
+        maxBOLDLatestGuess = maxBOLDLastRun.qpfmriResults.maxBOLDFinal;
+    catch
+        fprintf('No results file found: %s\n',oldmaxBold);
+        fprintf('Starting with maxBOLD = %d.\n',qpfmriResults.maxBOLDInitialGuess);
+    end
+else
     tic
     fprintf('Initializing Q+. This may take a minute...\n');
     questData = qpInitialize(myQpParams);
     toc
-end
-
-try
-    % Load in last run's maxBOLDFinal estimate.
-    oldmaxBold = ['fmriResults' num2str(myQpfmriParams.outNum - 1) '.mat'];
-    maxBOLDLastRun = load(fullfile(folderName,oldmaxBold),'qpfmriResults');
-    maxBOLDLatestGuess = maxBOLDLastRun.qpfmriResults.maxBOLDFinal;
-catch
-    fprintf('No results file found: %s\n',oldmaxBold);
     fprintf('Starting with maxBOLD = %d.\n',qpfmriResults.maxBOLDInitialGuess);
 end
-
 
 % Tack on a continuous output simulated observer to myQpParams
 myQpParams.continuousPF = @(f) myQpfmriParams.model(f,myQpfmriParams.simulatedPsiParams);
@@ -239,9 +247,9 @@ disp(horzcat('Waiting for first ',num2str(myQpfmriParams.baselineMaxBOLDInitial)
 trials = 0;
 
 while trials <= myQpfmriParams.baselineMaxBOLDInitial
-    fid = fopen('\\exasmb.rc.ufl.edu\blue\stevenweisberg\rtQuest\Ozzy_Test\actualStimuli1.txt');
+    %fid = fopen('\\exasmb.rc.ufl.edu\blue\stevenweisberg\rtQuest\Ozzy_Test\actualStimuli1.txt');
     %fid = fopen(stimPath);
-    %fid = fopen('/blue/stevenweisberg/rtQuest/Ozzy_Test/actualStimuli0.txt');
+    fid = fopen('/blue/stevenweisberg/rtQuest/Ozzy_Test/actualStimuli0.txt');
     stims = textscan(fid, '%s','delimiter','\n');
     trials = length(stims{1});
     pause(0.5);
@@ -298,8 +306,8 @@ for tt = myQpfmriParams.baselineMaxBOLDInitial+1:myQpfmriParams.nTrials
     thePacket = createPacket(myQpfmriParams,tt);
     
     % Load in the timeseries
-    timeseries = readmatrix('\\exasmb.rc.ufl.edu\blue\stevenweisberg\rtQuest\Ozzy_Test\processed\run1\dataPlot.txt');
-    %timeseries = readmatrix('/blue/stevenweisberg/rtQuest/Ozzy_Test/processed/run1/dataPlot.txt');
+    %timeseries = readmatrix('\\exasmb.rc.ufl.edu\blue\stevenweisberg\rtQuest\Ozzy_Test\processed\run1\dataPlot.txt');
+    timeseries = readmatrix('/blue/stevenweisberg/rtQuest/Ozzy_Test/processed/run1/dataPlot.txt');
     % Trim it based on the # of trials.
     timeseries = timeseries(1:tt*(myQpfmriParams.trialLength*1000/myQpfmriParams.TR));
 
