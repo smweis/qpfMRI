@@ -1,4 +1,4 @@
-function [qpfmriResults]=realTime_Quest(myQpfmriParams, myQpParams, varargin)
+function [qpfmriResults]=realTime_Quest(myQpfmriParams, myQpParams, subject, varargin)
 %% [qpfmriResults]=realTime_Quest(myQpfmriParams, varargin)
 % A script that will simulate fMRI BOLD data and fit a model with or
 % without Q+ control
@@ -31,6 +31,7 @@ function [qpfmriResults]=realTime_Quest(myQpfmriParams, myQpParams, varargin)
 ---------------------------------------------------------------------------
 Example 1: Logistic Model
 
+subject = 'Ozzy_Test';
 % Provide a model handle
 model = @logistic;
 
@@ -91,12 +92,13 @@ p = inputParser;
 
 p.addRequired('myQpfmriParams',@isstruct);
 p.addRequired('myQpParams',@isstruct);
+p.addRequired('subject',@isstr);
 
 % Optional params for plotting
 p.addParameter('showPlots',false,@islogical);
 p.addParameter('saveFigs',false,@islogical);
 % Parse inputs
-p.parse( myQpfmriParams, myQpParams, varargin{:});
+p.parse( myQpfmriParams, myQpParams, subject, varargin{:});
 
 
 %% Double check a few key parameters
@@ -124,12 +126,13 @@ validateInput('nTrials');
 validateInput('trialLength');
 validateInput('TR');
 
+[subjectPath, scannerPath, ~, ~] = getPaths(subject, 'neurofeedback');
 
 % dataPath = input("Enter the full path of the directory location of the TIMESERIES: ",'s');
 % stimPath = input("Enter the full path of the directory location where the
 % STIMULUS SUGGESTION should be written: ",'s');
-dataPath = '/blue/stevenweisberg/rtQuest/Ozzy_Test/processed/run1/dataPlot.txt';
-stimPath = '/blue/stevenweisberg/rtQuest/Ozzy_Test/stim_suggestion.txt';
+dataPath = fullfile(subjectPath,'processed','dataPlot.txt');
+stimPath = fullfile(subjectPath,'stims','suggestions.txt');
 
 
 %% Initialize struct to save results out.
@@ -342,14 +345,16 @@ for tt = 1:myQpfmriParams.nTrials
     % Load in the timeseries
     %timeseries = readmatrix('\\exasmb.rc.ufl.edu\blue\stevenweisberg\rtQuest\Ozzy_Test\processed\run1\dataPlot.txt');
     %timeseries = readmatrix('/blue/stevenweisberg/rtQuest/Ozzy_Test/processed/run1/dataPlot.txt');
-    timeseries = readmatrix(dataPath);
-    % Trim it based on the # of trials.
-    timeseries = timeseries(1:tt*(myQpfmriParams.trialLength*1000/myQpfmriParams.TR));
+    if myQpfmriParams.qpPres
+        timeseries = readmatrix(dataPath);
+        % Trim it based on the # of trials.
+        timeseries = timeseries(1:tt*(myQpfmriParams.trialLength*1000/myQpfmriParams.TR));
 
+
+        thePacket.response.values = timeseries;
+        thePacket.response.timebase = 0:myQpfmriParams.TR:length(thePacket.response.values)*myQpfmriParams.TR - myQpfmriParams.TR;
+    end
     
-    thePacket.response.values = timeseries;
-    thePacket.response.timebase = 0:myQpfmriParams.TR:length(thePacket.response.values)*myQpfmriParams.TR - myQpfmriParams.TR;
- 
     % Obtain outcomes from tfeUpdate 
     [outcomes, modelResponseStruct, thePacketOut, ~, baselineEstimate] = ...
         tfeUpdate(thePacket, myQpParams, myQpfmriParams, ...,
@@ -382,7 +387,7 @@ for tt = 1:myQpfmriParams.nTrials
     stimString = sprintf('Stimulus: %0.3f\n',qpfmriResults.stimulusVec(tt));
     fprintf(stimString);
     fid = fopen(stimPath,'at');
-    fprintf(fid,'%s\n',stimString);
+    fprintf(fid,'%0.3f\n',qpfmriResults.stimulusVec(tt));
     resultString = sprintf('Output value %.03f\n',yVals(end));
     fprintf(resultString);
     fprintf('\nQ+ parameters\n');
@@ -400,6 +405,7 @@ for tt = 1:myQpfmriParams.nTrials
             qpfmriResults,mainFig,handleStruct,thePacketOut,modelResponseStruct,...,
             yVals,yValsPlusBaseline);
     end
+    pause(myQpfmriParams.trialLength);
 
     
 end
