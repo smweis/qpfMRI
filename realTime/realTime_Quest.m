@@ -1,7 +1,7 @@
 function [qpfmriResults]=realTime_Quest(myQpfmriParams, myQpParams, subject, varargin)
 %% [qpfmriResults]=realTime_Quest(myQpfmriParams, varargin)
-% A script that will simulate fMRI BOLD data and fit a model with or
-% without Q+ control
+% A script that will take in a BOLD timeseries and output a stimulus
+% suggestion
 %
 % Syntax:
 %  [qpfmriResults]=realTime_Quest(myQpfmriParams, varargin)
