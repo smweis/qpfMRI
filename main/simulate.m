@@ -106,6 +106,7 @@ qpfmriResults = myQpfmriParams;
 qpfmriResults.maxBOLDoverTrials = nan(1,myQpfmriParams.nTrials);
 maxBOLDLatestGuess = myQpfmriParams.maxBOLDInitialGuess;
 qpfmriResults.psiParamsQuest = nan(myQpfmriParams.nTrials,length(fieldnames(myQpfmriParams.paramsDomain)));
+qpfmriResults.psiParamsBADS = nan(myQpfmriParams.nTrials,length(fieldnames(myQpfmriParams.paramsDomain)));
 qpfmriResults.entropyOverTrials = cell(1,myQpfmriParams.nTrials);
 
 % Set up save info and directory
@@ -261,6 +262,11 @@ for tt = 1:myQpfmriParams.nTrials
     % Save individual run output.
     psiParamsIndex = qpListMaxArg(questData.posterior);
     qpfmriResults.psiParamsQuest(tt,:) = questData.psiParamsDomain(psiParamsIndex,:);
+    
+    qpfmriResults.psiParamsBADS(tt,:) = qpFitBads(questData.trialData,questData.qpPF,qpfmriResults.psiParamsQuest(tt,:),questData.nOutcomes,...
+    'lowerBounds', lowerBounds,'upperBounds',upperBounds,...
+    'plausibleLowerBounds',lowerBounds,'plausibleUpperBounds',upperBounds);
+    
     qpfmriResults.maxBOLDoverTrials(tt) = maxBOLDLatestGuess;
     
     %% A QUESTION HERE! Do we want to store the MIN entropy for each trial, 
