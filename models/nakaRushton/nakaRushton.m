@@ -47,7 +47,7 @@ beta = params(3);
 y = (stimulusValue.^exponent ./ (stimulusValue.^exponent + semiSat.^exponent));
 
 % Scale to beta
-y = beta .* y./max(y);
+y = beta .* y;
 
 end % main function
 
