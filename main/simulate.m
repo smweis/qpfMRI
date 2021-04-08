@@ -50,7 +50,7 @@ stimulusDomain = {makeDomain(.01,1,25)};
 stimulusDomainSpacing = 'lin';
 
 % Number of trials to run.
-nTrials = 20;
+nTrials = 100;
 
 % Allow Q+ to control the stimuli or not (false).
 qpPres = true;
@@ -71,8 +71,8 @@ noiseSD = .1;
 %How long the trials are (in seconds).
 trialLength = 12;
 
-%simulatedPsiParams = [.25, .78, 1, .3];
-simulatedPsiParams = [];
+simulatedPsiParams = [5, .5, 1, .1];
+%simulatedPsiParams = [];
 
 [myQpfmriParams,myQpParams] = qpfmriParams(model,paramsDomain,'qpPres',qpPres,...,
 'stimulusDomain',stimulusDomain,'stimulusDomainSpacing',stimulusDomainSpacing,...,
@@ -277,7 +277,7 @@ for tt = 1:myQpfmriParams.nTrials
     % Calculate BOLD values from outcomes, scaled to maxBOLD and the
     % baseline estimate.
     yVals = (outcomes - nLower - 1)./nMid;
-    yVals = yVals*qpfmriResults.psiParamsQuest(tt,myQpfmriParams.betaIndex)*maxBOLDLatestGuess;
+    yVals = yVals*qpfmriResults.psiParamsBADS(tt,myQpfmriParams.betaIndex)*maxBOLDLatestGuess;
     yValsPlusBaseline = yVals + baselineEstimate;
 
     % Print results to the console.
