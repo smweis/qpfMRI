@@ -176,6 +176,7 @@ p.addParameter('nOutcomes','15',@ischar);
 p.addParameter('noiseSD','.1',@ischar);
 p.addParameter('baselineMaxBOLDInitial','6',@ischar);
 p.addParameter('baselineMaxBOLDRepeating','5',@ischar);
+p.addParameter('saveBads',true,@islogical);
 
 % Plotting parameters. This will only accept logicals (not strings) and
 % this will not be able to be used in compiled form. For testing, though,
@@ -272,7 +273,7 @@ end
 fprintf('seed = %d', myQpfmriParams.seed);
 
 %% Run Simulation
-[qpfmriResults]=simulate(myQpfmriParams, myQpParams,'showPlots',p.Results.showPlots);
+[qpfmriResults]=simulate(myQpfmriParams, myQpParams,'showPlots',p.Results.showPlots,'saveBads',p.Results.saveBads);
 
 end
 

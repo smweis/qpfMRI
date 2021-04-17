@@ -23,6 +23,8 @@ function [qpfmriResults]=simulate(myQpfmriParams, myQpParams, varargin)
 %                             Whether to save the figures as output.
 %   'saveGif'               - Logical (Default = false)
 %                             Whether to save the animated plot as a gif.
+%   'saveBads'              - Logical (Default = true)
+%                             Whether to save the BADS fits (takes longer)
 % Outputs:
 %   qpfmriResults         - Struct. Results of simulation. 
 %
@@ -38,8 +40,8 @@ model = @nakaRushton;
 % expected by the model. 
 
 paramsDomain = struct;
-paramsDomain.exponent = makeDomain(-2,2,20,'spacing','log');
-paramsDomain.semiSat = makeDomain(.01,1,10);
+paramsDomain.exponent = makeDomain(-1,1,20,'spacing','log');
+paramsDomain.semiSat = makeDomain(.1,1,10);
 paramsDomain.beta = makeDomain(.75,1.25,11,'spacing','zeno');
 
 % Sigma in the parameter domain is searching for noiseSD
@@ -58,7 +60,6 @@ qpPres = true;
 % Set the number of outcome categories / bins.
 nOutcomes = 15;
 
-
 % Do you want to see plots?
 showPlots = true; 
 
@@ -66,7 +67,7 @@ showPlots = true;
 maxBOLDSimulated = 1.5;
 
 % How noisy simulated BOLD data are
-noiseSD = .1; 
+noiseSD = .01; 
 
 %How long the trials are (in seconds).
 trialLength = 12;
@@ -95,6 +96,8 @@ p.addRequired('myQpParams',@isstruct);
 % Optional params for plotting
 p.addParameter('showPlots',false,@islogical);
 p.addParameter('saveFigs',false,@islogical);
+p.addParameter('saveGif',false,@islogical);
+p.addParameter('saveBads',true,@islogical);
 % Parse inputs
 p.parse( myQpfmriParams, myQpParams, varargin{:});
 
@@ -201,7 +204,9 @@ fprintf('Simulated parameters:\n');
 for i = 1:length(myQpfmriParams.simulatedPsiParams)
     fprintf('%s: %0.3f ',myQpfmriParams.paramNamesInOrder{i},myQpfmriParams.simulatedPsiParams(i));
 end
-fprintf('\n'); 
+fprintf('\n');
+fprintf('Noise in the simulation is set at %0.3f relative to a maxBOLD of %0.2f',myQpfmriParams.fMRInoise, myQpfmriParams.maxBOLDSimulated);
+fprintf('\n');
 
 %% Run simulated trials
 for tt = 1:myQpfmriParams.nTrials
@@ -241,7 +246,7 @@ for tt = 1:myQpfmriParams.nTrials
     % Update maxBOLD with our best guess at the maximum BOLD fMRI response
     % Only update maxBOLD after we've had at least one maxBOLD trial
     if tt > 2
-        maxBOLDLatestGuess = maxBOLDLatestGuess.*qpfmriResults.psiParamsQuest(tt-1,myQpfmriParams.betaIndex);
+        maxBOLDLatestGuess = maxBOLDLatestGuess.*psiParamsBest(1,myQpfmriParams.betaIndex);
     end
 
     % Create a packet
@@ -263,23 +268,27 @@ for tt = 1:myQpfmriParams.nTrials
     psiParamsIndex = qpListMaxArg(questData.posterior);
     qpfmriResults.psiParamsQuest(tt,:) = questData.psiParamsDomain(psiParamsIndex,:);
     
-    qpfmriResults.psiParamsBADS(tt,:) = qpFitBads(questData.trialData,questData.qpPF,qpfmriResults.psiParamsQuest(tt,:),questData.nOutcomes,...
-    'lowerBounds', lowerBounds,'upperBounds',upperBounds,...
-    'plausibleLowerBounds',lowerBounds,'plausibleUpperBounds',upperBounds);
+    % Saving BADS fit takes a good amount of time. 
+    if p.Results.saveBads
+        qpfmriResults.psiParamsBADS(tt,:) = qpFitBads(questData.trialData,questData.qpPF,qpfmriResults.psiParamsQuest(tt,:),questData.nOutcomes,...
+         'lowerBounds', lowerBounds,'upperBounds',upperBounds,...
+        'plausibleLowerBounds',lowerBounds,'plausibleUpperBounds',upperBounds);
+        psiParamsBest = qpfmriResults.psiParamsBADS(tt,:);
+        
+    else
+        psiParamsBest = qpfmriResults.psiParamsQuest(tt,:);
+    end
     
-    qpfmriResults.maxBOLDoverTrials(tt) = maxBOLDLatestGuess;
-    
-    %% A QUESTION HERE! Do we want to store the MIN entropy for each trial, 
-    % or do we want to store ALL entropy values (1 per trial) for each trial
-    qpfmriResults.entropyOverTrials{tt} = questData.entropyAfterTrial;
-    
-    %% 
-    % Calculate BOLD values from outcomes, scaled to maxBOLD and the
-    % baseline estimate.
+    % Calculate BOLD values from outcomes, scaled to maxBOLD and baseline.
     yVals = (outcomes - nLower - 1)./nMid;
-    yVals = yVals*qpfmriResults.psiParamsBADS(tt,myQpfmriParams.betaIndex)*maxBOLDLatestGuess;
+    yVals = yVals*psiParamsBest(1,myQpfmriParams.betaIndex)*maxBOLDLatestGuess;
     yValsPlusBaseline = yVals + baselineEstimate;
+    
+    % Save maxBOLD and entropy guesses
+    qpfmriResults.maxBOLDoverTrials(tt) = maxBOLDLatestGuess;
+    qpfmriResults.entropyOverTrials{tt} = questData.entropyAfterTrial;
 
+    %% Printing and Plotting Utilities
     % Print results to the console.
     trialString = sprintf('\nTrial %d: %s Stimulus Selection\n',tt,qpfmriResults.stimulusVecTrialTypes{tt});
     fprintf(trialString);
@@ -289,12 +298,12 @@ for tt = 1:myQpfmriParams.nTrials
     fprintf(resultString);
     fprintf('\nQ+ parameters\n');
     for i = 1:length(qpfmriResults.psiParamsQuest(tt,:))
-        fprintf('%s: %0.3f ',myQpfmriParams.paramNamesInOrder{i},qpfmriResults.psiParamsQuest(tt,i));
+        fprintf('%s: %0.3f ',myQpfmriParams.paramNamesInOrder{i},psiParamsBest(1,i));
     end
     fprintf('\nmaxBOLD estimate = %0.3f\n',maxBOLDLatestGuess);
     fprintf('\n');
     
-    %% Plot the ongoing results
+    % Plot the ongoing results
     % Update the plots
     if p.Results.showPlots
         % Draw plots
