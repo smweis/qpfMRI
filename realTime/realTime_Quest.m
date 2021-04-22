@@ -254,37 +254,10 @@ pause;
 disp(horzcat('Waiting for first ',num2str(myQpfmriParams.baselineMaxBOLDInitial),' trials'));
 initTrials = myQpfmriParams.baselineMaxBOLDInitial;
 
-% while trials <= myQpfmriParams.baselineMaxBOLDInitial
-%     %fid = fopen('\\exasmb.rc.ufl.edu\blue\stevenweisberg\rtQuest\Ozzy_Test\actualStimuli1.txt');
-%     %fid = fopen(stimPath);
-%     fid = fopen('/blue/stevenweisberg/rtQuest/Ozzy_Test/actualStimuli0.txt');
-%     stims = textscan(fid, '%s','delimiter','\n');
-%     trials = length(stims{1});
-%     pause(0.5);
-% end
-
 % Create a stimulusVec to hold the trial across the loops
 qpfmriResults.stimulusVec = nan(1,initTrials);
 % This allows us to store how each trial was generated
 qpfmriResults.stimulusVecTrialTypes = cell(1,initTrials);
-
-% for i = 1:trials
-%     qpfmriResults.stimulusVec(i) = str2double(stims{1}{i});
-%     if qpfmriResults.stimulusVec(i) == myQpfmriParams.maxBOLDStimulus
-%         qpfmriResults.stimulusVecTrialTypes{i} = 'maxbold';
-%     elseif qpfmriResults.stimulusVec(i) == myQpfmriParams.baselineStimulus
-%         qpfmriResults.stimulusVecTrialTypes{i} = 'baseline';
-%     else
-%         if myQpfmriParams.qpPres
-%             qpfmriResults.stimulusVecTrialTypes{i} = 'qplus';
-%         else
-%             qpfmriResults.stimulusVecTrialTypes{i} = 'random';
-%         end
-%     end
-
-%     disp(['Trial #',num2str(i),': ',num2str(qpfmriResults.stimulusVec(i)),...,
-%         ' ', qpfmriResults.stimulusVecTrialTypes{i}]);
-% end
 
 %% Plotting features
 % Create a plot in which we can track the model progress
@@ -326,13 +299,6 @@ for tt = 1:myQpfmriParams.nTrials
         end
     end
     
-%     if myQpfmriParams.qpPres
-%         qpfmriResults.stimulusVecTrialTypes{tt} = 'qplus';
-%         qpfmriResults.stimulusVec(tt) = qpQuery(questData);
-%     else
-%         qpfmriResults.stimulusVecTrialTypes{tt} = 'random';
-%     end
-    
     disp(['Trial #',num2str(tt),': ',num2str(qpfmriResults.stimulusVec(tt)),...,
         ' ', qpfmriResults.stimulusVecTrialTypes{tt}]);
     
@@ -346,14 +312,11 @@ for tt = 1:myQpfmriParams.nTrials
     thePacket = createPacket(myQpfmriParams,tt);
     
     % Load in the timeseries
-    %timeseries = readmatrix('\\exasmb.rc.ufl.edu\blue\stevenweisberg\rtQuest\Ozzy_Test\processed\run1\dataPlot.txt');
-    %timeseries = readmatrix('/blue/stevenweisberg/rtQuest/Ozzy_Test/processed/run1/dataPlot.txt');
     if myQpfmriParams.qpPres
         try
             timeseries = readmatrix(dataPath);
             % Trim it based on the # of trials.
             timeseries = timeseries(1:tt*(myQpfmriParams.trialLength*1000/myQpfmriParams.TR));
-
 
             thePacket.response.values = timeseries;
             thePacket.response.timebase = 0:myQpfmriParams.TR:length(thePacket.response.values)*myQpfmriParams.TR - myQpfmriParams.TR;
@@ -398,12 +361,16 @@ for tt = 1:myQpfmriParams.nTrials
     fprintf(trialString);
     stimString = sprintf('Stimulus: %0.3f\n',qpfmriResults.stimulusVec(tt));
     fprintf(stimString);
+    
+    % load in stimulus suggestion
     fid = fopen(stimPath,'at');
     fprintf(fid,'%0.3f\n',qpfmriResults.stimulusVec(tt));
     fclose(fid);
+    
     resultString = sprintf('Output value %.03f\n',yVals(end));
     fprintf(resultString);
     fprintf('\nQ+ parameters\n');
+    
     for i = 1:length(qpfmriResults.psiParamsQuest(tt,:))
         fprintf('%s: %0.3f ',myQpfmriParams.paramNamesInOrder{i},qpfmriResults.psiParamsQuest(tt,i));
     end
