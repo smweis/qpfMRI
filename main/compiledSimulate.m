@@ -77,10 +77,10 @@ noiseSD = '.01';
 
 nTrials = '30';
 
-p1Sim = '.12';
-p2Sim = '.30';
-p3Sim = '1.0';
-p4Sim = '.1';
+p1Sim = '';
+p2Sim = '';
+p3Sim = '';
+p4Sim = '';
 
 % Note, this will save a copy of questData after it is initialized. 
 [qpfmriResults]=compiledSimulate(modelName,'nParams',nP,...,
@@ -237,7 +237,7 @@ for name = 1:str2double(p.Results.nParams)
         myQpfmriParams.simulatedPsiParams(name) = param;
         fprintf('Parameter %s specified as %0.5f\n',myQpfmriParams.paramNamesInOrder{name},param);
     else
-        fprintf('Parameter %s randomly chosen as %0.5f',myQpfmriParams.paramNamesInOrder{name},myQpfmriParams.simulatedPsiParams(name));
+        fprintf('Parameter %s will be randomly chosen\n',myQpfmriParams.paramNamesInOrder{name});
     end
 end
 
@@ -269,8 +269,6 @@ if strcmpi(p.Results.seed,'choose')
 else
     myQpfmriParams.seed = str2double(p.Results.seed);
 end
-
-fprintf('seed = %d', myQpfmriParams.seed);
 
 %% Run Simulation
 [qpfmriResults]=simulate(myQpfmriParams, myQpParams,'showPlots',p.Results.showPlots,'saveBads',p.Results.saveBads);
