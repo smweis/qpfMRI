@@ -55,7 +55,7 @@ stimulusDomainSpacing = 'lin';
 nTrials = 100;
 
 % Allow Q+ to control the stimuli or not (false).
-qpPres = true;
+qpPres = false;
 
 % Set the number of outcome categories / bins.
 nOutcomes = 15;
@@ -72,8 +72,8 @@ noiseSD = .01;
 %How long the trials are (in seconds).
 trialLength = 12;
 
-simulatedPsiParams = [5, .5, 1, .1];
-%simulatedPsiParams = [];
+%simulatedPsiParams = [5, .5, 1, .1];
+simulatedPsiParams = [];
 
 [myQpfmriParams,myQpParams] = qpfmriParams(model,paramsDomain,'qpPres',qpPres,...,
 'stimulusDomain',stimulusDomain,'stimulusDomainSpacing',stimulusDomainSpacing,...,
@@ -115,7 +115,7 @@ qpfmriResults.entropyOverTrials = cell(1,myQpfmriParams.nTrials);
 % Set up save info and directory
 folderName = ['.' filesep myQpfmriParams.outFolder];
 fileName = ['sim_' myQpfmriParams.outNum '.mat'];
-if ~exist(folderName,'dir')
+if ~exist(folderName,'dir') && (p.Results.saveFigs || p.Results.saveGif)
     mkdir(folderName);
 end
 
@@ -126,12 +126,39 @@ end
 % every time.
 if strcmp(myQpfmriParams.seed,'choose')
     rngSeed = rng('shuffle'); rngSeed = rng('shuffle');
+    fprintf('Random seed initialized %.04f\n', rngSeed.Seed);
 else 
     fprintf('Initial random call %.04f\n',rand);
     rngSeed = rng(myQpfmriParams.seed); rngSeed = rng(myQpfmriParams.seed);
     fprintf('Random call after seed %.04f\n',rand);
 end
 
+
+%% Select the veridical psychometric paramteers for the function.
+% Pick some random params to simulate if none provided but set beta to 1.
+% We require the simulated parameters to result in a baseline trial = 0.
+if isempty(myQpfmriParams.simulatedPsiParams)
+    
+    myQpfmriParams = createRandomModelParams(myQpfmriParams);
+
+else
+    
+    % Beta will converge to 1 as maxBOLD gets closer and closer to the
+    % simulated maxBOLD. As a result, when simulating data, beta should always
+    % be set to 1. 
+    myQpfmriParams.simulatedPsiParams(myQpfmriParams.betaIndex) = 1;
+    assert(myQpfmriParams.simulatedPsiParams(myQpfmriParams.betaIndex)==1,'Simulated Beta should always be 1.');
+    
+    % Select simulated psychometric parameters whose range of outputs
+    % are between 0 and 1 for the model being used. 
+    if abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)) < myQpfmriParams.simulatedPsiParams(myQpfmriParams.betaIndex)/10000
+        warning('Simulated psychometric parameters will result in minimum values below 0.\nMin possible value = %.02f',abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)));
+    elseif abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)) > .01
+        warning('Simulated psychometric parameters will result in minimum values greater than 0.\nMin possible value = %.02f',abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)));
+    elseif abs(myQpfmriParams.model(myQpfmriParams.maxBOLDStimulus,myQpfmriParams.simulatedPsiParams)) < .99
+        warning('Simulated psychometric parameters will result in maximum BOLD values below 1.\nMax possible value = %.02f',myQpfmriParams.model(myQpfmriParams.maxBOLDStimulus,myQpfmriParams.simulatedPsiParams));
+    end
+end
 
 
 %% Derive some lower and upper bounds from the parameter ranges. This is
