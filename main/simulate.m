@@ -140,7 +140,7 @@ end
 if isempty(myQpfmriParams.simulatedPsiParams)
     
     myQpfmriParams = createRandomModelParams(myQpfmriParams);
-
+    qpfmriResults = myQpfmriParams;
 else
     
     % Beta will converge to 1 as maxBOLD gets closer and closer to the
