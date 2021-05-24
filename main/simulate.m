@@ -96,18 +96,19 @@ model = @orthBasisSet;
 paramsDomain = struct;
 paramsDomain.firstOrder = makeDomain(-1,1,11);
 paramsDomain.secondOrder = makeDomain(-1,1,11);
-paramsDomain.thirdOrder = makeDomain(-1,1,11);
+%paramsDomain.thirdOrder = makeDomain(-1,1,11);
+paramsDomain.thirdOrder = 1;
 paramsDomain.beta = makeDomain(.75,1.25,7,'spacing','zeno');
 
 % Sigma in the parameter domain is searching for noiseSD
-paramsDomain.sigma = makeDomain(0.01,1,7);
+paramsDomain.sigma = makeDomain(0.01,1,11);
 
 % Specify a stimulus domain and whether it spaced linear or log.
 stimulusDomain = {makeDomain(.01,1,10)};
 stimulusDomainSpacing = 'lin';
 
 % Number of trials to run.
-nTrials = 100;
+nTrials = 30;
 
 % Allow Q+ to control the stimuli or not (false).
 qpPres = true;
@@ -127,20 +128,13 @@ noiseSD = .01;
 %How long the trials are (in seconds).
 trialLength = 12;
 
-simulatedPsiParams = [.1, .5, -.5, 1, .1];
-%simulatedPsiParams = [];
+%simulatedPsiParams = [.1, .5, 1, 1, .1];
+simulatedPsiParams = [];
 
-% We have to calculate these
-[~,maxBOLDStimulusIndex] = max(model(stimulusDomain{:},simulatedPsiParams));
-[~, baselineStimulusIndex] = min(model(stimulusDomain{:},simulatedPsiParams));
-
-maxBOLDStimulus = stimulusDomain{:}(maxBOLDStimulusIndex);
-baselineStimulus = stimulusDomain{:}(baselineStimulusIndex);
 
 [myQpfmriParams,myQpParams] = qpfmriParams(model,paramsDomain,'qpPres',qpPres,...,
 'stimulusDomain',stimulusDomain,'stimulusDomainSpacing',stimulusDomainSpacing,...,
 'noiseSD',noiseSD,'nTrials',nTrials,'maxBOLDSimulated',maxBOLDSimulated,...,
-'baselineStimulus',baselineStimulus,'maxBOLDStimulus',maxBOLDStimulus,...,
 'trialLength',trialLength,'nOutcomes',nOutcomes,'simulatedPsiParams',simulatedPsiParams);
 
 

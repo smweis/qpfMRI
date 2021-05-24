@@ -76,6 +76,11 @@ while stillSearching
     end
 end
 
+% Create baseline stimulus and maxBOLD stimulus
+[~, baselineStimulusIndex] = min(myQpfmriParams.model(myQpfmriParams.stimulusDomain{:},myQpfmriParams.simulatedPsiParams));
+myQpfmriParams.baselineStimulus = myQpfmriParams.stimulusDomain{:}(baselineStimulusIndex);
+[~, maxBOLDStimulusIndex] = max(myQpfmriParams.model(myQpfmriParams.stimulusDomain{:},myQpfmriParams.simulatedPsiParams));
+myQpfmriParams.maxBOLDStimulus = myQpfmriParams.stimulusDomain{:}(maxBOLDStimulusIndex);
 
 end
 
