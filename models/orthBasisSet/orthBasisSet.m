@@ -110,7 +110,10 @@ fineY = firstOrder.*p1Min + ...
     thirdOrder.*p3Min;
 
 % Normalize to be between 0 and 1
-y = (y - min(fineY))./(max(fineY)-min(fineY));
+% Make sure we aren't dividing by zero (the max and min are the same).
+if max(fineY) - min(fineY) > 1.e-6
+    y = (y - min(fineY))./(max(fineY)-min(fineY));
+end
 
 % Scale to beta
 y = beta .* y;

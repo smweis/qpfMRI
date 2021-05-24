@@ -357,7 +357,7 @@ for tt = 1:myQpfmriParams.nTrials
     % Save individual run output.
     psiParamsIndex = qpListMaxArg(questData.posterior);
     qpfmriResults.psiParamsQuest(tt,:) = questData.psiParamsDomain(psiParamsIndex,:);
-    
+
     % Saving BADS fit takes a good amount of time. 
     if p.Results.saveBads
         qpfmriResults.psiParamsBADS(tt,:) = qpFitBads(questData.trialData,questData.qpPF,qpfmriResults.psiParamsQuest(tt,:),questData.nOutcomes,...

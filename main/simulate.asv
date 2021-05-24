@@ -94,9 +94,9 @@ model = @orthBasisSet;
 % expected by the model. 
 
 paramsDomain = struct;
-paramsDomain.firstOrder = makeDomain(-1,1,8);
-paramsDomain.secondOrder = makeDomain(-1,1,8);
-paramsDomain.thirdOrder = makeDomain(-1,1,8);
+paramsDomain.firstOrder = makeDomain(-1,1,11);
+paramsDomain.secondOrder = makeDomain(-1,1,11);
+paramsDomain.thirdOrder = makeDomain(-1,1,11);
 paramsDomain.beta = makeDomain(.75,1.25,7,'spacing','zeno');
 
 % Sigma in the parameter domain is searching for noiseSD
@@ -122,13 +122,13 @@ showPlots = true;
 maxBOLDSimulated = 1.5;
 
 % How noisy simulated BOLD data are
-noiseSD = .3; 
+noiseSD = .01; 
 
 %How long the trials are (in seconds).
 trialLength = 12;
 
-%simulatedPsiParams = [.2, .5, -.1, 1, .1];
-simulatedPsiParams = [];
+simulatedPsiParams = [.1, .5, -.5, 1, .1];
+%simulatedPsiParams = [];
 
 % We have to calculate these
 [~,maxBOLDStimulusIndex] = max(model(stimulusDomain{:},simulatedPsiParams));
@@ -141,12 +141,11 @@ baselineStimulus = stimulusDomain{:}(baselineStimulusIndex);
 'stimulusDomain',stimulusDomain,'stimulusDomainSpacing',stimulusDomainSpacing,...,
 'noiseSD',noiseSD,'nTrials',nTrials,'maxBOLDSimulated',maxBOLDSimulated,...,
 'baselineStimulus',baselineStimulus,'maxBOLDStimulus',maxBOLDStimulus,...,
-'s
 'trialLength',trialLength,'nOutcomes',nOutcomes,'simulatedPsiParams',simulatedPsiParams);
 
 
 % Run the simulation. 
-[qpfmriResults]=simulate(myQpfmriParams,myQpParams,'showPlots',showPlots);
+[qpfmriResults]=simulate(myQpfmriParams,myQpParams,'showPlots',showPlots,'saveBads',false);
 
 %}
 
@@ -358,7 +357,7 @@ for tt = 1:myQpfmriParams.nTrials
     % Save individual run output.
     psiParamsIndex = qpListMaxArg(questData.posterior);
     qpfmriResults.psiParamsQuest(tt,:) = questData.psiParamsDomain(psiParamsIndex,:);
-    
+
     % Saving BADS fit takes a good amount of time. 
     if p.Results.saveBads
         qpfmriResults.psiParamsBADS(tt,:) = qpFitBads(questData.trialData,questData.qpPF,qpfmriResults.psiParamsQuest(tt,:),questData.nOutcomes,...
