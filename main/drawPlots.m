@@ -217,7 +217,7 @@ end
 % Update Y-limit if the plot is going out of bounds. 
 currentYlim = ylim;
 if max(modelResponseStruct.values) > currentYlim(2)
-    ylim([-modelResponseStruct.values modelResponseStruct.values]);
+    ylim([min(modelResponseStruct.values) max(modelResponseStruct.values)]);
 end
 
 % Custom legend handling is the easiest way to go
