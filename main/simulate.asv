@@ -1,10 +1,10 @@
-function [qpfmriResults]=realTime_Quest(varargin)
-%% [qpfmriResults]=realTime_Quest(myQpfmriParams, varargin)
-% A script that will take in a BOLD timeseries and output a stimulus
-% suggestion
+function [qpfmriResults]=simulate(myQpfmriParams, myQpParams, varargin)
+%% [qpfmriResults]=simulate(myQpfmriParams, varargin)
+% A script that will simulate fMRI BOLD data and fit a model with or
+% without Q+ control
 %
 % Syntax:
-%  [qpfmriResults]=realTime_Quest(myQpfmriParams, varargin)
+%  [qpfmriResults]=simulate(myQpfmriParams, varargin)
 %
 % Description:
 %	Takes in a model and a possible set of parameters and whether or not Q+ 
@@ -23,36 +23,91 @@ function [qpfmriResults]=realTime_Quest(varargin)
 %                             Whether to save the figures as output.
 %   'saveGif'               - Logical (Default = false)
 %                             Whether to save the animated plot as a gif.
+%   'saveBads'              - Logical (Default = true)
+%                             Whether to save the BADS fits (takes longer)
 % Outputs:
 %   qpfmriResults         - Struct. Results of simulation. 
 %
 %Examples: 
 %{
 ---------------------------------------------------------------------------
-Example 1: Logistic Model
+Example 1: NakaRushton Model
 
-subject = 'Ozzy_Test';
 % Provide a model handle
-model = @logistic;
+model = @nakaRushton;
 
 % Specify the parameter domain. Each value must correspond to a parameter
 % expected by the model. 
 
 paramsDomain = struct;
-paramsDomain.slope = makeDomain(-1.2,-.2,10,'spacing','log');
-paramsDomain.semiSat = makeDomain(.01,1,10);
+paramsDomain.exponent = makeDomain(-1,1,20,'spacing','log');
+paramsDomain.semiSat = makeDomain(.1,1,10);
 paramsDomain.beta = makeDomain(.75,1.25,11,'spacing','zeno');
 
 % Sigma in the parameter domain is searching for noiseSD
 paramsDomain.sigma = makeDomain(0.01,1,10);
 
 % Specify a stimulus domain and whether it spaced linear or log.
-stimulusDomain = {makeDomain(.5,1,12)};
-stimulusDomainSpacing = 'log';
+stimulusDomain = {makeDomain(.01,1,25)};
+stimulusDomainSpacing = 'lin';
 
-% Number of trials to run and TR.
-nTrials = 20;
-TRmsecs = 800;
+% Number of trials to run.
+nTrials = 100;
+
+% Allow Q+ to control the stimuli or not (false).
+qpPres = false;
+
+% Set the number of outcome categories / bins.
+nOutcomes = 15;
+
+% Do you want to see plots?
+showPlots = true; 
+
+% The range of BOLD signal to simulate (e.g., from baseline to maximum BOLD)
+maxBOLDSimulated = 1.5;
+
+% How noisy simulated BOLD data are
+noiseSD = .01; 
+
+%How long the trials are (in seconds).
+trialLength = 12;
+
+%simulatedPsiParams = [5, .5, 1, .1];
+simulatedPsiParams = [];
+
+[myQpfmriParams,myQpParams] = qpfmriParams(model,paramsDomain,'qpPres',qpPres,...,
+'stimulusDomain',stimulusDomain,'stimulusDomainSpacing',stimulusDomainSpacing,...,
+'noiseSD',noiseSD,'nTrials',nTrials,'maxBOLDSimulated',maxBOLDSimulated,...,
+'trialLength',trialLength,'nOutcomes',nOutcomes,'simulatedPsiParams',simulatedPsiParams);
+
+
+% Run the simulation. 
+[qpfmriResults]=simulate(myQpfmriParams,myQpParams,'showPlots',showPlots);
+
+
+Example 2: Orthogonal basis set Model
+
+% Provide a model handle
+model = @orthBasisSet;
+
+% Specify the parameter domain. Each value must correspond to a parameter
+% expected by the model. 
+
+paramsDomain = struct;
+paramsDomain.firstOrder = makeDomain(-1,1,11);
+paramsDomain.secondOrder = makeDomain(-1,1,11);
+paramsDomain.thirdOrder = makeDomain(-1,1,11);
+paramsDomain.beta = makeDomain(.75,1.25,7,'spacing','zeno');
+
+% Sigma in the parameter domain is searching for noiseSD
+paramsDomain.sigma = makeDomain(0.01,1,7);
+
+% Specify a stimulus domain and whether it spaced linear or log.
+stimulusDomain = {makeDomain(.01,1,10)};
+stimulusDomainSpacing = 'lin';
+
+% Number of trials to run.
+nTrials = 100;
 
 % Allow Q+ to control the stimuli or not (false).
 qpPres = true;
@@ -63,91 +118,51 @@ nOutcomes = 15;
 % Do you want to see plots?
 showPlots = true; 
 
+% The range of BOLD signal to simulate (e.g., from baseline to maximum BOLD)
+maxBOLDSimulated = 1.5;
+
+% How noisy simulated BOLD data are
+noiseSD = .01; 
+
 %How long the trials are (in seconds).
 trialLength = 12;
 
-outNum = 1;
+simulatedPsiParams = [.1, .5, -.5, 1, .1];
+%simulatedPsiParams = [];
+
+% We have to calculate these
+[~,maxBOLDStimulusIndex] = max(model(stimulusDomain{:},simulatedPsiParams));
+[~, baselineStimulusIndex] = min(model(stimulusDomain{:},simulatedPsiParams));
+
+maxBOLDStimulus = stimulusDomain{:}(maxBOLDStimulusIndex);
+baselineStimulus = stimulusDomain{:}(baselineStimulusIndex);
 
 [myQpfmriParams,myQpParams] = qpfmriParams(model,paramsDomain,'qpPres',qpPres,...,
 'stimulusDomain',stimulusDomain,'stimulusDomainSpacing',stimulusDomainSpacing,...,
-'nTrials',nTrials,'trialLength',trialLength,'nOutcomes',nOutcomes,'TR',TRmsecs,'outNum',outNum);
+'noiseSD',noiseSD,'nTrials',nTrials,'maxBOLDSimulated',maxBOLDSimulated,...,
+'baselineStimulus',baselineStimulus,'maxBOLDStimulus',maxBOLDStimulus,...,
+'trialLength',trialLength,'nOutcomes',nOutcomes,'simulatedPsiParams',simulatedPsiParams);
 
 
 % Run the simulation. 
-[qpfmriResults]=realTime_Quest(myQpfmriParams,myQpParams,subject,'showPlots',showPlots);
+[qpfmriResults]=simulate(myQpfmriParams,myQpParams,'showPlots',showPlots,'saveBads',false);
 
 %}
 
 
-%% TO DO 
-% 
-% 2. I'd like to clean up how RANDOM vs. Q+ is handled. 
-%       Ideally for random, it's not doing much...maybe fitting the model
-%       and plotting just to keep things consistent. 
-
 %% Parse Inputs
-debug = 0;
 p = inputParser;
 
-% p.addRequired('myQpfmriParams',@isstruct);
-% p.addRequired('myQpParams',@isstruct);
-% p.addRequired('subject',@isstr);
-% 
+p.addRequired('myQpfmriParams',@isstruct);
+p.addRequired('myQpParams',@isstruct);
+
 % Optional params for plotting
 p.addParameter('showPlots',false,@islogical);
 p.addParameter('saveFigs',false,@islogical);
-% % Parse inputs
-% p.parse( myQpfmriParams, myQpParams, subject, varargin{:});
-
-
-if debug
-    p.addParameter('myQpfmriParams',@isstruct);
-    p.addParameter('myQpParams',@isstruct);
-    % Parse inputs
-    p.parse(varargin{:});
-    myQpfmriParams = p.Results.myQpfmriParams;
-    myQpParams = p.Results.myQpParams;
-else
-    [subject,myQpfmriParams,myQpParams] = getparams();
-    % Parse inputs
-    p.parse(varargin{:});
-end
-
-run = num2str(myQpfmriParams.outNum);
-%% Double check a few key parameters
-
-function validateInput(inputVar)
-    % Take a string that matches the name of a variable. Tell the user what
-    % that variable is currently entered as. They can validate or change.
-    
-    fprintf('%s is %d.\nCorrect? Press Enter.\n',inputVar,myQpfmriParams.(inputVar));
-    pOutput = input('Wrong? Input the correct number: ','s');
-    
-    if isempty(pOutput)
-        fprintf('%s set to %d\n',inputVar, myQpfmriParams.(inputVar));
-    elseif floor(str2double(pOutput)) == ceil(str2double(pOutput))
-	    myQpfmriParams.(inputVar) = str2double(pOutput);
-        fprintf('%s has CHANGED: New value is %d\n',inputVar,myQpfmriParams.(inputVar));
-    else
-        error("Not an integer");
-    end
-    fprintf('\n');
-end
-
-validateInput('outNum');
-validateInput('nTrials');
-validateInput('trialLength');
-validateInput('TR');
-
-[~, scannerPath, ~, ~, ~, subjectPath] = getpaths(subject, 'neurofeedback');
-
-% dataPath = input("Enter the full path of the directory location of the TIMESERIES: ",'s');
-% stimPath = input("Enter the full path of the directory location where the
-% STIMULUS SUGGESTION should be written: ",'s');
-dataPath = fullfile(subjectPath,'processed',strcat('run',run),'fMRITimeseries_0.txt');
-stimPath = fullfile(subjectPath,'stims',strcat('run',run));
-stimFile = 'suggestions.txt';
-% TODO: add warning if stimFile exists (will be overwritten)
+p.addParameter('saveGif',false,@islogical);
+p.addParameter('saveBads',true,@islogical);
+% Parse inputs
+p.parse( myQpfmriParams, myQpParams, varargin{:});
 
 
 %% Initialize struct to save results out.
@@ -157,20 +172,59 @@ qpfmriResults = myQpfmriParams;
 qpfmriResults.maxBOLDoverTrials = nan(1,myQpfmriParams.nTrials);
 maxBOLDLatestGuess = myQpfmriParams.maxBOLDInitialGuess;
 qpfmriResults.psiParamsQuest = nan(myQpfmriParams.nTrials,length(fieldnames(myQpfmriParams.paramsDomain)));
+qpfmriResults.psiParamsBADS = nan(myQpfmriParams.nTrials,length(fieldnames(myQpfmriParams.paramsDomain)));
 qpfmriResults.entropyOverTrials = cell(1,myQpfmriParams.nTrials);
 
 % Set up save info and directory
 folderName = ['.' filesep myQpfmriParams.outFolder];
-fileName = ['fMRIresults_' num2str(myQpfmriParams.outNum) '.mat'];
-modelFile = ['model_' num2str(myQpfmriParams.outNum) '.mat'];
-if ~exist(folderName,'dir')
+fileName = ['sim_' myQpfmriParams.outNum '.mat'];
+if ~exist(folderName,'dir') && (p.Results.saveFigs || p.Results.saveGif)
     mkdir(folderName);
 end
 
 
-%% Some checking on the parameters and making sure Q+ has the models it needs.
+%% Handle seed
 
-% Derive some lower and upper bounds from the parameter ranges. This is
+% If seed is a keyword, pick a random seed. We use shuffle so it's new
+% every time.
+if strcmp(myQpfmriParams.seed,'choose')
+    rngSeed = rng('shuffle'); rngSeed = rng('shuffle');
+    fprintf('Random seed initialized %.04f\n', rngSeed.Seed);
+else 
+    fprintf('Initial random call %.04f\n',rand);
+    rngSeed = rng(myQpfmriParams.seed); rngSeed = rng(myQpfmriParams.seed);
+    fprintf('Random call after seed %.04f\n',rand);
+end
+
+
+%% Select the veridical psychometric paramteers for the function.
+% Pick some random params to simulate if none provided but set beta to 1.
+% We require the simulated parameters to result in a baseline trial = 0.
+if isempty(myQpfmriParams.simulatedPsiParams)
+    
+    myQpfmriParams = createRandomModelParams(myQpfmriParams);
+    qpfmriResults = myQpfmriParams;
+else
+    
+    % Beta will converge to 1 as maxBOLD gets closer and closer to the
+    % simulated maxBOLD. As a result, when simulating data, beta should always
+    % be set to 1. 
+    myQpfmriParams.simulatedPsiParams(myQpfmriParams.betaIndex) = 1;
+    assert(myQpfmriParams.simulatedPsiParams(myQpfmriParams.betaIndex)==1,'Simulated Beta should always be 1.');
+    
+    % Select simulated psychometric parameters whose range of outputs
+    % are between 0 and 1 for the model being used. 
+    if abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)) < myQpfmriParams.simulatedPsiParams(myQpfmriParams.betaIndex)/10000
+        warning('Simulated psychometric parameters will result in minimum values below 0.\nMin possible value = %.02f',abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)));
+    elseif abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)) > .01
+        warning('Simulated psychometric parameters will result in minimum values greater than 0.\nMin possible value = %.02f',abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)));
+    elseif abs(myQpfmriParams.model(myQpfmriParams.maxBOLDStimulus,myQpfmriParams.simulatedPsiParams)) < .99
+        warning('Simulated psychometric parameters will result in maximum BOLD values below 1.\nMax possible value = %.02f',myQpfmriParams.model(myQpfmriParams.maxBOLDStimulus,myQpfmriParams.simulatedPsiParams));
+    end
+end
+
+
+%% Derive some lower and upper bounds from the parameter ranges. This is
 % used later in maximum likelihood fitting
 lowerBounds = zeros(1,length(myQpfmriParams.paramNamesInOrder));
 upperBounds = zeros(1,length(myQpfmriParams.paramNamesInOrder));
@@ -205,84 +259,48 @@ end
 % Create a simulated observer with binned output
 myQpParams.qpOutcomeF = @(f) qpSimulatedObserver(f,myQpParams.qpPF,myQpfmriParams.simulatedPsiParams);
 
+%% Initialize Q+. 
+% Warn the user that initializing has started and may take a minute.
+tic
+fprintf('Initializing Q+. This may take a minute...\n');
+questData = qpInitialize(myQpParams);
+toc
+
+% Tack on a continuous output simulated observer to myQpParams
+myQpParams.continuousPF = @(f) myQpfmriParams.model(f,myQpfmriParams.simulatedPsiParams);
+
 % Calculate the lower headroom bin offset. We'll use this for plotting.
 nLower = max([1 round(myQpfmriParams.headroom*myQpParams.nOutcomes)]);
 nUpper = max([1 round(myQpfmriParams.headroom*myQpParams.nOutcomes)]);
 nMid = myQpParams.nOutcomes - nLower - nUpper;
 
-%% Initialize Q+
-
-% Do we already have data?
-% These try-catch blocks will search for .mat files named with the previous
-% run number. 
-loadToggle = input("Do you want to load previous Q+ data? [Y/n]: ",'s');
-if strcmp(loadToggle,'y')
-    try
-        % Load in the last run's questData
-        oldModelFile = ['model_' num2str(myQpfmriParams.outNum - 1) '.mat'];
-        load(fullfile(folderName,oldModelFile),'questData');
-        fprintf('Re-loading data from run %d\n',myQpfmriParams.outNum);
-
-        % Clean out the the trial-specific stuff. Keep the rest. 
-        questData.entropyAfterTrial = [];
-        questData.trialData = [];
-        questData.stimIndices = [];
-
-    catch
-        % Initialize Q+. 
-        % Warn the user that initializing has started and may take a minute.
-        fprintf('No model file found: %s\n',oldModelFile);
-        tic
-        fprintf('Initializing Q+. This may take a minute...\n');
-        questData = qpInitialize(myQpParams);
-        toc
-    end
-
-    try
-        % Load in last run's maxBOLDFinal estimate.
-        oldmaxBold = ['fMRIresults_' num2str(myQpfmriParams.outNum - 1) '.mat'];
-        maxBOLDLastRun = load(fullfile(folderName,oldmaxBold),'qpfmriResults');
-        maxBOLDLatestGuess = maxBOLDLastRun.qpfmriResults.maxBOLDFinal;
-    catch
-        fprintf('No results file found: %s\n',oldmaxBold);
-        fprintf('Starting with maxBOLD = %d.\n',qpfmriResults.maxBOLDInitialGuess);
-    end
-else
-    tic
-    fprintf('Initializing Q+. This may take a minute...\n');
-    questData = qpInitialize(myQpParams);
-    toc
-    fprintf('Starting with maxBOLD = %d.\n',qpfmriResults.maxBOLDInitialGuess);
-end
-
-% Tack on a continuous output simulated observer to myQpParams
-myQpParams.continuousPF = @(f) myQpfmriParams.model(f,myQpfmriParams.simulatedPsiParams);
-
-% Store this untrained copy. We will re-train the run model each time.
+% Create a copy of Q+
 questDataUntrained = questData;
 
-%% Wait for the initial trials to be completed. 
-% Once they're done, store the values for use in the main loop below.
-disp("Press ENTER to begin");
-pause;
-
-disp(horzcat('Waiting for first ',num2str(myQpfmriParams.baselineMaxBOLDInitial),' trials'));
-initTrials = myQpfmriParams.baselineMaxBOLDInitial;
-
 % Create a stimulusVec to hold the trial across the loops
-qpfmriResults.stimulusVec = nan(1,initTrials);
+qpfmriResults.stimulusVec = nan(1,myQpfmriParams.nTrials);
 % This allows us to store how each trial was generated
-qpfmriResults.stimulusVecTrialTypes = cell(1,initTrials);
+qpfmriResults.stimulusVecTrialTypes = cell(1,myQpfmriParams.nTrials);
 
 %% Plotting features
+
 % Create a plot in which we can track the model progress
 if p.Results.showPlots
-    [mainFig,handleStruct] = initializePlots(myQpfmriParams,myQpParams,'realData',true);
+    [mainFig,handleStruct] = initializePlots(myQpfmriParams,myQpParams);
 end
 
-%% MAIN LOOP
+%% Print the simulated psychometric parameters:
+fprintf('Simulated parameters:\n'); 
+for i = 1:length(myQpfmriParams.simulatedPsiParams)
+    fprintf('%s: %0.3f ',myQpfmriParams.paramNamesInOrder{i},myQpfmriParams.simulatedPsiParams(i));
+end
+fprintf('\n');
+fprintf('Noise in the simulation is set at %0.3f relative to a maxBOLD of %0.2f',myQpfmriParams.fMRInoise, myQpfmriParams.maxBOLDSimulated);
+fprintf('\n');
+
+%% Run simulated trials
 for tt = 1:myQpfmriParams.nTrials
-    
+
     % First trials require baseline or maxBOLD. 
     if tt <= myQpfmriParams.baselineMaxBOLDInitial
         % Baseline trial
@@ -314,115 +332,68 @@ for tt = 1:myQpfmriParams.nTrials
         end
     end
     
-    disp(['Trial #',num2str(tt),': ',num2str(qpfmriResults.stimulusVec(tt)),...,
-        ' ', qpfmriResults.stimulusVecTrialTypes{tt}]);
-    
+
     % Update maxBOLD with our best guess at the maximum BOLD fMRI response
     % Only update maxBOLD after we've had at least one maxBOLD trial
-    if tt > 2 && ~isnan(qpfmriResults.psiParamsQuest(tt-1,myQpfmriParams.betaIndex))
-        maxBOLDLatestGuess = maxBOLDLatestGuess.*qpfmriResults.psiParamsQuest(tt-1,myQpfmriParams.betaIndex);
+    if tt > 2
+        maxBOLDLatestGuess = maxBOLDLatestGuess.*psiParamsBest(1,myQpfmriParams.betaIndex);
     end
 
     % Create a packet
     thePacket = createPacket(myQpfmriParams,tt);
-    
-    % Load in the timeseries
-<<<<<<< HEAD
-    if tt > 2
-        if myQpfmriParams.qpPres
-            try
-                timeseries = readmatrix(dataPath);
-                % Trim it based on the # of trials.
-                %timeseries = timeseries(1:tt*(myQpfmriParams.trialLength*1000/myQpfmriParams.TR));
-                timeseries = timeseries(1:tt-1);
-                
-                
-                thePacket.response.values = timeseries;
-                thePacket.response.timebase = 0:myQpfmriParams.TR:length(thePacket.response.values)*myQpfmriParams.TR - myQpfmriParams.TR;
-            catch
-                warning("Could not load timeseries");
-                if tt > myQpfmriParams.baselineMaxBOLDInitial
-                    warning("Defaulting to random stimulus");
-                    qpfmriResults.stimulusVec(tt) = questData.stimParamsDomain(randi(questData.nStimParamsDomain));
-                    qpfmriResults.stimulusVecTrialTypes{tt} = 'random';
-                end
-=======
-    if myQpfmriParams.qpPres
-        try
-            timeseries = readmatrix(dataPath);
-            % Trim it based on the # of trials.
-            timeseries = timeseries(1:tt*(myQpfmriParams.trialLength*1000/myQpfmriParams.TR));
 
-            thePacket.response.values = timeseries;
-            thePacket.response.timebase = 0:myQpfmriParams.TR:length(thePacket.response.values)*myQpfmriParams.TR - myQpfmriParams.TR;
-        catch
-            warning("Could not load timeseries");
-            if tt > myQpfmriParams.baselineMaxBOLDInitial
-                warning("Defaulting to random stimulus");
-                qpfmriResults.stimulusVec(tt) = questData.stimParamsDomain(randi(questData.nStimParamsDomain));
-                qpfmriResults.stimulusVecTrialTypes{tt} = 'random';
->>>>>>> fe27d3f0922fdee257a0d4252cbb1511e10f8382
-            end
-        end
-        
-        % Obtain outcomes from tfeUpdate
-        [outcomes, modelResponseStruct, thePacketOut, ~, baselineEstimate] = ...
-            tfeUpdate(thePacket, myQpParams, myQpfmriParams, ...,
-            qpfmriResults.stimulusVec, maxBOLDLatestGuess);
-        
-        % Grab a naive copy of questData
-        questData = questDataUntrained;
-        
-        % Update quest data structure. This is the slow step in the simulation.
-        for yy = 1:tt
-            questData = qpUpdate(questData,qpfmriResults.stimulusVec(yy),outcomes(yy));
-        end
-        
-        % Save individual run output.
-        psiParamsIndex = qpListMaxArg(questData.posterior);
-        qpfmriResults.psiParamsQuest(tt,:) = questData.psiParamsDomain(psiParamsIndex,:);
-        qpfmriResults.maxBOLDoverTrials(tt) = maxBOLDLatestGuess;
-        qpfmriResults.entropyOverTrials{tt} = questData.entropyAfterTrial;
-        
-        %% Calculate and print results
-        % Calculate BOLD values from outcomes, scaled to maxBOLD and the
-        % baseline estimate.
-        yVals = (outcomes - nLower - 1)./nMid;
-        yVals = yVals*qpfmriResults.psiParamsQuest(tt,myQpfmriParams.betaIndex)*maxBOLDLatestGuess;
-        yValsPlusBaseline = yVals + baselineEstimate;
-        resultString = sprintf('Output value %.03f\n',yVals(end));
-        fprintf(resultString);
+    % Obtain outcomes from tfeUpdate 
+    [outcomes, modelResponseStruct, thePacketOut, ~, baselineEstimate] = ...
+        tfeUpdate(thePacket, myQpParams, myQpfmriParams, qpfmriResults.stimulusVec, maxBOLDLatestGuess, 'rngSeed',rngSeed);
+
+    % Grab a naive copy of questData
+    questData = questDataUntrained;
+
+    % Update quest data structure. This is the slow step in the simulation.
+    for yy = 1:tt
+        questData = qpUpdate(questData,qpfmriResults.stimulusVec(yy),outcomes(yy));
     end
     
+    % Save individual run output.
+    psiParamsIndex = qpListMaxArg(questData.posterior);
+    qpfmriResults.psiParamsQuest(tt,:) = questData.psiParamsDomain(psiParamsIndex,:);
+
+    % Saving BADS fit takes a good amount of time. 
+    if p.Results.saveBads
+        qpfmriResults.psiParamsBADS(tt,:) = qpFitBads(questData.trialData,questData.qpPF,qpfmriResults.psiParamsQuest(tt,:),questData.nOutcomes,...
+         'lowerBounds', lowerBounds,'upperBounds',upperBounds,...
+        'plausibleLowerBounds',lowerBounds,'plausibleUpperBounds',upperBounds);
+        psiParamsBest = qpfmriResults.psiParamsBADS(tt,:);
+        
+    else
+        psiParamsBest = qpfmriResults.psiParamsQuest(tt,:);
+    end
+    
+    % Calculate BOLD values from outcomes, scaled to maxBOLD and baseline.
+    yVals = (outcomes - nLower - 1)./nMid;
+    yVals = yVals*psiParamsBest(1,myQpfmriParams.betaIndex)*maxBOLDLatestGuess;
+    yValsPlusBaseline = yVals + baselineEstimate;
+    
+    % Save maxBOLD and entropy guesses
+    qpfmriResults.maxBOLDoverTrials(tt) = maxBOLDLatestGuess;
+    qpfmriResults.entropyOverTrials{tt} = questData.entropyAfterTrial;
+
+    %% Printing and Plotting Utilities
     % Print results to the console.
     trialString = sprintf('\nTrial %d: %s Stimulus Selection\n',tt,qpfmriResults.stimulusVecTrialTypes{tt});
     fprintf(trialString);
     stimString = sprintf('Stimulus: %0.3f\n',qpfmriResults.stimulusVec(tt));
     fprintf(stimString);
-<<<<<<< HEAD
-    fid = fopen(fullfile(stimPath,stimFile),'at');
-    fprintf(fid,'%0.3f\n',qpfmriResults.stimulusVec(tt));
-    fclose(fid);
-    
-=======
-    
-    % load in stimulus suggestion
-    fid = fopen(stimPath,'at');
-    fprintf(fid,'%0.3f\n',qpfmriResults.stimulusVec(tt));
-    fclose(fid);
-    
     resultString = sprintf('Output value %.03f\n',yVals(end));
     fprintf(resultString);
->>>>>>> fe27d3f0922fdee257a0d4252cbb1511e10f8382
     fprintf('\nQ+ parameters\n');
-    
     for i = 1:length(qpfmriResults.psiParamsQuest(tt,:))
-        fprintf('%s: %0.3f ',myQpfmriParams.paramNamesInOrder{i},qpfmriResults.psiParamsQuest(tt,i));
+        fprintf('%s: %0.3f ',myQpfmriParams.paramNamesInOrder{i},psiParamsBest(1,i));
     end
     fprintf('\nmaxBOLD estimate = %0.3f\n',maxBOLDLatestGuess);
     fprintf('\n');
-
-    %% Plot the ongoing results
+    
+    % Plot the ongoing results
     % Update the plots
     if p.Results.showPlots
         % Draw plots
@@ -430,14 +401,13 @@ for tt = 1:myQpfmriParams.nTrials
             qpfmriResults,mainFig,handleStruct,thePacketOut,modelResponseStruct,...,
             yVals,yValsPlusBaseline);
     end
-    pause(myQpfmriParams.trialLength);
-
     
 end
 
 %% Adjust Beta/MaxBOLD tradeoff
+% For the final parameter estimate, we want to assume that Beta is 1 and
+% maxBOLD is whatever it WOULD BE if beta were 1. 
 
-%% Do the fit
 % Grab our current beta estimate: 
 psiParamsFit = qpFitBads(questData.trialData,questData.qpPF,qpfmriResults.psiParamsQuest(tt,:),questData.nOutcomes,...
     'lowerBounds', lowerBounds,'upperBounds',upperBounds,...
@@ -447,8 +417,7 @@ maxBOLDLatestGuess = maxBOLDLatestGuess.*psiParamsFit(myQpfmriParams.betaIndex);
 % Now run through the fitting steps again with the new maxBOLD
 thePacket = createPacket(myQpfmriParams,myQpfmriParams.nTrials);
 [outcomes, ~, ~, ~, ~] = ...
-        tfeUpdate(thePacket, myQpParams, myQpfmriParams, ...,
-        qpfmriResults.stimulusVec, maxBOLDLatestGuess);
+        tfeUpdate(thePacket, myQpParams, myQpfmriParams, qpfmriResults.stimulusVec, maxBOLDLatestGuess, 'rngSeed',rngSeed);
 questData = questDataUntrained;
 for yy = 1:tt
     questData = qpUpdate(questData,qpfmriResults.stimulusVec(yy),outcomes(yy));
@@ -462,7 +431,11 @@ fprintf('--------------------------------------------------------------\n');
 % on the gridded parameter domain.
 psiParamsIndex = qpListMaxArg(questData.posterior);
 qpfmriResults.psiParamsQuestFinal = questData.psiParamsDomain(psiParamsIndex,:);
-
+% Print simulated parameters.
+fprintf('Simulated parameters:              '); 
+for i = 1:length(myQpfmriParams.simulatedPsiParams)
+    fprintf('%s: %0.3f ',myQpfmriParams.paramNamesInOrder{i},myQpfmriParams.simulatedPsiParams(i));
+end
 % Print Q+ Fit parameters.
 fprintf('\nMax posterior QUEST+ parameters:   '); 
 for i = 1:length(qpfmriResults.psiParamsQuestFinal)
@@ -470,8 +443,6 @@ for i = 1:length(qpfmriResults.psiParamsQuestFinal)
 end
 
 % Prepare for BADS fit.
-% For the final parameter estimate, we want to assume that Beta is 1 and
-% maxBOLD is whatever it WOULD BE if beta were 1. 
 psiParamsBads = qpfmriResults.psiParamsQuestFinal;
 psiParamsBads(myQpfmriParams.betaIndex) = 1;
 
@@ -489,6 +460,7 @@ end
 
 % Print maxBOLD
 fprintf('\nmaxBOLD estimate: %0.3f\n',maxBOLDLatestGuess);
+
 qpfmriResults.maxBOLDFinal = maxBOLDLatestGuess;
 
 %% Output
@@ -516,9 +488,13 @@ if p.Results.showPlots
     end
 end
 
-% Save out the stim results and the quest struct.
+
+
 save(fullfile(folderName,fileName),'qpfmriResults');
-save(fullfile(folderName,modelFile),'questData');
 
 
 end
+
+
+
+

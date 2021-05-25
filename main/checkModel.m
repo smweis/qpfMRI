@@ -46,7 +46,7 @@ myQpfmriParams = qpfmriParams(model,paramsDomain);
 % the models created variable, just below.
 
 % Add all continuous model names to the list below. 
-modelNames = {'doeTemporalModel','watsonTemporalModel','logistic','nakaRushton'};
+modelNames = {'doeTemporalModel','watsonTemporalModel','logistic','nakaRushton','orthBasisSet'};
 
 % Add all model parameters as a field in the struct below.
 % This is important if the model expects input in a certain order, but
@@ -56,7 +56,7 @@ modelParamNames.doeTemporalModel = {'Sr', 'k1', 'k2', 'beta', 'sigma'};
 modelParamNames.watsonTemporalModel = {'tau', 'kappa', 'zeta', 'beta', 'sigma'};
 modelParamNames.logistic = {'slope','semiSat','beta','sigma'};
 modelParamNames.nakaRushton = {'exponent','semiSat','beta','sigma'};
-
+modelParamNames.orthBasisSet = {'firstOrder','secondOrder','thirdOrder','beta','sigma'};
 
 %% Do the checks.
 
