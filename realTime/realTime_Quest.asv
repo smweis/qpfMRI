@@ -1,4 +1,4 @@
-function [qpfmriResults]=realTime_Quest(varargin)
+function [qpfmriResults]=realTime_Quest(myQpfmriParams, myQpParams, subject, varargin)
 %% [qpfmriResults]=realTime_Quest(myQpfmriParams, varargin)
 % A script that will take in a BOLD timeseries and output a stimulus
 % suggestion
@@ -80,40 +80,27 @@ outNum = 1;
 
 
 %% TO DO 
+% 1. We need to make sure that stimulus suggestions are being written out
+%    somewhere that rtfmri can find them. 
 % 
 % 2. I'd like to clean up how RANDOM vs. Q+ is handled. 
 %       Ideally for random, it's not doing much...maybe fitting the model
 %       and plotting just to keep things consistent. 
 
 %% Parse Inputs
-debug = 0;
 p = inputParser;
 
-% p.addRequired('myQpfmriParams',@isstruct);
-% p.addRequired('myQpParams',@isstruct);
-% p.addRequired('subject',@isstr);
-% 
+p.addRequired('myQpfmriParams',@isstruct);
+p.addRequired('myQpParams',@isstruct);
+p.addRequired('subject',@isstr);
+
 % Optional params for plotting
 p.addParameter('showPlots',false,@islogical);
 p.addParameter('saveFigs',false,@islogical);
-% % Parse inputs
-% p.parse( myQpfmriParams, myQpParams, subject, varargin{:});
+% Parse inputs
+p.parse( myQpfmriParams, myQpParams, subject, varargin{:});
 
 
-if debug
-    p.addParameter('myQpfmriParams',@isstruct);
-    p.addParameter('myQpParams',@isstruct);
-    % Parse inputs
-    p.parse(varargin{:});
-    myQpfmriParams = p.Results.myQpfmriParams;
-    myQpParams = p.Results.myQpParams;
-else
-    [subject,myQpfmriParams,myQpParams] = getparams();
-    % Parse inputs
-    p.parse(varargin{:});
-end
-
-run = num2str(myQpfmriParams.outNum);
 %% Double check a few key parameters
 
 function validateInput(inputVar)
@@ -139,15 +126,13 @@ validateInput('nTrials');
 validateInput('trialLength');
 validateInput('TR');
 
-[~, scannerPath, ~, ~, ~, subjectPath] = getpaths(subject, 'neurofeedback');
+[subjectPath, scannerPath, ~, ~] = getpaths(subject, 'neurofeedback');
 
 % dataPath = input("Enter the full path of the directory location of the TIMESERIES: ",'s');
 % stimPath = input("Enter the full path of the directory location where the
 % STIMULUS SUGGESTION should be written: ",'s');
-dataPath = fullfile(subjectPath,'processed',strcat('run',run),'fMRITimeseries_0.txt');
-stimPath = fullfile(subjectPath,'stims',strcat('run',run));
-stimFile = 'suggestions.txt';
-% TODO: add warning if stimFile exists (will be overwritten)
+dataPath = fullfile(subjectPath,'processed','dataPlot.txt');
+stimPath = fullfile(subjectPath,'stims');
 
 
 %% Initialize struct to save results out.
@@ -361,65 +346,63 @@ for tt = 1:myQpfmriParams.nTrials
     thePacket = createPacket(myQpfmriParams,tt);
     
     % Load in the timeseries
-    if tt > 2
-        if myQpfmriParams.qpPres
-            try
-                timeseries = readmatrix(dataPath);
-                % Trim it based on the # of trials.
-                %timeseries = timeseries(1:tt*(myQpfmriParams.trialLength*1000/myQpfmriParams.TR));
-                timeseries = timeseries(1:tt-1);
-                
-                
-                thePacket.response.values = timeseries;
-                thePacket.response.timebase = 0:myQpfmriParams.TR:length(thePacket.response.values)*myQpfmriParams.TR - myQpfmriParams.TR;
-            catch
-                warning("Could not load timeseries");
-                if tt > myQpfmriParams.baselineMaxBOLDInitial
-                    warning("Defaulting to random stimulus");
-                    qpfmriResults.stimulusVec(tt) = questData.stimParamsDomain(randi(questData.nStimParamsDomain));
-                    qpfmriResults.stimulusVecTrialTypes{tt} = 'random';
-                end
+    %timeseries = readmatrix('\\exasmb.rc.ufl.edu\blue\stevenweisberg\rtQuest\Ozzy_Test\processed\run1\dataPlot.txt');
+    %timeseries = readmatrix('/blue/stevenweisberg/rtQuest/Ozzy_Test/processed/run1/dataPlot.txt');
+    if myQpfmriParams.qpPres
+        try
+            timeseries = readmatrix(dataPath);
+            % Trim it based on the # of trials.
+            timeseries = timeseries(1:tt*(myQpfmriParams.trialLength*1000/myQpfmriParams.TR));
+
+
+            thePacket.response.values = timeseries;
+            thePacket.response.timebase = 0:myQpfmriParams.TR:length(thePacket.response.values)*myQpfmriParams.TR - myQpfmriParams.TR;
+        catch
+            warning("Could not load timeseries");
+            if tt > myQpfmriParams.baselineMaxBOLDInitial
+                warning("Defaulting to random stimulus");
+                qpfmriResults.stimulusVec(tt) = questData.stimParamsDomain(randi(questData.nStimParamsDomain));
+                qpfmriResults.stimulusVecTrialTypes{tt} = 'random';
             end
         end
-        
-        % Obtain outcomes from tfeUpdate
-        [outcomes, modelResponseStruct, thePacketOut, ~, baselineEstimate] = ...
-            tfeUpdate(thePacket, myQpParams, myQpfmriParams, ...,
-            qpfmriResults.stimulusVec, maxBOLDLatestGuess);
-        
-        % Grab a naive copy of questData
-        questData = questDataUntrained;
-        
-        % Update quest data structure. This is the slow step in the simulation.
-        for yy = 1:tt
-            questData = qpUpdate(questData,qpfmriResults.stimulusVec(yy),outcomes(yy));
-        end
-        
-        % Save individual run output.
-        psiParamsIndex = qpListMaxArg(questData.posterior);
-        qpfmriResults.psiParamsQuest(tt,:) = questData.psiParamsDomain(psiParamsIndex,:);
-        qpfmriResults.maxBOLDoverTrials(tt) = maxBOLDLatestGuess;
-        qpfmriResults.entropyOverTrials{tt} = questData.entropyAfterTrial;
-        
-        %% Calculate and print results
-        % Calculate BOLD values from outcomes, scaled to maxBOLD and the
-        % baseline estimate.
-        yVals = (outcomes - nLower - 1)./nMid;
-        yVals = yVals*qpfmriResults.psiParamsQuest(tt,myQpfmriParams.betaIndex)*maxBOLDLatestGuess;
-        yValsPlusBaseline = yVals + baselineEstimate;
-        resultString = sprintf('Output value %.03f\n',yVals(end));
-        fprintf(resultString);
     end
     
+    % Obtain outcomes from tfeUpdate 
+    [outcomes, modelResponseStruct, thePacketOut, ~, baselineEstimate] = ...
+        tfeUpdate(thePacket, myQpParams, myQpfmriParams, ...,
+        qpfmriResults.stimulusVec, maxBOLDLatestGuess);
+
+    % Grab a naive copy of questData
+    questData = questDataUntrained;
+
+    % Update quest data structure. This is the slow step in the simulation.
+    for yy = 1:tt
+        questData = qpUpdate(questData,qpfmriResults.stimulusVec(yy),outcomes(yy));
+    end
+
+    % Save individual run output.
+    psiParamsIndex = qpListMaxArg(questData.posterior);
+    qpfmriResults.psiParamsQuest(tt,:) = questData.psiParamsDomain(psiParamsIndex,:);
+    qpfmriResults.maxBOLDoverTrials(tt) = maxBOLDLatestGuess;
+    qpfmriResults.entropyOverTrials{tt} = questData.entropyAfterTrial;
+
+    %% Calculate and print results
+    % Calculate BOLD values from outcomes, scaled to maxBOLD and the
+    % baseline estimate.
+    yVals = (outcomes - nLower - 1)./nMid;
+    yVals = yVals*qpfmriResults.psiParamsQuest(tt,myQpfmriParams.betaIndex)*maxBOLDLatestGuess;
+    yValsPlusBaseline = yVals + baselineEstimate;
+
     % Print results to the console.
     trialString = sprintf('\nTrial %d: %s Stimulus Selection\n',tt,qpfmriResults.stimulusVecTrialTypes{tt});
     fprintf(trialString);
     stimString = sprintf('Stimulus: %0.3f\n',qpfmriResults.stimulusVec(tt));
     fprintf(stimString);
-    fid = fopen(fullfile(stimPath,stimFile),'at');
+    fid = fopen(fullfile(stimPath,'suggestions.txt'),'at');
     fprintf(fid,'%0.3f\n',qpfmriResults.stimulusVec(tt));
     fclose(fid);
-    
+    resultString = sprintf('Output value %.03f\n',yVals(end));
+    fprintf(resultString);
     fprintf('\nQ+ parameters\n');
     for i = 1:length(qpfmriResults.psiParamsQuest(tt,:))
         fprintf('%s: %0.3f ',myQpfmriParams.paramNamesInOrder{i},qpfmriResults.psiParamsQuest(tt,i));
