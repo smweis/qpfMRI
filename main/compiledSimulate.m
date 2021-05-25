@@ -215,6 +215,7 @@ if ~isempty(p.Results.stimDomainLower)
     % Make the sure the parameter domain can be properly specified.
     myQpfmriParams.stimulusDomain = {makeDomain(lower,upper,nDivision,'spacing',p.Results.stimDomainSpacing)};
     fprintf('Stimulus domain added from input.\n');
+    myQpParams.stimParamsDomainList = myQpfmriParams.stimulusDomain;
 end
 
 % Check if a baseline stimulus was passed

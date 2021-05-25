@@ -180,12 +180,10 @@ myQpParams.nOutcomes = myQpfmriParams.nOutcomes;
 %% Add the stimulus domain.  
 if isempty(myQpfmriParams.stimulusDomain)
     warning('No stimulus domain specified. Defaulting to values between 0.01 and 1.');
-    myQpParams.stimParamsDomainList = {makeDomain(.01,1,25)};
-elseif isvector(myQpfmriParams.stimulusDomain)
-    myQpParams.stimParamsDomainList = myQpfmriParams.stimulusDomain;
-else
-    myQpParams.stimParamsDomainList = myQpfmriParams.stimulusDomain;
+    myQpfmriParams.stimulusDomain = {makeDomain(.01,1,25)};
 end
+
+myQpParams.stimParamsDomainList = myQpfmriParams.stimulusDomain;
 
 % Create baseline stimulus and maxBOLD stimulus if not passed.
 if isempty(myQpfmriParams.baselineStimulus)
