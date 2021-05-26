@@ -358,13 +358,13 @@ for tt = 1:myQpfmriParams.nTrials
         % Obtain outcomes from tfeUpdate
         [outcomes, modelResponseStruct, thePacketOut, ~, baselineEstimate] = ...
             tfeUpdate(thePacket, myQpParams, myQpfmriParams, ...,
-            qpfmriResults.stimulusVec(1:tt-1), maxBOLDLatestGuess);
+            qpfmriResults.stimulusVec, maxBOLDLatestGuess);
         
         % Grab a naive copy of questData
         questData = questDataUntrained;
         
         % Update quest data structure. This is the slow step in the simulation.
-        for yy = 1:tt-1
+        for yy = 1:tt
             questData = qpUpdate(questData,qpfmriResults.stimulusVec(yy),outcomes(yy));
         end
         
