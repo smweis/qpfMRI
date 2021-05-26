@@ -136,7 +136,7 @@ p.addRequired('paramsDomain',@isstruct);
 
 % Optional params
 p.addParameter('qpPres',false,@islogical);
-p.addParameter('simulatedPsiParams',{});
+p.addParameter('simulatedPsiParams',[]);
 p.addParameter('headroom', 0.1, @isnumeric);
 p.addParameter('maxBOLDInitialGuess', 1.0, @isscalar);
 p.addParameter('maxBOLDSimulated', 1.5, @isscalar);
