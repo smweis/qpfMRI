@@ -27,38 +27,43 @@ function [qpfmriResults] = compiledSimulate(modelName, varargin)
 
 %Example: 
 %{
-% Logisitic Regression example
-modelName = 'logistic';
+% Orthogonal basis set example
+modelName = 'orthBasisSet';
 % How many parameters, and what are their names?
-nP = '4';
-p1Name = 'slope';
-p2Name = 'semiSat';
-p3Name = 'beta';
-p4Name = 'sigma';
+nP = '5';
+p1Name = 'firstOrder';
+p2Name = 'secondOrder';
+p3Name = 'thirdOrder';
+p4Name = 'beta';
+p5Name = 'sigma';
 
 % Parameters lower bounds on domains
-p1L = '-2'; 
-p2L = '.01';
-p3L = '.5';
-p4L = '.3';
+p1L = '-1'; 
+p2L = '-1';
+p3L = '.9';
+p4L = '.75';
+p5L = '.01';
 
 % Parameters upper bounds on domains
-p1U = '0';
-p2U = '1';
-p3U = '1.5';
-p4U = '2.0';
+p1U = '1.0';
+p2U = '1.0';
+p3U = '1.1';
+p4U = '1.25';
+p5U = '1.0';
 
 % Parameters nDivisions for domain creation
-p1N = '10';
-p2N = '10';
-p3N = '11';
-p4N = '8';
+p1N = '21';
+p2N = '21';
+p3N = '3';
+p4N = '11';
+p5N = '11';
 
 % Parameters spacing for domain creations
-p1S = 'log';
+p1S = 'lin';
 p2S = 'lin';
-p3S = 'zeno';
-p4S = 'lin';
+p3S = 'lin';
+p4S = 'zeno';
+p5S = 'lin';
 
 % Q+ control
 qpPres = 'true';
@@ -68,6 +73,11 @@ stimLower = '.01';
 stimUpper = '1';
 stimnDivisions = '30';
 stimSpacing = 'lin';
+
+%stimLower = '';
+%stimUpper = '';
+%stimnDivisions = '';
+%stimSpacing = '';
 
 % Show plots just for verification that this works the same with simulate. 
 showPlots = true;
@@ -84,11 +94,12 @@ p4Sim = '';
 
 % Note, this will save a copy of questData after it is initialized. 
 [qpfmriResults]=compiledSimulate(modelName,'nParams',nP,...,
-'param1Name',p1Name,'param2Name',p2Name,'param3Name',p3Name,'param4Name',p4Name,...,
+'param1Name',p1Name,'param2Name',p2Name,'param3Name',p3Name,'param4Name',p4Name,'param5Name',p5Name,...,
 'param1Lower',p1L,'param1Upper',p1U,'param1nDivisions',p1N,'param1Spacing',p1S,...,
 'param2Lower',p2L,'param2Upper',p2U,'param2nDivisions',p2N,'param2Spacing',p2S,...,
 'param3Lower',p3L,'param3Upper',p3U,'param3nDivisions',p3N,'param3Spacing',p3S,...,
 'param4Lower',p4L,'param4Upper',p4U,'param4nDivisions',p4N,'param4Spacing',p4S,...,
+'param5Lower',p5L,'param5Upper',p5U,'param5nDivisions',p5N,'param5Spacing',p5S,...,
 'stimDomainUpper',stimUpper,'stimDomainLower',stimLower,...,
 'stimDomainnDivisions',stimnDivisions,'stimDomainSpacing',stimSpacing,...,
 'showPlots',showPlots,'qpPres',qpPres,'noiseSD',noiseSD,'nTrials',nTrials,...,
