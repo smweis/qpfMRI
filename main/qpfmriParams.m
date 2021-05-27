@@ -185,20 +185,3 @@ end
 
 myQpParams.stimParamsDomainList = myQpfmriParams.stimulusDomain;
 
-% Create baseline stimulus and maxBOLD stimulus if not passed.
-if isempty(myQpfmriParams.baselineStimulus)
-    if isempty(myQpfmriParams.simulatedPsiParams)
-        myQpfmriParams.baselineStimulus = min(myQpfmriParams.stimulusDomain{:});
-    else
-        [~, baselineStimulusIndex] = min(myQpfmriParams.model(myQpfmriParams.stimulusDomain{:},myQpfmriParams.simulatedPsiParams));
-        myQpfmriParams.baselineStimulus = myQpfmriParams.stimulusDomain{:}(baselineStimulusIndex);
-    end
-end
-if isempty(myQpfmriParams.maxBOLDStimulus)
-    if isempty(myQpfmriParams.simulatedPsiParams)
-        myQpfmriParams.maxBOLDStimulus = max(myQpfmriParams.stimulusDomain{:});
-    else
-        [~, baselineStimulusIndex] = max(myQpfmriParams.model(myQpfmriParams.stimulusDomain{:},myQpfmriParams.simulatedPsiParams));
-        myQpfmriParams.baselineStimulus = myQpfmriParams.stimulusDomain{:}(baselineStimulusIndex);
-    end
-end

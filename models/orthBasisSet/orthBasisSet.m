@@ -33,7 +33,7 @@ function y = orthBasisSet(stimulusValue, params)
     for a = -1:.2:1
         num = num+1;
         for b = -1:.2:1
-            for c = 1
+            for c = -1:.2:1
                 params = [a b c 1];
                 y = orthBasisSet(stimulusValues,params);
                 plot(stimulusValues,y,'-');
