@@ -1,4 +1,4 @@
-function [qpfmriResults]=realTime_Quest(varargin)
+function [qpfmriResults]=realtimequest(varargin)
 %% [qpfmriResults]=realTime_Quest(myQpfmriParams, varargin)
 % A script that will take in a BOLD timeseries and output a stimulus
 % suggestion
@@ -116,7 +116,7 @@ end
 run = num2str(myQpfmriParams.outNum);
 %% Double check a few key parameters
 
-function validateInput(inputVar)
+function validateinput(inputVar)
     % Take a string that matches the name of a variable. Tell the user what
     % that variable is currently entered as. They can validate or change.
     
@@ -134,12 +134,12 @@ function validateInput(inputVar)
     fprintf('\n');
 end
 
-validateInput('outNum');
-validateInput('nTrials');
-validateInput('trialLength');
-validateInput('TR');
+validateinput('outNum');
+validateinput('nTrials');
+validateinput('trialLength');
+validateinput('TR');
 
-[~, scannerPath, ~, ~, ~, subjectPath] = getpaths(subject, 'neurofeedback');
+[~, ~, ~, ~, ~, subjectPath] = getpaths(subject, 'neurofeedback');
 
 % dataPath = input("Enter the full path of the directory location of the TIMESERIES: ",'s');
 % stimPath = input("Enter the full path of the directory location where the
@@ -282,75 +282,78 @@ if p.Results.showPlots
 end
 
 %% MAIN LOOP
-for tt = 1:myQpfmriParams.nTrials
+for iTrial = 1:myQpfmriParams.nTrials
     
+    % read in presented stimuli
     try
         qpfmriResults.stimulusVec = readmatrix(fullfile(stimPath,presentedStimFile));
     catch
-        warning('Unable to load in presented stimuli');
+        warning('Unable to read in presented stimuli');
     end
     
     % First trials require baseline or maxBOLD. 
-    if tt <= myQpfmriParams.baselineMaxBOLDInitial
+    if iTrial <= myQpfmriParams.baselineMaxBOLDInitial
         % Baseline trial
-        if mod(tt,2) > 0 
-            qpfmriResults.stimulusVec(tt) = myQpfmriParams.baselineStimulus;
-            qpfmriResults.stimulusVecTrialTypes{tt} = 'baseline';
+        if mod(iTrial,2) > 0 
+            qpfmriResults.stimulusVec(iTrial) = myQpfmriParams.baselineStimulus;
+            qpfmriResults.stimulusVecTrialTypes{iTrial} = 'baseline';
         % maxBOLD trial
         else 
-            qpfmriResults.stimulusVec(tt) = myQpfmriParams.maxBOLDStimulus;
-            qpfmriResults.stimulusVecTrialTypes{tt} = 'maxBOLD';
+            qpfmriResults.stimulusVec(iTrial) = myQpfmriParams.maxBOLDStimulus;
+            qpfmriResults.stimulusVecTrialTypes{iTrial} = 'maxBOLD';
         end
     % Optionally, every X trials can alternate as baseline or maxBOLD. 
     % Baseline trial
-    elseif mod(tt,myQpfmriParams.baselineMaxBOLDRepeating*2) == 0
-        qpfmriResults.stimulusVec(tt) = myQpfmriParams.baselineStimulus;
-        qpfmriResults.stimulusVecTrialTypes{tt} = 'baseline';
+    elseif mod(iTrial,myQpfmriParams.baselineMaxBOLDRepeating*2) == 0
+        qpfmriResults.stimulusVec(iTrial) = myQpfmriParams.baselineStimulus;
+        qpfmriResults.stimulusVecTrialTypes{iTrial} = 'baseline';
     % maxBOLD trial
-    elseif mod(tt,myQpfmriParams.baselineMaxBOLDRepeating) == 0
-        qpfmriResults.stimulusVec(tt) = myQpfmriParams.maxBOLDStimulus;
-        qpfmriResults.stimulusVecTrialTypes{tt} = 'maxBOLD';
+    elseif mod(iTrial,myQpfmriParams.baselineMaxBOLDRepeating) == 0
+        qpfmriResults.stimulusVec(iTrial) = myQpfmriParams.maxBOLDStimulus;
+        qpfmriResults.stimulusVecTrialTypes{iTrial} = 'maxBOLD';
     % Every other trial will be selected randomly, or by Q+
     else
         if ~myQpfmriParams.qpPres
-            qpfmriResults.stimulusVec(tt) = questData.stimParamsDomain(randi(questData.nStimParamsDomain));
-            qpfmriResults.stimulusVecTrialTypes{tt} = 'random';
+            qpfmriResults.stimulusVec(iTrial) = questData.stimParamsDomain(randi(questData.nStimParamsDomain));
+            qpfmriResults.stimulusVecTrialTypes{iTrial} = 'random';
         else
-            qpfmriResults.stimulusVec(tt) = qpQuery(questData);
-            qpfmriResults.stimulusVecTrialTypes{tt} = 'qplus';
+            qpfmriResults.stimulusVec(iTrial) = qpQuery(questData);
+            qpfmriResults.stimulusVecTrialTypes{iTrial} = 'qplus';
         end
     end
     
-    disp(['Trial #',num2str(tt),': ',num2str(qpfmriResults.stimulusVec(tt)),...,
-        ' ', qpfmriResults.stimulusVecTrialTypes{tt}]);
+    disp(['Trial #',num2str(iTrial),': ',num2str(qpfmriResults.stimulusVec(iTrial)),...,
+        ' ', qpfmriResults.stimulusVecTrialTypes{iTrial}]);
     
     % Update maxBOLD with our best guess at the maximum BOLD fMRI response
     % Only update maxBOLD after we've had at least one maxBOLD trial
-    if tt > 2 && ~isnan(qpfmriResults.psiParamsQuest(tt-1,myQpfmriParams.betaIndex))
-        maxBOLDLatestGuess = maxBOLDLatestGuess.*qpfmriResults.psiParamsQuest(tt-1,myQpfmriParams.betaIndex);
+    if iTrial > 2 && ~isnan(qpfmriResults.psiParamsQuest(iTrial-1,myQpfmriParams.betaIndex))
+        maxBOLDLatestGuess = maxBOLDLatestGuess.*qpfmriResults.psiParamsQuest(iTrial-1,myQpfmriParams.betaIndex);
     end
 
     % Create a packet
-    thePacket = createPacket(myQpfmriParams,tt);
+    thePacket = createPacket(myQpfmriParams,iTrial);
     
     % Load in the timeseries
-    if tt > 2
+    if iTrial > 2
+        % NOTE: both the timeseries and stimulusVec are trimmed to exclude
+        % partial trial data (tt-1 excludes the current trial)
         if myQpfmriParams.qpPres
             try
                 timeseries = readmatrix(dataPath);
                 % Trim it based on the # of trials.
                 %timeseries = timeseries(1:tt*(myQpfmriParams.trialLength*1000/myQpfmriParams.TR));
-                timeseries = timeseries(1:tt-1);
+                timeseries = timeseries(1:iTrial-1);
                 
                 
                 thePacket.response.values = timeseries;
                 thePacket.response.timebase = 0:myQpfmriParams.TR:length(thePacket.response.values)*myQpfmriParams.TR - myQpfmriParams.TR;
             catch
                 warning("Could not load timeseries");
-                if tt > myQpfmriParams.baselineMaxBOLDInitial
+                if iTrial > myQpfmriParams.baselineMaxBOLDInitial
                     warning("Defaulting to random stimulus");
-                    qpfmriResults.stimulusVec(tt) = questData.stimParamsDomain(randi(questData.nStimParamsDomain));
-                    qpfmriResults.stimulusVecTrialTypes{tt} = 'random';
+                    qpfmriResults.stimulusVec(iTrial) = questData.stimParamsDomain(randi(questData.nStimParamsDomain));
+                    qpfmriResults.stimulusVecTrialTypes{iTrial} = 'random';
                 end
             end
         end
@@ -358,49 +361,42 @@ for tt = 1:myQpfmriParams.nTrials
         % Obtain outcomes from tfeUpdate
         [outcomes, modelResponseStruct, thePacketOut, ~, baselineEstimate] = ...
             tfeUpdate(thePacket, myQpParams, myQpfmriParams, ...,
-            qpfmriResults.stimulusVec(1:tt-1), maxBOLDLatestGuess);
+            qpfmriResults.stimulusVec(1:iTrial-1), maxBOLDLatestGuess);
         
         % Grab a naive copy of questData
         questData = questDataUntrained;
         
         % Update quest data structure. This is the slow step in the simulation.
-        for yy = 1:tt-1
+        for yy = 1:iTrial-1
             questData = qpUpdate(questData,qpfmriResults.stimulusVec(yy),outcomes(yy));
         end
         
         % Save individual run output.
         psiParamsIndex = qpListMaxArg(questData.posterior);
-        qpfmriResults.psiParamsQuest(tt,:) = questData.psiParamsDomain(psiParamsIndex,:);
-        qpfmriResults.maxBOLDoverTrials(tt) = maxBOLDLatestGuess;
-        qpfmriResults.entropyOverTrials{tt} = questData.entropyAfterTrial;
+        qpfmriResults.psiParamsQuest(iTrial,:) = questData.psiParamsDomain(psiParamsIndex,:);
+        qpfmriResults.maxBOLDoverTrials(iTrial) = maxBOLDLatestGuess;
+        qpfmriResults.entropyOverTrials{iTrial} = questData.entropyAfterTrial;
         
         %% Calculate and print results
         % Calculate BOLD values from outcomes, scaled to maxBOLD and the
         % baseline estimate.
         yVals = (outcomes - nLower - 1)./nMid;
-        yVals = yVals*qpfmriResults.psiParamsQuest(tt,myQpfmriParams.betaIndex)*maxBOLDLatestGuess;
+        yVals = yVals*qpfmriResults.psiParamsQuest(iTrial,myQpfmriParams.betaIndex)*maxBOLDLatestGuess;
         yValsPlusBaseline = yVals + baselineEstimate;
         resultString = sprintf('Output value %.03f\n',yVals(end));
         fprintf(resultString);
     end
     
     % Print results to the console.
-    trialString = sprintf('\nTrial %d: %s Stimulus Selection\n',tt,qpfmriResults.stimulusVecTrialTypes{tt});
+    trialString = sprintf('\nTrial %d: %s Stimulus Selection\n',iTrial,qpfmriResults.stimulusVecTrialTypes{iTrial});
     fprintf(trialString);
-    stimString = sprintf('Stimulus: %0.3f\n',qpfmriResults.stimulusVec(tt));
+    stimString = sprintf('Stimulus: %0.3f\n',qpfmriResults.stimulusVec(iTrial));
     fprintf(stimString);
 
     fid = fopen(fullfile(stimPath,stimFile),'at');
-    fprintf(fid,'%0.3f\n',qpfmriResults.stimulusVec(tt));
+    fprintf(fid,'%0.3f\n',qpfmriResults.stimulusVec(iTrial));
     fclose(fid);
     
-    % load in stimulus suggestion
-%     fid = fopen(stimPath,'at');
-%     fprintf(fid,'%0.3f\n',qpfmriResults.stimulusVec(tt));
-%     fclose(fid);
-    
-
-
     %% Plot the ongoing results
     % Update the plots
     if p.Results.showPlots
@@ -418,7 +414,7 @@ end
 
 %% Do the fit
 % Grab our current beta estimate: 
-psiParamsFit = qpFitBads(questData.trialData,questData.qpPF,qpfmriResults.psiParamsQuest(tt,:),questData.nOutcomes,...
+psiParamsFit = qpFitBads(questData.trialData,questData.qpPF,qpfmriResults.psiParamsQuest(iTrial,:),questData.nOutcomes,...
     'lowerBounds', lowerBounds,'upperBounds',upperBounds,...
     'plausibleLowerBounds',lowerBounds,'plausibleUpperBounds',upperBounds);
 maxBOLDLatestGuess = maxBOLDLatestGuess.*psiParamsFit(myQpfmriParams.betaIndex);
@@ -429,7 +425,7 @@ thePacket = createPacket(myQpfmriParams,myQpfmriParams.nTrials);
         tfeUpdate(thePacket, myQpParams, myQpfmriParams, ...,
         qpfmriResults.stimulusVec, maxBOLDLatestGuess);
 questData = questDataUntrained;
-for yy = 1:tt
+for yy = 1:iTrial
     questData = qpUpdate(questData,qpfmriResults.stimulusVec(yy),outcomes(yy));
 end
 
