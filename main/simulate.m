@@ -195,26 +195,38 @@ end
 % Pick some random params to simulate if none provided but set beta to 1.
 % We require the simulated parameters to result in a baseline trial = 0.
 if isempty(myQpfmriParams.simulatedPsiParams)
-    
     myQpfmriParams = createRandomModelParams(myQpfmriParams);
     qpfmriResults = myQpfmriParams;
 else
-    
     % Beta will converge to 1 as maxBOLD gets closer and closer to the
     % simulated maxBOLD. As a result, when simulating data, beta should always
     % be set to 1. 
-    myQpfmriParams.simulatedPsiParams(myQpfmriParams.betaIndex) = 1;
-    assert(myQpfmriParams.simulatedPsiParams(myQpfmriParams.betaIndex)==1,'Simulated Beta should always be 1.');
-    
-    % Select simulated psychometric parameters whose range of outputs
-    % are between 0 and 1 for the model being used. 
-    if abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)) < myQpfmriParams.simulatedPsiParams(myQpfmriParams.betaIndex)/10000
-        warning('Simulated psychometric parameters will result in minimum values below 0.\nMin possible value = %.02f',abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)));
-    elseif abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)) > .01
-        warning('Simulated psychometric parameters will result in minimum values greater than 0.\nMin possible value = %.02f',abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)));
-    elseif abs(myQpfmriParams.model(myQpfmriParams.maxBOLDStimulus,myQpfmriParams.simulatedPsiParams)) < .99
-        warning('Simulated psychometric parameters will result in maximum BOLD values below 1.\nMax possible value = %.02f',myQpfmriParams.model(myQpfmriParams.maxBOLDStimulus,myQpfmriParams.simulatedPsiParams));
+    if ~myQpfmriParams.simulatedPsiParams(myQpfmriParams.betaIndex)==1
+        myQpfmriParams.simulatedPsiParams(myQpfmriParams.betaIndex) = 1;
+        warning('Simulated Beta should always be 1. Passed simulated beta was changed.');
     end
+    
+end
+
+
+% Create baseline stimulus and maxBOLD stimulus if not passed.
+if isempty(myQpfmriParams.baselineStimulus)
+    [~, baselineSimtulusIndex] = min(myQpfmriParams.model(myQpfmriParams.stimulusDomain{:},myQpfmriParams.simulatedPsiParams));
+    myQpfmriParams.baselineStimulus = myQpfmriParams.stimulusDomain{:}(baselineSimtulusIndex);
+end
+if isempty(myQpfmriParams.maxBOLDStimulus)
+    [~, maxBOLDStimulusIndex] = max(myQpfmriParams.model(myQpfmriParams.stimulusDomain{:},myQpfmriParams.simulatedPsiParams));
+    myQpfmriParams.maxBOLDStimulus = myQpfmriParams.stimulusDomain{:}(maxBOLDStimulusIndex);
+end
+
+% Select simulated psychometric parameters whose range of outputs
+% are between 0 and 1 for the model being used. 
+if abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)) < myQpfmriParams.simulatedPsiParams(myQpfmriParams.betaIndex)/10000
+    warning('Simulated psychometric parameters will result in minimum values below 0.\nMin possible value = %.02f',abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)));
+elseif abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)) > .01
+    warning('Simulated psychometric parameters will result in minimum values greater than 0.\nMin possible value = %.02f',abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)));
+elseif abs(myQpfmriParams.model(myQpfmriParams.maxBOLDStimulus,myQpfmriParams.simulatedPsiParams)) < .99
+    warning('Simulated psychometric parameters will result in maximum BOLD values below 1.\nMax possible value = %.02f',myQpfmriParams.model(myQpfmriParams.maxBOLDStimulus,myQpfmriParams.simulatedPsiParams));
 end
 
 
