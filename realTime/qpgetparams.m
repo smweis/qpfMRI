@@ -1,4 +1,4 @@
-function [subject,myQpfmriParams,myQpParams] = getparams()
+function [subject,myQpfmriParams,myQpParams] = qpgetparams()
 % Sets up moduel parameters
 
 % Load global params
@@ -48,7 +48,7 @@ elseif strcmp(loadParams,'2')
     p.stimulusDomainSpacing = 'log';
     
     % Number of trials to run and TR.
-    p.nTrials = 20;
+    p.nTrials = 19;
     p.TRmsecs = 800;
     
     % Allow Q+ to control the stimuli or not (false).
@@ -88,6 +88,7 @@ p.model = str2func(p.model);
 [myQpfmriParams,myQpParams] = qpfmriParams(p.model,p.paramsDomain,'qpPres',p.qpPres,...,
     'stimulusDomain',p.stimulusDomain,'stimulusDomainSpacing',p.stimulusDomainSpacing,...,
     'nTrials',p.nTrials,'trialLength',p.trialLength,'nOutcomes',p.nOutcomes,'TR',p.TRmsecs,'outNum',p.outNum);
+
 myQpfmriParams.outNum = str2double(run);
 
 

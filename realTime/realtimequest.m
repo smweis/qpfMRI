@@ -4,14 +4,13 @@ function [qpfmriResults]=realtimequest(varargin)
 % suggestion
 %
 % Syntax:
-%  [qpfmriResults]=realTime_Quest(myQpfmriParams, varargin)
+%  [qpfmriResults]=realtimequest(varargin)
 %
 % Description:
 %	Takes in a model and a possible set of parameters and whether or not Q+ 
 %   is in control of things flag. 
 %
 % Inputs:
-% Required Inputs
 %   myQpfmriParams          - Struct. Set of parameters used for qpfmri.
 %                             See qpfmriParams function for more details
 %   myQpParams              - Struct. Set of parameters used for qp.
@@ -108,7 +107,7 @@ if debug
     myQpfmriParams = p.Results.myQpfmriParams;
     myQpParams = p.Results.myQpParams;
 else
-    [subject,myQpfmriParams,myQpParams] = getparams();
+    [subject,myQpfmriParams,myQpParams] = qpgetparams();
     % Parse inputs
     p.parse(varargin{:});
 end
@@ -285,11 +284,11 @@ end
 for iTrial = 1:myQpfmriParams.nTrials
     
     % read in presented stimuli
-    try
-        qpfmriResults.stimulusVec = readmatrix(fullfile(stimPath,presentedStimFile));
-    catch
-        warning('Unable to read in presented stimuli');
-    end
+%     try
+%         qpfmriResults.stimulusVec = readmatrix(fullfile(stimPath,presentedStimFile));
+%     catch
+%         warning('Unable to read in presented stimuli');
+%     end
     
     % First trials require baseline or maxBOLD. 
     if iTrial <= myQpfmriParams.baselineMaxBOLDInitial
@@ -341,14 +340,15 @@ for iTrial = 1:myQpfmriParams.nTrials
         if myQpfmriParams.qpPres
             try
                 timeseries = readmatrix(dataPath);
-                % Trim it based on the # of trials.
-                %timeseries = timeseries(1:tt*(myQpfmriParams.trialLength*1000/myQpfmriParams.TR));
-                timeseries = timeseries(1:iTrial-1);
+                % Trim it based on the # of TRs seen in full trials.
+                timeseries = timeseries(1:(iTrial-1)*(myQpfmriParams.trialLength*1000/myQpfmriParams.TR));
+                %timeseries = timeseries(1:iTrial-1);
                 
                 
                 thePacket.response.values = timeseries;
-                thePacket.response.timebase = 0:myQpfmriParams.TR:length(thePacket.response.values)*myQpfmriParams.TR - myQpfmriParams.TR;
-            catch
+                thePacket.response.timebase = 0:myQpfmriParams.TR:(length(thePacket.response.values)-1)*myQpfmriParams.TR;
+            catch e
+                disp(e.message);
                 warning("Could not load timeseries");
                 if iTrial > myQpfmriParams.baselineMaxBOLDInitial
                     warning("Defaulting to random stimulus");
