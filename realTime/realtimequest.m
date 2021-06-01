@@ -421,9 +421,15 @@ maxBOLDLatestGuess = maxBOLDLatestGuess.*psiParamsFit(myQpfmriParams.betaIndex);
 
 % Now run through the fitting steps again with the new maxBOLD
 thePacket = createPacket(myQpfmriParams,myQpfmriParams.nTrials);
+timeseries = readmatrix(dataPath);
+timeseries = timeseries(1:(iTrial-1)*(myQpfmriParams.trialLength*1000/myQpfmriParams.TR));
+thePacket.response.values = timeseries;
+thePacket.response.timebase = 0:myQpfmriParams.TR:(length(thePacket.response.values)-1)*myQpfmriParams.TR;
 [outcomes, ~, ~, ~, ~] = ...
         tfeUpdate(thePacket, myQpParams, myQpfmriParams, ...,
         qpfmriResults.stimulusVec, maxBOLDLatestGuess);
+    
+        
 questData = questDataUntrained;
 for yy = 1:iTrial
     questData = qpUpdate(questData,qpfmriResults.stimulusVec(yy),outcomes(yy));
