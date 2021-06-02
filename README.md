@@ -18,3 +18,8 @@ There are two ways to control the values of parameters in `qpfmri`: by file (def
 * `fMRI_timeseries.txt`: `subjectProcessedPath/processed/run#/`
 * `actualStimuli.txt`: `subjectProcessedPath/stims/run#/`
 * `suggestions.txt`: `subjectProcessedPath/stims/run#/`
+* Image Files
+  * SBREF: `scannerPath/`
+  * T1: `subjectProcessedPath/`
+  * MNI: `bidsPath/derivatives/templates/`
+  * ROI Template: `bidsPath/derivatives/templates/`
