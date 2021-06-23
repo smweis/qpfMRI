@@ -8,7 +8,7 @@ fid = fopen(fullfile(path,file),'rt');
 raw = fread(fid,inf);
 str = char(raw');
 fclose(fid);
-globalParams = jsondecode(str);
+globalParams = jsondecode(strrep(str,'\','\\')); % add escape chars
 
 subject = globalParams.subject;
 run = globalParams.run;
@@ -66,23 +66,16 @@ elseif strcmp(loadParams,'2')
     p.outNum = 0;
     
     p.model = func2str(p.model);
-    disp('Choose a location for the params file [subjectProcessedPath/processed/run#]');
+    
+    disp('Choose a location for the params file [subjectProcessedPath/]');
     selPath = uigetdir;
-    fid = fopen(fullfile(selPath,'qpParams.json'),'wt');
+    filename = strcat('qpParams_',subject,run,'.json');
+    fid = fopen(fullfile(selPath,filename'),'wt');
     fprintf(fid,jsonencode(p));
     fclose(fid);
 else
     error('Invalid choice');
 end
-% fid = fopen("C:\Users\jacob.frank\Documents\blue\rtQuest\derivatives\realTime\test\processed\run0\global.json");
-% raw = fread(fid,inf);
-% str = char(raw');
-% fclose(fid);
-% global_params = jsondecode(str);
-% 
-% subject = global_params.subject;
-% run = global_params.run;
-
 % formatting
 p.model = str2func(p.model);
 [myQpfmriParams,myQpParams] = qpfmriParams(p.model,p.paramsDomain,'qpPres',p.qpPres,...,
