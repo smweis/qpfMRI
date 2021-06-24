@@ -40,14 +40,14 @@ p5Name = 'sigma';
 % Parameters lower bounds on domains
 p1L = '-1'; 
 p2L = '-1';
-p3L = '-1';
+p3L = '.9';
 p4L = '.75';
 p5L = '.01';
 
 % Parameters upper bounds on domains
 p1U = '1.0';
 p2U = '1.0';
-p3U = '1.0';
+p3U = '1.1';
 p4U = '1.25';
 p5U = '1.0';
 
@@ -90,7 +90,7 @@ nTrials = '30';
 % Simulatd psi params
 p1Sim = '.1';
 p2Sim = '.5';
-p3Sim = '0.0';
+p3Sim = '1.0';
 p4Sim = '1.0';
 p5Sim = '.05';
 
@@ -237,10 +237,16 @@ end
 % Check if a baseline stimulus was passed
 if ~isempty(p.Results.baselineStimulus)
     myQpfmriParams.baselineStimulus = p.Results.baselineStimulus;
+else
+    [~, baselineStimulusIndex] = min(myQpfmriParams.model(myQpfmriParams.stimulusDomain{:},myQpfmriParams.simulatedPsiParams));
+    myQpfmriParams.baselineStimulus = myQpfmriParams.stimulusDomain{:}(baselineStimulusIndex);
 end
 % Check if a maxBOLD stimulus was passed
 if ~isempty(p.Results.maxBOLDStimulus)
     myQpfmriParams.maxBOLDStimulus = p.Results.maxBOLDStimulus;
+else
+    [~, baselineStimulusIndex] = max(myQpfmriParams.model(myQpfmriParams.stimulusDomain{:},myQpfmriParams.simulatedPsiParams));
+    myQpfmriParams.baselineStimulus = myQpfmriParams.stimulusDomain{:}(baselineStimulusIndex);
 end
 
 

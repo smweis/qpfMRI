@@ -184,7 +184,7 @@ if min(thePacket.stimulus.timebase)>=0 && p.Results.definePreScanState
         % Extend the response
         preScan.respValues = repmat(thePacket.response.values(:,1),1,length(preScan.timebase));
         thePacket.response.timebase = [preScan.timebase thePacket.response.timebase];
-        thePacket.response.values = [preScan.stimValues thePacket.stimulus.values];
+        thePacket.response.values = [preScan.respValues thePacket.response.values];
     end
 end
 

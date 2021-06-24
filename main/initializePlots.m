@@ -20,6 +20,8 @@ function [mainFig,handleStruct] = initializePlots(myQpfmriParams,myQpParams,vara
 %                             Width of figure window size.
 %   'figHeight'             - Integer (Default = 900)
 %                             Height of figure window size.
+%   'realData'              - Logical. (Default = false)
+%                             If true, will not print simulated parameters.
 % Outputs:
 %   mainFig                 - Figure handle. Empty figure to fill and use with drawPlots. 
 %   handleStruct            - Struct. All the handles used for plotting for
@@ -31,7 +33,7 @@ p.addRequired('myQpfmriParams',@isstruct);
 p.addRequired('myQpParams',@isstruct);
 p.addParameter('figWidth',1100,@isnumeric);
 p.addParameter('figHeight',1100,@isnumeric);
-
+p.addParameter('realData',false,@islogical);
 
 % Parse inputs
 p.parse( myQpfmriParams, myQpParams, varargin{:});
@@ -84,10 +86,16 @@ set(gca,'Box','off');
 % TO DO: MIGHT WANT TO FIX THIS DOWN THE ROAD??
 % Predicted relative response is adjusted for the baseline and scaled
 % to maxBOLD
-predictedRelativeResponse = (myQpfmriParams.model(stimulusDomainFine,myQpfmriParams.simulatedPsiParams) - ...
-    myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams))*myQpfmriParams.maxBOLDSimulated;
-plotFunc(stimulusDomainFine,predictedRelativeResponse,'-k');
+if ~p.Results.realData
+    predictedRelativeResponse = (myQpfmriParams.model(stimulusDomainFine,myQpfmriParams.simulatedPsiParams) - ...
+        myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams))*myQpfmriParams.maxBOLDSimulated;
+    plotFunc(stimulusDomainFine,predictedRelativeResponse,'-k');
+
+
+end
+
 ylim([-0.5 myQpfmriParams.maxBOLDSimulated+1]);
+
 xlabel('Stimulus Values');
 ylabel('Relative response amplitude');
 title('Estimate of Model');
