@@ -102,8 +102,8 @@ function predictedProportions = qpModelWrapper(model, stimulusValues, params, nO
 
 
 % Determine the number of bins to be reserved for upper and lower headroom
-nLower = max([1 round(nOutcomes.*headroom)]);
-nUpper = max([1 round(nOutcomes.*headroom)]);
+nLower = max([0 round(nOutcomes.*headroom)]);
+nUpper = max([0 round(nOutcomes.*headroom)]);
 nMid = nOutcomes - nLower - nUpper;
 
 % Obtain the model response values for the stimulus values

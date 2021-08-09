@@ -40,9 +40,9 @@ model = @nakaRushton;
 % expected by the model. 
 
 paramsDomain = struct;
-paramsDomain.exponent = makeDomain(-1,1,20,'spacing','log');
-paramsDomain.semiSat = makeDomain(.1,1,10);
-paramsDomain.beta = makeDomain(.75,1.25,11,'spacing','zeno');
+paramsDomain.exponent = makeDomain(-1,1,5,'spacing','log');
+paramsDomain.semiSat = makeDomain(.1,1,5);
+paramsDomain.beta = makeDomain(.75,1.25,3,'spacing','zeno');
 
 % Sigma in the parameter domain is searching for noiseSD
 paramsDomain.sigma = makeDomain(0.01,1,10);
@@ -55,7 +55,7 @@ stimulusDomainSpacing = 'lin';
 nTrials = 100;
 
 % Allow Q+ to control the stimuli or not (false).
-qpPres = false;
+qpPres = true;
 
 % Set the number of outcome categories / bins.
 nOutcomes = 15;
@@ -211,8 +211,8 @@ end
 
 % Create baseline stimulus and maxBOLD stimulus if not passed.
 if isempty(myQpfmriParams.baselineStimulus)
-    [~, baselineSimtulusIndex] = min(myQpfmriParams.model(myQpfmriParams.stimulusDomain{:},myQpfmriParams.simulatedPsiParams));
-    myQpfmriParams.baselineStimulus = myQpfmriParams.stimulusDomain{:}(baselineSimtulusIndex);
+    [~, baselineStimulusIndex] = min(myQpfmriParams.model(myQpfmriParams.stimulusDomain{:},myQpfmriParams.simulatedPsiParams));
+    myQpfmriParams.baselineStimulus = myQpfmriParams.stimulusDomain{:}(baselineStimulusIndex);
 end
 if isempty(myQpfmriParams.maxBOLDStimulus)
     [~, maxBOLDStimulusIndex] = max(myQpfmriParams.model(myQpfmriParams.stimulusDomain{:},myQpfmriParams.simulatedPsiParams));
@@ -405,7 +405,7 @@ for tt = 1:myQpfmriParams.nTrials
         % Draw plots
         [mainFig,handleStruct] = drawPlots(myQpfmriParams,myQpParams,...,
             qpfmriResults,mainFig,handleStruct,thePacketOut,modelResponseStruct,...,
-            yVals,yValsPlusBaseline);
+            yVals,yValsPlusBaseline,psiParamsBest);
     end
     
 end

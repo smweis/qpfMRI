@@ -1,10 +1,10 @@
-function [mainFig,handleStruct] = drawPlots(myQpfmriParams,myQpParams,qpfmriResults,mainFig,handleStruct,thePacketOut,modelResponseStruct,yVals,yValsPlusBaseline,varargin)
-%% [mainFig,handleStruct] = drawPlots(myQpfmriParams,myQpParams,qpfmriResults,mainFig,handleStruct,thePacketOut,modelResponseStruct,yVals,yValsPlusBaseline,varargin)
+function [mainFig,handleStruct] = drawPlots(myQpfmriParams,myQpParams,qpfmriResults,mainFig,handleStruct,thePacketOut,modelResponseStruct,yVals,yValsPlusBaseline,psiParamsBest,varargin)
+%% [mainFig,handleStruct] = drawPlots(myQpfmriParams,myQpParams,qpfmriResults,mainFig,handleStruct,thePacketOut,modelResponseStruct,yVals,yValsPlusBaseline,psiParamsBest,varargin)
 
 % Draw plots for the main qpfMRI functions
 %
 % Syntax:
-%[mainFig,handleStruct] = drawPlots(myQpfmriParams,myQpParams,qpfmriResults,mainFig,handleStruct,thePacketOut,modelResponseStruct,yVals,yValsPlusBaseline,varargin)
+%[mainFig,handleStruct] = drawPlots(myQpfmriParams,myQpParams,qpfmriResults,mainFig,handleStruct,thePacketOut,modelResponseStruct,yVals,yValsPlusBaseline,psiParamsBest,varargin)
 
 %
 % Description:
@@ -27,6 +27,8 @@ function [mainFig,handleStruct] = drawPlots(myQpfmriParams,myQpParams,qpfmriResu
 %   yVals                   - Vector. Y-values not normalized to the
 %                             baseline stimulus but scaled to maxBOLDLatestGuess. 
 %   yValsPlusBaseline       - Vector. Y-values scaled to maxBOLDLatestGuess. 
+%   psiParamsBest           - Vector. 1xn current best estimate for
+%                             psychometric parameters from Q+ or BADS
 % Optional key/value pairs (used in plotting):
 %   colorStruct             - Struct. List of colors to use for plotting
 %                             different trial types. 
@@ -45,6 +47,7 @@ p.addRequired('mainFig',@(x) isa(x,'matlab.ui.Figure'));
 p.addRequired('handleStruct',@isstruct);
 p.addRequired('yVals',@isvector);
 p.addRequired('yValsPlusBaseline',@isvector);
+p.addRequired('psiParamsBest',@isvector);
 
 % Optional
 p.addParameter('colorStruct',{},@isstruct);
@@ -54,7 +57,7 @@ p.addParameter('saveGif',false,@islogical);
 
 
 % Parse inputs
-p.parse( myQpfmriParams, myQpParams, qpfmriResults, mainFig, handleStruct, yVals, yValsPlusBaseline, varargin{:});
+p.parse( myQpfmriParams, myQpParams, qpfmriResults, mainFig, handleStruct, yVals, yValsPlusBaseline,psiParamsBest, varargin{:});
 
 
 %% Setup parameters
@@ -132,8 +135,8 @@ stimulusVecPlot(stimulusVecPlot==0)=min(myQpParams.stimParamsDomainList{1});
 % Calculate the predicted relative response from Q+, which
 % calculates the model fit depending on the baseline estimate and
 % scales to the maxBOLDLatestGuess
-predictedQuestRelativeResponse = (myQpfmriParams.model(stimulusDomainFine,qpfmriResults.psiParamsQuest(nTrials,:)) - ...
-    myQpfmriParams.model(myQpfmriParams.baselineStimulus,qpfmriResults.psiParamsQuest(nTrials,:)))*qpfmriResults.psiParamsQuest(nTrials,myQpfmriParams.betaIndex)*qpfmriResults.maxBOLDoverTrials(nTrials);
+predictedQuestRelativeResponse = (myQpfmriParams.model(stimulusDomainFine,psiParamsBest) - ...
+    myQpfmriParams.model(myQpfmriParams.baselineStimulus,psiParamsBest))*psiParamsBest(1,myQpfmriParams.betaIndex)*qpfmriResults.maxBOLDoverTrials(nTrials);
 
 % The current best fit model
 delete(handleStruct.currentTTFHandle);
