@@ -65,7 +65,13 @@ while stillSearching
     % Simulated noise is selected from a random sample of noiseSD
     myQpfmriParams.simulatedPsiParams(myQpfmriParams.sigmaIndex) = randsample(myQpfmriParams.noiseSD,1);
 
-    if strcmp(func2str(myQpfmriParams.model),'logistic')
+    % Generate baseline and maxBOLD stimuli based on new simulated params
+    [~, baselineStimulusIndex] = min(myQpfmriParams.model(myQpfmriParams.stimulusDomain{:},myQpfmriParams.simulatedPsiParams));
+    myQpfmriParams.baselineStimulus = myQpfmriParams.stimulusDomain{:}(baselineStimulusIndex);
+    [~, maxBOLDStimulusIndex] = max(myQpfmriParams.model(myQpfmriParams.stimulusDomain{:},myQpfmriParams.simulatedPsiParams));
+    myQpfmriParams.maxBOLDStimulus = myQpfmriParams.stimulusDomain{:}(maxBOLDStimulusIndex);
+
+    if any(strcmp(func2str(myQpfmriParams.model),{'logistic','nakaRushton'}))
         if abs(myQpfmriParams.model(myQpfmriParams.baselineStimulus,myQpfmriParams.simulatedPsiParams)) < myQpfmriParams.simulatedPsiParams(myQpfmriParams.betaIndex)/10000 && ...
                 abs(myQpfmriParams.model(myQpfmriParams.maxBOLDStimulus,myQpfmriParams.simulatedPsiParams)) < 1 && ...
                 abs(myQpfmriParams.model(myQpfmriParams.maxBOLDStimulus,myQpfmriParams.simulatedPsiParams)) > .99

@@ -1,4 +1,4 @@
-function [qpfmriResults]=simulate(myQpfmriParams, myQpParams, varargin)
+function [qpfmriResults,questData]=simulate(myQpfmriParams, myQpParams, varargin)
 %% [qpfmriResults]=simulate(myQpfmriParams, varargin)
 % A script that will simulate fMRI BOLD data and fit a model with or
 % without Q+ control
@@ -155,6 +155,7 @@ p.addParameter('showPlots',false,@islogical);
 p.addParameter('saveFigs',false,@islogical);
 p.addParameter('saveGif',false,@islogical);
 p.addParameter('saveBads',true,@islogical);
+p.addParameter('questData','init');
 % Parse inputs
 p.parse( myQpfmriParams, myQpParams, varargin{:});
 
@@ -168,11 +169,11 @@ maxBOLDLatestGuess = myQpfmriParams.maxBOLDInitialGuess;
 qpfmriResults.psiParamsQuest = nan(myQpfmriParams.nTrials,length(fieldnames(myQpfmriParams.paramsDomain)));
 qpfmriResults.psiParamsBADS = nan(myQpfmriParams.nTrials,length(fieldnames(myQpfmriParams.paramsDomain)));
 qpfmriResults.entropyOverTrials = cell(1,myQpfmriParams.nTrials);
-
+qpfmriResults.outcomes = cell(1,myQpfmriParams.nTrials);
 % Set up save info and directory
-folderName = ['.' filesep myQpfmriParams.outFolder];
+folderName = [myQpfmriParams.outFolder];
 fileName = ['sim_' myQpfmriParams.outNum '.mat'];
-if ~exist(folderName,'dir') && (p.Results.saveFigs || p.Results.saveGif)
+if ~exist(folderName,'dir')
     mkdir(folderName);
 end
 
@@ -267,10 +268,17 @@ myQpParams.qpOutcomeF = @(f) qpSimulatedObserver(f,myQpParams.qpPF,myQpfmriParam
 
 %% Initialize Q+. 
 % Warn the user that initializing has started and may take a minute.
-tic
-fprintf('Initializing Q+. This may take a minute...\n');
-questData = qpInitialize(myQpParams);
-toc
+if ~isstruct(p.Results.questData)
+    tic
+    fprintf('Initializing Q+. This may take a minute...\n');
+    questData = qpInitialize(myQpParams);
+    toc
+else
+    questData = p.Results.questData;
+    questData.trialData = [];
+    questData.stimIndices = [];
+    questData.entropyAfterTrial = [];
+end
 
 % Tack on a continuous output simulated observer to myQpParams
 myQpParams.continuousPF = @(f) myQpfmriParams.model(f,myQpfmriParams.simulatedPsiParams);
@@ -383,7 +391,8 @@ for tt = 1:myQpfmriParams.nTrials
     % Save maxBOLD and entropy guesses
     qpfmriResults.maxBOLDoverTrials(tt) = maxBOLDLatestGuess;
     qpfmriResults.entropyOverTrials{tt} = questData.entropyAfterTrial;
-
+    qpfmriResults.outcomes{1} = yValsPlusBaseline;
+    
     %% Printing and Plotting Utilities
     % Print results to the console.
     trialString = sprintf('\nTrial %d: %s Stimulus Selection\n',tt,qpfmriResults.stimulusVecTrialTypes{tt});
@@ -479,17 +488,7 @@ if p.Results.showPlots
         set(mainFig,'Units','Inches');
         pos = get(mainFig,'Position');
         set(mainFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)]);
-        print(mainFig,'simulate.pdf','-dpdf','-r0');
-    
-        set(paramsFig,'Units','Inches');
-        pos = get(paramsFig,'Position');
-        set(paramsFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)]);
-        print(paramsFig,'paramsFigs.pdf','-dpdf','-r0');
-    
-        set(finalFig,'Units','Inches');
-        pos = get(finalFig,'Position');
-        set(finalFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)]);
-        print(finalFig,'finalFig.pdf','-dpdf','-r0');
+        print(mainFig,fullfile(folderName,[myQpfmriParams.outNum '_simulate.pdf']),'-dpdf','-r0');
 
     end
 end

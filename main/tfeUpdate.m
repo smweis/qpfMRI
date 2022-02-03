@@ -118,7 +118,7 @@ p.addRequired('maxBOLDLatestGuess',@isnumeric);
 
 % Optional params used in simulation
 p.addParameter('rngSeed',rng(1,'twister'),@isstruct);
-p.addParameter('pinkNoise',1, @isnumeric);
+p.addParameter('pinkNoise',0, @isnumeric);
 p.addParameter('definePreScanState',true, @islogical);
 
 % Parse
