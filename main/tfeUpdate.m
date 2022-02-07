@@ -118,7 +118,6 @@ p.addRequired('maxBOLDLatestGuess',@isnumeric);
 
 % Optional params used in simulation
 p.addParameter('rngSeed',rng(1,'twister'),@isstruct);
-p.addParameter('pinkNoise',0, @isnumeric);
 p.addParameter('definePreScanState',true, @islogical);
 
 % Parse
@@ -195,7 +194,7 @@ if isempty(thePacket.response)
     % Initialize params0, which will allow us to create the forward model.
     params0 = tfeObj.defaultParams('defaultParamsInfo', defaultParamsInfo);
     params0.noiseSd = myQpfmriParams.fMRInoise;
-    params0.noiseInverseFrequencyPower = p.Results.pinkNoise;
+    params0.noiseInverseFrequencyPower = myQpfmriParams.pinkNoise;
     modelAmplitude = zeros(length(stimulusVec),1);
         
     % Obtain the continuous amplitude response

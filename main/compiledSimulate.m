@@ -173,6 +173,7 @@ p.addParameter('stimDomainSpacing','lin',@ischar);
 
 % Optional params
 p.addParameter('qpPres','false',@ischar);
+p.addParameter('pinkNoise','1',@ischar);
 p.addParameter('headroom', '0.1', @ischar);
 p.addParameter('maxBOLDInitialGuess', '1.0', @ischar);
 p.addParameter('maxBOLDSimulated', '1.5', @ischar);
@@ -267,6 +268,7 @@ else
 end
 
 myQpfmriParams.headroom = str2double(p.Results.headroom);
+myQpfmriParams.pinkNoise = str2double(p.Results.pinkNoise);
 myQpfmriParams.maxBOLDInitialGuess = str2double(p.Results.maxBOLDInitialGuess);
 myQpfmriParams.maxBOLDSimulated = str2double(p.Results.maxBOLDSimulated);
 myQpfmriParams.TR = str2double(p.Results.TR);

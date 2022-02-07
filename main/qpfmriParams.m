@@ -147,7 +147,7 @@ p.addParameter('outFolder','Results',@ischar);
 p.addParameter('seed','choose');
 p.addParameter('nTrials',10,@isnumeric);
 p.addParameter('stimulusStructDeltaT',100,@isnumeric);
-p.addParameter('baselineStimulus',0.5);
+p.addParameter('baselineStimulus',0);
 p.addParameter('maxBOLDStimulus',1);
 p.addParameter('nOutcomes',15,@isnumeric);
 p.addParameter('noiseSD',.1,@isvector);
@@ -155,6 +155,7 @@ p.addParameter('stimulusDomain',{},@iscell);
 p.addParameter('stimulusDomainSpacing','lin',@ischar);
 p.addParameter('baselineMaxBOLDInitial',6,@isnumeric);
 p.addParameter('baselineMaxBOLDRepeating',5,@isnumeric);
+p.addParameter('pinkNoise',1,@isnumeric);
 % Parse
 p.parse( model, paramsDomain, varargin{:});
 
